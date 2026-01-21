@@ -24,20 +24,20 @@ export default function Home() {
   });
 
   // 필터링된 상품 목록 계산
-  const applyFilters = (productList: Product[]) => {
+  const applyFilters = (productList: Product[], currentFilters: FilterOptions) => {
     let filtered = [...productList];
 
     // 가격 필터
-    if (filters.minPrice !== null) {
-      filtered = filtered.filter((p) => parsePrice(p.lprice) >= filters.minPrice!);
+    if (currentFilters.minPrice !== null) {
+      filtered = filtered.filter((p) => parsePrice(p.lprice) >= currentFilters.minPrice!);
     }
-    if (filters.maxPrice !== null) {
-      filtered = filtered.filter((p) => parsePrice(p.lprice) <= filters.maxPrice!);
+    if (currentFilters.maxPrice !== null) {
+      filtered = filtered.filter((p) => parsePrice(p.lprice) <= currentFilters.maxPrice!);
     }
 
     // 브랜드 필터
-    if (filters.brands.length > 0) {
-      filtered = filtered.filter((p) => filters.brands.includes(p.brand));
+    if (currentFilters.brands.length > 0) {
+      filtered = filtered.filter((p) => currentFilters.brands.includes(p.brand));
     }
 
     return filtered;
@@ -69,7 +69,7 @@ export default function Home() {
       });
 
       setProducts(data.items);
-      setFilteredProducts(applyFilters(data.items));
+      setFilteredProducts(applyFilters(data.items, filters));
     } catch (err) {
       setError(err instanceof Error ? err.message : '검색 중 오류가 발생했습니다');
       setProducts([]);
@@ -81,7 +81,7 @@ export default function Home() {
 
   const handleFilterChange = (newFilters: FilterOptions) => {
     setFilters(newFilters);
-    setFilteredProducts(applyFilters(products));
+    setFilteredProducts(applyFilters(products, newFilters));
   };
 
   return (
