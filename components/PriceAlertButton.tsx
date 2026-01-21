@@ -21,11 +21,11 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
 
     const target = parseInt(targetPrice);
     if (target >= currentPrice) {
-      alert('목표 가격은 현재 가격보다 낮아야 합니다');
+      window.alert('목표 가격은 현재 가격보다 낮아야 합니다');
       return;
     }
 
-    const alert: PriceAlert = {
+    const priceAlert: PriceAlert = {
       productId: product.productId,
       productTitle: product.title,
       productImage: product.image,
@@ -34,7 +34,7 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
       createdAt: new Date().toISOString(),
     };
 
-    addPriceAlert(alert);
+    addPriceAlert(priceAlert);
     setSuccess(true);
     setTimeout(() => {
       setShowModal(false);
