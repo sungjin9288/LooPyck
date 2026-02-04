@@ -1,11 +1,19 @@
 'use client';
 
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useCloudStorage } from '@/hooks/useCloudStorage';
 import { Product } from '@/types/product';
 import ProductCard from '../product/ProductCard';
 
 export default function FavoritesPage() {
-    const [favorites] = useLocalStorage<Product[]>('fashion-favorites', []);
+    const { favorites, loading } = useCloudStorage();
+
+    if (loading && favorites.length === 0) {
+        return (
+            <div className="flex justify-center py-20">
+                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     if (favorites.length === 0) {
         return (
