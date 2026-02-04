@@ -111,14 +111,15 @@ export function useCloudStorage() {
 
         try {
             await runTransaction(db, async (transaction) => {
-                // 1. Set User Favorite
-                const userDocRef = doc(db, userPath, product.productId);
-                transaction.set(userDocRef, product);
-
-                // 2. Increment Global Watch Count
+                // READ FIRST: Global Watch Count
                 const globalDocRef = doc(db, globalPath);
                 const globalDoc = await transaction.get(globalDocRef);
 
+                // THEN WRITE: User Favorite
+                const userDocRef = doc(db, userPath, product.productId);
+                transaction.set(userDocRef, product);
+
+                // THEN WRITE: Increment Global Watch Count
                 if (!globalDoc.exists()) {
                     transaction.set(globalDocRef, { watchCount: 1 });
                 } else {
@@ -140,14 +141,15 @@ export function useCloudStorage() {
 
         try {
             await runTransaction(db, async (transaction) => {
-                // 1. Remove User Favorite
-                const userDocRef = doc(db, userPath, productId);
-                transaction.delete(userDocRef);
-
-                // 2. Decrement Global Watch Count
+                // READ FIRST
                 const globalDocRef = doc(db, globalPath);
                 const globalDoc = await transaction.get(globalDocRef);
 
+                // THEN WRITE
+                const userDocRef = doc(db, userPath, productId);
+                transaction.delete(userDocRef);
+
+                // THEN WRITE
                 if (globalDoc.exists()) {
                     const current = globalDoc.data().watchCount || 0;
                     if (current > 0) {
