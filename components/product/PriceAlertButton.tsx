@@ -5,9 +5,6 @@ import { Product } from '@/types/product';
 import { useCloudStorage } from '@/hooks/useCloudStorage';
 import { parsePrice } from '@/lib/api';
 
-// Replicate PriceAlert type locally or import if shared (assuming shared in lib/favorites for now, 
-// but we want to use the useLocalStorage hook solely if possible. 
-// However, PriceAlertButton needs to interact with the global alerts list.)
 interface PriceAlert {
     productId: string;
     productTitle: string;
