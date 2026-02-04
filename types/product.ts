@@ -14,6 +14,7 @@ export interface Product {
   category2: string;       // 카테고리2
   category3: string;       // 카테고리3
   category4: string;       // 카테고리4
+  targetPrice?: number;    // 사용자 설정 목표 가격 (확장)
 }
 
 // 네이버 쇼핑 API 응답 타입

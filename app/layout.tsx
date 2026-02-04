@@ -2,9 +2,21 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "패션 가격 비교 - 똑똑한 쇼핑의 시작",
-  description: "여러 쇼핑몰의 가격을 한눈에 비교하고 가성비 있게 쇼핑하세요",
+  title: "LooPyck - Smart Fashion Price Comparison",
+  description: "Compare prices across multiple stores and pick the best option. LooPyck uses smart search to help you shop efficiently.",
+  openGraph: {
+    title: "LooPyck - Smart Fashion Price Comparison",
+    description: "Compare prices across multiple stores and pick the best option.",
+    type: "website",
+    locale: "ko_KR",
+  }
 };
+
+import ScrollToTop from "@/components/shared/ScrollToTop";
+
+// ... existing code ...
+
+import { UserProvider } from "@/contexts/UserContext";
 
 export default function RootLayout({
   children,
@@ -14,7 +26,10 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className="antialiased" suppressHydrationWarning>
-        {children}
+        <UserProvider>
+          {children}
+          <ScrollToTop />
+        </UserProvider>
       </body>
     </html>
   );
