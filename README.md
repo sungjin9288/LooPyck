@@ -1,156 +1,80 @@
-# 패션 가격 비교 플랫폼
+# LooPyck (루픽)
 
-원하는 스타일의 옷을 여러 쇼핑몰에서 비교하여 가성비 있게 구매할 수 있도록 돕는 웹 애플리케이션입니다.
+**LooPyck**은 "Look & Pick"의 합성어로, 사용자가 원하는 패션 아이템을 검색하고 다양한 쇼핑몰의 가격을 한눈에 비교하여 가장 합리적인 선택을 할 수 있도록 돕는 서비스입니다.
 
-## 주요 기능
+![LooPyck Preview](./public/preview.png)
 
-- 🔍 **키워드 기반 상품 검색**: 원하는 패션 아이템을 쉽게 검색
-- 💰 **가격 비교**: 여러 쇼핑몰의 가격을 한눈에 비교
-- 📊 **다양한 정렬 옵션**: 정확도순, 최신순, 가격순으로 정렬
-- 📱 **반응형 디자인**: 모바일, 태블릿, 데스크톱 모두 지원
-- ⚡ **빠른 성능**: Next.js 14의 최적화된 성능
+## 🚀 주요 기능
 
-## 기술 스택
+### 1. 🔍 스마트 가격 비교
+- 네이버 쇼핑 API를 활용하여 수만 개의 패션 상품을 실시간으로 검색합니다.
+- **Price Insight**: 상품 가격이 전체 분포 중 어디에 위치하는지(상위 10%, 평균 이하 등) 백분위로 분석하여 시각적으로 제공합니다.
 
-- **프레임워크**: Next.js 14 (App Router)
-- **언어**: TypeScript
-- **스타일링**: Tailwind CSS
-- **API**: 네이버 쇼핑 API
+### 2. ❤️ 클라우드 찜하기 (Cloud Sync)
+- **Firebase Firestore** 연동으로 기기 간 찜 목록이 실시간으로 동기화됩니다.
+- **익명 로그인**: 복잡한 회원가입 없이 바로 서비스를 이용할 수 있으며, 추후 구글 계정 연동을 지원합니다.
 
-## 시작하기
+### 3. 👀 소셜 프루프 (Social Proof)
+- **실시간 관심도**: 현재 몇 명의 사용자가 이 상품을 보고 있는지, 몇 명이 찜했는지 실시간으로 확인할 수 있습니다.
+- 동시성 제어 기술(Transaction)이 적용되어 정확한 카운팅을 보장합니다.
 
-### 1. 사전 요구사항
+### 4. 🎨 프리미엄 UX
+- **Skeleton Loading**: 데이터 로딩 중에도 자연스러운 화면을 제공합니다.
+- **Micro-interactions**: 버튼 클릭 시의 "Pop" 효과, 리스트 등장 시의 순차적(Staggered) 애니메이션 등으로 사용하는 즐거움을 더했습니다.
 
-- Node.js 18 이상 설치
-- 네이버 개발자 계정 (API 키 발급용)
+---
 
-### 2. 네이버 쇼핑 API 키 발급
+## 🛠 기술 스택
 
-1. [네이버 개발자 센터](https://developers.naver.com/)에 접속하여 로그인
-2. **Application > 애플리케이션 등록** 메뉴 선택
-3. 다음 정보 입력:
-   - 애플리케이션 이름: `패션 가격 비교` (자유롭게 입력)
-   - 사용 API: **검색** 선택
-   - 비로그인 오픈 API 서비스 환경: **WEB 설정** 추가
-   - 웹 서비스 URL: `http://localhost:3000` 입력
-4. 등록 완료 후 **Client ID**와 **Client Secret** 복사
+- **Frontend**: Next.js 14, React, TypeScript
+- **Styling**: Tailwind CSS (Design Tokens System)
+- **Backend (Serverless)**: Firebase Authentication, Firestore
+- **State Management**: React Context API, Custom Hooks
+- **Deployment**: Vercel
 
-### 3. 프로젝트 설치
+---
 
-```bash
-# 프로젝트 폴더로 이동
-cd fashion-price-compare
+## 📦 설치 및 실행 방법
 
-# 패키지 설치
-npm install
-```
+1. **프로젝트 클론**
+   ```bash
+   git clone https://github.com/sungjin9288/LooPyck.git
+   cd LooPyck
+   ```
 
-### 4. 환경 변수 설정
+2. **의존성 설치**
+   ```bash
+   npm install
+   ```
 
-프로젝트 루트 폴더에 `.env.local` 파일을 생성하고 다음 내용을 입력하세요:
+3. **환경 변수 설정**
+   `.env.local` 파일을 생성하고 다음 키를 입력하세요.
+   ```env
+   NAVER_CLIENT_ID=your_naver_client_id
+   NAVER_CLIENT_SECRET=your_naver_client_secret
+   NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_key
+   ...
+   ```
 
-```env
-NAVER_CLIENT_ID=발급받은_클라이언트_ID
-NAVER_CLIENT_SECRET=발급받은_클라이언트_시크릿
-```
+4. **개발 서버 실행**
+   ```bash
+   npm run dev
+   ```
 
-### 5. 개발 서버 실행
+---
 
-```bash
-npm run dev
-```
+## 🔒 보안 및 아키텍처
 
-브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 확인하세요.
+- **Hybrid Migration**: 로컬 스토리지에 있던 데이터를 클라우드로 자동 이관하는 하이브리드 마이그레이션 전략을 사용합니다.
+- **Security Rules**: 철저한 소유권(Ownership) 기반의 보안 규칙을 적용하여, 사용자는 본인의 데이터에만 접근할 수 있습니다.
 
-## 프로젝트 구조
+---
 
-```
-fashion-price-compare/
-├── app/                      # Next.js 14 App Router
-│   ├── api/
-│   │   └── search/
-│   │       └── route.ts      # 네이버 쇼핑 API 프록시
-│   ├── globals.css           # 전역 스타일
-│   ├── layout.tsx            # 루트 레이아웃
-│   └── page.tsx              # 메인 페이지
-├── components/               # React 컴포넌트
-│   ├── SearchBar.tsx         # 검색바 컴포넌트
-│   ├── ProductCard.tsx       # 상품 카드 컴포넌트
-│   └── ProductList.tsx       # 상품 리스트 컴포넌트
-├── lib/
-│   └── api.ts                # API 유틸리티 함수
-├── types/
-│   └── product.ts            # TypeScript 타입 정의
-├── .env.local.example        # 환경 변수 예시
-├── next.config.js            # Next.js 설정
-├── tailwind.config.ts        # Tailwind CSS 설정
-└── package.json              # 프로젝트 의존성
-```
+## 📈 Future Roadmap
 
-## 사용 방법
+- [ ] 가격 변동 알림 (Cloud Functions)
+- [ ] 소셜 로그인 (Google, Kakao)
+- [ ] 인기 상품 랭킹 페이지
 
-1. 검색창에 찾고 싶은 패션 아이템 입력 (예: "청바지", "맨투맨", "운동화")
-2. 정렬 옵션 선택:
-   - **정확도순**: 검색어와 가장 관련성 높은 순서
-   - **최신순**: 최근 등록된 상품 순서
-   - **낮은 가격순**: 가격이 낮은 순서
-   - **높은 가격순**: 가격이 높은 순서
-3. 상품 카드 클릭 시 해당 쇼핑몰 페이지로 이동
-
-## 배포하기
-
-### Vercel 배포 (추천)
-
-1. GitHub에 프로젝트 업로드
-2. [Vercel](https://vercel.com)에 접속하여 로그인
-3. **Import Project** 클릭
-4. GitHub 저장소 선택
-5. 환경 변수 설정:
-   - `NAVER_CLIENT_ID`: 네이버 클라이언트 ID
-   - `NAVER_CLIENT_SECRET`: 네이버 클라이언트 시크릿
-6. **Deploy** 클릭
-
-배포 후 네이버 개발자 센터에서 웹 서비스 URL을 배포된 주소로 추가하세요.
-
-## 문제 해결
-
-### API 키 관련 오류
-
-**증상**: "API 키가 설정되지 않았습니다" 오류 발생
-
-**해결 방법**:
-1. `.env.local` 파일이 프로젝트 루트에 있는지 확인
-2. 파일 내용이 올바른지 확인 (띄어쓰기 없이 작성)
-3. 개발 서버 재시작 (`Ctrl+C` 후 `npm run dev`)
-
-### 검색 결과가 나오지 않음
-
-**해결 방법**:
-1. 네이버 개발자 센터에서 검색 API가 활성화되어 있는지 확인
-2. 웹 서비스 URL이 올바르게 설정되어 있는지 확인
-3. API 사용량 제한(하루 25,000건)을 초과하지 않았는지 확인
-
-### 이미지가 표시되지 않음
-
-**해결 방법**:
-1. [next.config.js](next.config.js)의 `remotePatterns` 설정 확인
-2. 브라우저 콘솔에서 에러 메시지 확인
-
-## 향후 개발 계획
-
-- [ ] 사용자 찜 목록 기능
-- [ ] 가격 하락 알림
-- [ ] 가격 추이 그래프
-- [ ] 리뷰 통합 분석
-- [ ] AI 기반 스타일 추천
-- [ ] PWA 변환 (모바일 앱화)
-- [ ] 쿠팡 파트너스 API 연동
-- [ ] 다크 모드 지원
-
-## 라이선스
-
-MIT License
-
-## 문의
-
-프로젝트 관련 문의사항이나 버그 리포트는 GitHub Issues를 이용해주세요.
+---
+© 2024 LooPyck. All rights reserved.

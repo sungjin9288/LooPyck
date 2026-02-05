@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getRecentSearches, clearRecentSearches } from '@/lib/favorites';
+import { getRecentSearches, clearRecentSearches } from '@/utils/recentSearches';
 
 interface RecentSearchesProps {
     onSearch: (query: string) => void;

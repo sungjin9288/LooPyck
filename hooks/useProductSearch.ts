@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Product } from '@/types/product';
 import { searchProducts, parsePrice } from '@/lib/api';
-import { addRecentSearch } from '@/lib/favorites';
+import { addRecentSearch } from '@/utils/recentSearches';
 
 export interface FilterOptions {
   minPrice: number | null;
@@ -53,7 +53,7 @@ export function useProductSearch() {
     setIsLoading(true);
     setError(null);
     setHasSearched(true);
-    
+
     // 최근 검색어에 추가
     addRecentSearch(query);
 

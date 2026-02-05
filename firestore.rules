@@ -23,7 +23,12 @@ service cloud.firestore {
       // Global Product Statistics (Social Counters): Public Read, Authenticated Increment
       match /products/{productId} {
         allow read: if true; 
-        allow write: if isAuthenticated(); // Broad write allowed for now to support client-side transaction
+        
+        // Strict Validation: Allow creating (if first time) or updating only 'watchCount'
+        // This prevents malicious overwrite of other fields if they existed
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated() 
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['watchCount']);
       }
     }
   }
