@@ -6,7 +6,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { DesignTokens } from '@/styles/designTokens';
+import { designTokens } from '@/styles/designTokens';
 import {
     parseStyleQuestion,
     generateResponse,
@@ -26,7 +26,7 @@ const styles = {
         width: '56px',
         height: '56px',
         borderRadius: '50%',
-        backgroundColor: DesignTokens.colors.accent,
+        backgroundColor: designTokens.colors.primary, // accent -> primary
         color: 'white',
         border: 'none',
         cursor: 'pointer',
@@ -35,7 +35,7 @@ const styles = {
         justifyContent: 'center',
         fontSize: '24px',
         boxShadow: '0 4px 16px rgba(59, 130, 246, 0.4)',
-        transition: `transform ${DesignTokens.animation.duration} ${DesignTokens.animation.curve}`,
+        transition: `transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)`,
         zIndex: 1000,
     } as React.CSSProperties,
 
@@ -46,7 +46,7 @@ const styles = {
         right: '24px',
         width: '360px',
         maxHeight: '520px',
-        backgroundColor: 'white',
+        backgroundColor: designTokens.colors.surface, // white -> surface
         borderRadius: '16px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
         display: 'flex',
@@ -55,7 +55,7 @@ const styles = {
         zIndex: 1000,
         transform: 'translateY(20px)',
         opacity: 0,
-        transition: `transform ${DesignTokens.animation.duration} ${DesignTokens.animation.curve}, opacity ${DesignTokens.animation.duration} ${DesignTokens.animation.curve}`,
+        transition: `transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)`,
     } as React.CSSProperties,
 
     panelOpen: {
@@ -66,7 +66,7 @@ const styles = {
     // 헤더
     header: {
         padding: '16px',
-        backgroundColor: DesignTokens.colors.accent,
+        backgroundColor: designTokens.colors.primary, // accent -> primary
         color: 'white',
         display: 'flex',
         alignItems: 'center',
@@ -111,15 +111,15 @@ const styles = {
 
     userMessage: {
         alignSelf: 'flex-end',
-        backgroundColor: DesignTokens.colors.accent,
+        backgroundColor: designTokens.colors.primary, // accent -> primary
         color: 'white',
         borderBottomRightRadius: '4px',
     } as React.CSSProperties,
 
     botMessage: {
         alignSelf: 'flex-start',
-        backgroundColor: '#f1f3f5',
-        color: DesignTokens.colors.primary,
+        backgroundColor: designTokens.colors.surfaceHover, // #f1f3f5 -> surfaceHover
+        color: designTokens.colors.textPrimary, // primary -> textPrimary
         borderBottomLeftRadius: '4px',
     } as React.CSSProperties,
 
@@ -128,12 +128,12 @@ const styles = {
         display: 'flex',
         gap: '10px',
         padding: '10px',
-        backgroundColor: 'white',
+        backgroundColor: designTokens.colors.surface, // white -> surface
         borderRadius: '12px',
-        border: `1px solid ${DesignTokens.colors.border}`,
+        border: `1px solid ${designTokens.colors.border}`,
         cursor: 'pointer',
         marginTop: '8px',
-        transition: `transform ${DesignTokens.animation.duration} ${DesignTokens.animation.curve}`,
+        transition: `transform 0.3s ease`,
     } as React.CSSProperties,
 
     cardImage: {
@@ -158,24 +158,25 @@ const styles = {
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
+        color: designTokens.colors.textPrimary,
     } as React.CSSProperties,
 
     cardPrice: {
         fontSize: '14px',
         fontWeight: 700,
-        color: DesignTokens.colors.accent,
+        color: designTokens.colors.primary, // accent -> primary
     } as React.CSSProperties,
 
     cardScore: {
         fontSize: '11px',
-        color: '#22c55e',
+        color: designTokens.colors.success, // #22c55e -> success
         fontWeight: 600,
     } as React.CSSProperties,
 
     // 입력 영역
     inputArea: {
         padding: '12px 16px',
-        borderTop: `1px solid ${DesignTokens.colors.border}`,
+        borderTop: `1px solid ${designTokens.colors.border}`,
         display: 'flex',
         gap: '8px',
     } as React.CSSProperties,
@@ -184,17 +185,19 @@ const styles = {
         flex: 1,
         padding: '10px 14px',
         borderRadius: '20px',
-        border: `1px solid ${DesignTokens.colors.border}`,
+        border: `1px solid ${designTokens.colors.border}`,
         fontSize: '14px',
         outline: 'none',
-        transition: `border-color ${DesignTokens.animation.duration}`,
+        transition: `border-color 0.3s ease`,
+        backgroundColor: designTokens.colors.surface,
+        color: designTokens.colors.textPrimary,
     } as React.CSSProperties,
 
     sendButton: {
         width: '40px',
         height: '40px',
         borderRadius: '50%',
-        backgroundColor: DesignTokens.colors.accent,
+        backgroundColor: designTokens.colors.primary, // accent -> primary
         color: 'white',
         border: 'none',
         cursor: 'pointer',
@@ -202,7 +205,7 @@ const styles = {
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: '18px',
-        transition: `transform ${DesignTokens.animation.duration}`,
+        transition: `transform 0.3s ease`,
     } as React.CSSProperties,
 
     // 퀵 액션
@@ -211,17 +214,18 @@ const styles = {
         gap: '8px',
         flexWrap: 'wrap',
         padding: '8px 16px',
-        borderTop: `1px solid ${DesignTokens.colors.border}`,
+        borderTop: `1px solid ${designTokens.colors.border}`,
     } as React.CSSProperties,
 
     quickButton: {
         padding: '6px 12px',
         borderRadius: '16px',
-        border: `1px solid ${DesignTokens.colors.border}`,
-        backgroundColor: 'white',
+        border: `1px solid ${designTokens.colors.border}`,
+        backgroundColor: designTokens.colors.surface,
+        color: designTokens.colors.textSecondary,
         fontSize: '12px',
         cursor: 'pointer',
-        transition: `all ${DesignTokens.animation.duration}`,
+        transition: `all 0.3s ease`,
     } as React.CSSProperties,
 };
 
@@ -370,94 +374,100 @@ export default function FashionBot() {
                     >
                         ✕
                     </button>
-                </div>
+                </div >
 
                 {/* 메시지 영역 */}
-                <div style={styles.messages as React.CSSProperties}>
-                    {messages.map((msg) => (
-                        <div key={msg.id}>
-                            <div
-                                style={{
-                                    ...styles.messageBubble,
-                                    ...(msg.role === 'user' ? styles.userMessage : styles.botMessage),
-                                }}
-                            >
-                                {msg.content}
-                            </div>
-
-                            {/* 추천 상품 카드 */}
-                            {msg.recommendations?.slice(0, 3).map((item, idx) => (
+                < div style={styles.messages as React.CSSProperties} >
+                    {
+                        messages.map((msg) => (
+                            <div key={msg.id}>
                                 <div
-                                    key={item.id}
-                                    style={styles.recommendationCard}
-                                    onClick={() => handleRecommendationClick(item, idx)}
-                                    onMouseEnter={(e) => {
-                                        (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.02)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)';
+                                    style={{
+                                        ...styles.messageBubble,
+                                        ...(msg.role === 'user' ? styles.userMessage : styles.botMessage),
                                     }}
                                 >
-                                    <div style={styles.cardImage as React.CSSProperties}>
-                                        {item.imageUrl ? (
-                                            // eslint-disable-next-line @next/next/no-img-element
-                                            <img src={item.imageUrl} alt={item.name} style={styles.cardImage as React.CSSProperties} />
-                                        ) : (
-                                            <div style={{
-                                                width: '100%',
-                                                height: '100%',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontSize: '20px',
-                                            }}>
-                                                👕
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div style={styles.cardInfo as React.CSSProperties}>
-                                        <span style={styles.cardName as React.CSSProperties}>{item.name}</span>
-                                        <span style={styles.cardPrice}>{formatPrice(item.price)}</span>
-                                        <span style={styles.cardScore}>매칭 {item.matchScore}%</span>
-                                    </div>
+                                    {msg.content}
                                 </div>
-                            ))}
-                        </div>
-                    ))}
+
+                                {/* 추천 상품 카드 */}
+                                {msg.recommendations?.slice(0, 3).map((item, idx) => (
+                                    <div
+                                        key={item.id}
+                                        style={styles.recommendationCard}
+                                        onClick={() => handleRecommendationClick(item, idx)}
+                                        onMouseEnter={(e) => {
+                                            (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.02)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)';
+                                        }}
+                                    >
+                                        <div style={styles.cardImage as React.CSSProperties}>
+                                            {item.imageUrl ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img src={item.imageUrl} alt={item.name} style={styles.cardImage as React.CSSProperties} />
+                                            ) : (
+                                                <div style={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: '20px',
+                                                }}>
+                                                    👕
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div style={styles.cardInfo as React.CSSProperties}>
+                                            <span style={styles.cardName as React.CSSProperties}>{item.name}</span>
+                                            <span style={styles.cardPrice}>{formatPrice(item.price)}</span>
+                                            <span style={styles.cardScore}>매칭 {item.matchScore}%</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ))
+                    }
 
                     {/* 타이핑 인디케이터 */}
-                    {isTyping && (
-                        <div style={{ ...styles.messageBubble, ...styles.botMessage }}>
-                            <span style={{ animation: 'pulse 1s infinite' }}>생각 중...</span>
-                        </div>
-                    )}
+                    {
+                        isTyping && (
+                            <div style={{ ...styles.messageBubble, ...styles.botMessage }}>
+                                <span style={{ animation: 'pulse 1s infinite' }}>생각 중...</span>
+                            </div>
+                        )
+                    }
 
                     <div ref={messagesEndRef} />
-                </div>
+                </div >
 
                 {/* 퀵 액션 */}
-                <div style={styles.quickActions as React.CSSProperties}>
-                    {QUICK_ACTIONS.map((action) => (
-                        <button
-                            key={action}
-                            style={styles.quickButton}
-                            onClick={() => handleSend(action)}
-                            onMouseEnter={(e) => {
-                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = DesignTokens.colors.accent;
-                                (e.currentTarget as HTMLButtonElement).style.color = 'white';
-                            }}
-                            onMouseLeave={(e) => {
-                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'white';
-                                (e.currentTarget as HTMLButtonElement).style.color = 'inherit';
-                            }}
-                        >
-                            {action}
-                        </button>
-                    ))}
-                </div>
+                < div style={styles.quickActions as React.CSSProperties} >
+                    {
+                        QUICK_ACTIONS.map((action) => (
+                            <button
+                                key={action}
+                                style={styles.quickButton}
+                                onClick={() => handleSend(action)}
+                                onMouseEnter={(e) => {
+                                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = designTokens.colors.primary;
+                                    (e.currentTarget as HTMLButtonElement).style.color = 'white';
+                                }}
+                                onMouseLeave={(e) => {
+                                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = designTokens.colors.surface; // white -> surface
+                                    (e.currentTarget as HTMLButtonElement).style.color = 'inherit';
+                                }}
+                            >
+                                {action}
+                            </button>
+                        ))
+                    }
+                </div >
 
                 {/* 입력 영역 */}
-                <div style={styles.inputArea}>
+                < div style={styles.inputArea} >
                     <input
                         type="text"
                         value={input}
@@ -478,8 +488,8 @@ export default function FashionBot() {
                     >
                         ↑
                     </button>
-                </div>
-            </div>
+                </div >
+            </div >
 
             <style jsx global>{`
         @keyframes pulse {

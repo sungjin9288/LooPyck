@@ -7,11 +7,29 @@
 
 import { LOOPYCK_GOLD_STANDARD, getSnapshotSummary } from '@/lib/core/final_snapshot';
 import { calculateReplicationMetrics } from '@/lib/industries/pocAgent';
+import ThinkingProcess from '@/components/agent/ThinkingProcess';
+import ROIChart from '@/components/admin/ROIChart';
 
 export default function AdminFinalDashboard() {
     const snapshot = LOOPYCK_GOLD_STANDARD;
     const summary = getSnapshotSummary();
     const pocMetrics = calculateReplicationMetrics();
+
+    // Badge Component (Inline for simplicity)
+    const Badge = ({ text }: { text: string }) => (
+        <span style={{
+            padding: '6px 12px',
+            background: 'rgba(59, 130, 246, 0.1)',
+            color: '#60a5fa',
+            borderRadius: 16,
+            fontSize: 12,
+            fontWeight: 500,
+            border: '1px solid rgba(59, 130, 246, 0.2)'
+        }}>
+            {text}
+        </span>
+    );
+
 
     // 산업별 확장 데이터
     const industries = [
@@ -55,10 +73,37 @@ export default function AdminFinalDashboard() {
                 <StatCard value="99.8%" label="Cost Reduction" icon="💰" color="#10b981" />
                 <StatCard value="94.2%" label="Automation Rate" icon="🤖" color="#3b82f6" />
                 <StatCard value="₩299M" label="Annual Savings" icon="📈" color="#8b5cf6" />
-                <StatCard value="15" label="Phases Complete" icon="🏆" color="#f59e0b" />
+                <StatCard value="16" label="Phases Complete" icon="🏆" color="#f59e0b" />
             </section>
 
-            {/* Two Column Layout */}
+            {/* Visual Intelligence Demo */}
+            <section style={{ ...styles.section, display: 'flex', gap: 24, marginBottom: 32 }}>
+                <div style={{ flex: 1 }}>
+                    <h2 style={styles.sectionTitle}>🧠 Visual Intelligence Engine</h2>
+                    <div style={{ background: '#1e293b', padding: 24, borderRadius: 12, minHeight: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ThinkingProcess isAnalyzing={true} />
+                    </div>
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 }}>
+                    <h3 style={{ fontSize: 20, fontWeight: 700 }}>Human-like Perception</h3>
+                    <p style={{ color: '#94a3b8', lineHeight: 1.6 }}>
+                        LooPyck doesn't just parse HTML. It <strong>sees</strong> the page.
+                        <br />
+                        By analyzing visual vectors, it understands context, identifies price tags (even in images),
+                        and self-heals when the layout changes.
+                    </p>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <Badge text="Vision AI" />
+                        <Badge text="Self-Healing" />
+                        <Badge text="Context Aware" />
+                    </div>
+                </div>
+            </section>
+
+            {/* ROI Interactive Simulator */}
+            <ROIChart />
+
+            {/* Two Column Layout (Existing) */}
             <div style={styles.twoColumn}>
                 {/* Left: Industry Status */}
                 <section style={styles.leftColumn}>

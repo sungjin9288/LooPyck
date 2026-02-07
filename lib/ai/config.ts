@@ -3,7 +3,7 @@
  * Gemini 2.5 Flash Free Tier 제한 및 설정
  */
 
-import { DesignTokens } from '@/styles/designTokens';
+import { designTokens } from '@/styles/designTokens';
 
 // Gemini Free Tier Rate Limits (2025년 12월 기준)
 export const AI_RATE_LIMITS = {
@@ -178,6 +178,6 @@ export const TOKEN_ESTIMATES = {
 
 // Design Tokens 연동 (애니메이션 설정용)
 export const AI_UI_TOKENS = {
-    loadingDuration: DesignTokens.animation.duration,
-    loadingCurve: DesignTokens.animation.curve,
+    loadingDuration: designTokens.animation.duration, // 0.3s
+    loadingCurve: designTokens.animation.curve,
 } as const;

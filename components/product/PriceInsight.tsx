@@ -1,6 +1,6 @@
 'use client';
 
-import { DesignTokens } from '@/styles/designTokens';
+import { designTokens } from '@/styles/designTokens';
 import { Product } from '@/types/product';
 import { parsePrice } from '@/lib/api';
 import { getPercentile } from '@/utils/priceAnalysis';
@@ -63,7 +63,7 @@ export default function PriceInsight({ product, relatedProducts = [] }: PriceIns
                     className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white dark:bg-gray-900 border-2 border-[color:var(--color-accent)] rounded-full shadow-md transition-all duration-1000 ease-out z-10"
                     style={{
                         left: mounted ? `calc(${position}% - 8px)` : '0%',
-                        borderColor: DesignTokens.colors.accent
+                        borderColor: designTokens.colors.primary
                     }}
                     aria-label={`현재 가격 위치: 상위 ${Math.round(100 - percentile)}%`}
                 >
@@ -76,7 +76,7 @@ export default function PriceInsight({ product, relatedProducts = [] }: PriceIns
             <div className="mt-2 flex justify-between items-center">
                 <span className="text-xs text-gray-400">평균 {avgPrice.toLocaleString()}</span>
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    위치: <span className="text-[color:var(--color-accent)]" style={{ color: DesignTokens.colors.accent }}>{Math.round(percentile)}%</span>
+                    위치: <span className="text-[color:var(--color-primary)]" style={{ color: designTokens.colors.primary }}>{Math.round(percentile)}%</span>
                 </span>
             </div>
         </div>

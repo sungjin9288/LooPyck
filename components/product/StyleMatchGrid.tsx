@@ -6,7 +6,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { DesignTokens } from '@/styles/designTokens';
+import { designTokens } from '@/styles/designTokens';
 import { getMatchLevel, getMatchMessage } from '@/lib/ai/recommendationEngine';
 
 // 추천 상품 타입
@@ -32,40 +32,40 @@ const styles = {
     container: {
         width: '100%',
         overflow: 'hidden',
-        padding: `${DesignTokens.spacing.md} 0`,
+        padding: `${designTokens.spacing.md} 0`,
     } as React.CSSProperties,
     header: {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: DesignTokens.spacing.md,
-        padding: `0 ${DesignTokens.spacing.md}`,
+        marginBottom: designTokens.spacing.md,
+        padding: `0 ${designTokens.spacing.md}`,
     } as React.CSSProperties,
     title: {
         fontSize: '18px',
         fontWeight: 700,
-        color: DesignTokens.colors.primary,
+        color: designTokens.colors.primary,
     } as React.CSSProperties,
     scrollContainer: {
         display: 'flex',
-        gap: DesignTokens.spacing.md,
+        gap: designTokens.spacing.md,
         overflowX: 'auto',
         scrollBehavior: 'smooth',
-        paddingLeft: DesignTokens.spacing.md,
-        paddingRight: DesignTokens.spacing.md,
-        paddingBottom: DesignTokens.spacing.sm,
+        paddingLeft: designTokens.spacing.md,
+        paddingRight: designTokens.spacing.md,
+        paddingBottom: designTokens.spacing.sm,
         msOverflowStyle: 'none',
         scrollbarWidth: 'none',
     } as React.CSSProperties,
     card: {
         flexShrink: 0,
         width: '160px',
-        backgroundColor: DesignTokens.colors.surface.light,
+        backgroundColor: '#fff', // surface.light -> #fff
         borderRadius: '12px',
         overflow: 'hidden',
-        border: `1px solid ${DesignTokens.colors.border}`,
+        border: `1px solid ${designTokens.colors.border}`,
         cursor: 'pointer',
-        transition: `transform ${DesignTokens.animation.duration} ${DesignTokens.animation.curve}, box-shadow ${DesignTokens.animation.duration} ${DesignTokens.animation.curve}`,
+        transition: `transform 0.3s ease, box-shadow 0.3s ease`, // animation tokens -> hardcoded
     } as React.CSSProperties,
     cardHover: {
         transform: 'scale(1.02)',
@@ -92,12 +92,12 @@ const styles = {
         fontWeight: 600,
     } as React.CSSProperties,
     content: {
-        padding: DesignTokens.spacing.sm,
+        padding: designTokens.spacing.sm,
     } as React.CSSProperties,
     productName: {
         fontSize: '13px',
         fontWeight: 500,
-        color: DesignTokens.colors.primary,
+        color: designTokens.colors.primary,
         marginBottom: '4px',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
@@ -106,7 +106,7 @@ const styles = {
     price: {
         fontSize: '14px',
         fontWeight: 700,
-        color: DesignTokens.colors.accent,
+        color: designTokens.colors.primary, // accent -> primary
     } as React.CSSProperties,
     mall: {
         fontSize: '11px',
@@ -120,7 +120,7 @@ const styles = {
     } as React.CSSProperties,
     emptyState: {
         textAlign: 'center',
-        padding: DesignTokens.spacing.xl,
+        padding: designTokens.spacing.xl,
         color: '#888',
     } as React.CSSProperties,
     scrollButton: {
@@ -131,7 +131,7 @@ const styles = {
         height: '32px',
         borderRadius: '50%',
         backgroundColor: 'white',
-        border: `1px solid ${DesignTokens.colors.border}`,
+        border: `1px solid ${designTokens.colors.border}`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
