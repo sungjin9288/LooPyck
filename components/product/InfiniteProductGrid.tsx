@@ -5,13 +5,13 @@ import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import { analyzeMood, applyTheme } from '@/lib/ux/themeAdapter';
 import { designTokens } from '@/styles/designTokens';
 import { SourceBadge } from '@/components/search/SourceBadges';
+import FutureValueInsight from '@/components/product/FutureValueInsight'; // Phase 20 AI Component
 
 interface InfiniteProductGridProps {
     query: string;
 }
 
 export default function InfiniteProductGrid({ query }: InfiniteProductGridProps) {
-    // Using MultiSource Search API Hook
     const {
         products,
         isLoading,
@@ -23,10 +23,8 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
 
     const observerTarget = useRef<HTMLDivElement>(null);
 
-    // 1. Intersection Observer (Disabled for single-shot realtime search for now)
-    // loadMore is defined but empty in current hook logic to avoid complexity
+    // 1. Intersection Observer for Infinite Scroll
     useEffect(() => {
-        // Logic kept for future extension
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && hasMore && !isLoading) {
@@ -66,6 +64,13 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
                     {sources.map(s => <SourceBadge key={s} source={s} />)}
                 </div>
             </div>
+
+            {/* Phase 20: AI Analytics Dashboard for Top Item */}
+            {products.length > 0 && (
+                <div className="mb-8">
+                    <FutureValueInsight product={products[0]} />
+                </div>
+            )}
 
             <div style={styles.grid}>
                 {products.map((product) => (
