@@ -13,16 +13,16 @@ export const designTokens = {
         error: '#ef4444',   // Red 500
         info: '#06b6d4',    // Cyan 500
 
-        // Neutral Scale
-        background: '#0f172a', // Slate 900
-        surface: '#1e293b',    // Slate 800
-        surfaceHover: '#334155',
+        // Neutral Scale (Deep Charcoal Theme)
+        background: '#121212', // Deep Charcoal (OLED Optimized)
+        surface: '#1E1E1E',    // Slightly lighter for contrast
+        surfaceHover: '#2A2A2A',
         border: '#334155',     // Slate 700
 
         // Text Colors
-        textPrimary: '#f8fafc',   // Slate 50 (High Emphasis)
-        textSecondary: '#94a3b8', // Slate 400 (Medium Emphasis)
-        textTertiary: '#64748b',  // Slate 500 (Low Emphasis)
+        textPrimary: '#EDEDED',   // Off-white (Reduced Eye Strain)
+        textSecondary: '#A1A1AA', // Zinc 400
+        textTertiary: '#71717A',  // Zinc 500
     },
 
     spacing: {
@@ -60,6 +60,7 @@ export const designTokens = {
         lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
         xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
         glow: '0 0 15px rgba(59, 130, 246, 0.5)', // Primary Glow
+        glass: '0 8px 32px 0 rgba(31, 38, 135, 0.37)', // Glassmorphism 2.0
     },
 
     zIndex: {
