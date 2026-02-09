@@ -10,6 +10,8 @@ import { SourceBadge } from '@/components/search/SourceBadges';
 import FutureValueInsight from '@/components/product/FutureValueInsight'; // Phase 20 AI Component
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import FashionBattle from '@/components/social/FashionBattle'; // Phase 37 Social Component
+import MarketTicker from '@/components/shared/MarketTicker';
+
 
 interface InfiniteProductGridProps {
     query: string;
@@ -121,12 +123,12 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
                 </div>
             </div>
 
-            {/* Price Graph & AI Insight */}
-            {sortedProducts.length > 0 && (
-                <div className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <FutureValueInsight product={sortedProducts[0]} />
-                </div>
-            )}
+
+
+            {/* Market Ticker (Fin-Fashion Identity) */}
+            <div className="mb-8 rounded-lg overflow-hidden border border-gray-800 shadow-lg">
+                <MarketTicker />
+            </div>
 
             {/* Bento Grid Layout (CSS Grid) */}
             <motion.div

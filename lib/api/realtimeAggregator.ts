@@ -194,3 +194,22 @@ async function mockGlobalMalls(query: string, page: number): Promise<UnifiedProd
 
     return mocks;
 }
+// 5. Mock Product Fetcher by ID (Phase 40: SEO Support)
+export async function getProductById(id: string): Promise<UnifiedProduct | null> {
+    // In a real scenario, this would fetch from Firestore or decode the ID to scrape.
+    // For now, we return a mock based on the ID to allow the page to render.
+
+    // Simulate lookup delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    return {
+        id: id,
+        title: `[Specimen] High-End Fashion Item ${id.substring(0, 5)}`,
+        price: 125000,
+        image: `https://loremflickr.com/500/700/fashion,outfit?random=${id}`,
+        link: 'https://www.musinsa.com',
+        mallName: 'Musinsa',
+        brand: 'LooPyck Selection',
+        source: 'MUSINSA' as const
+    };
+}
