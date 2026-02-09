@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://loopyck.com/sitemap.xml

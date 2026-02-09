@@ -19,10 +19,10 @@ export const designTokens = {
         surfaceHover: '#2A2A2A',
         border: '#334155',     // Slate 700
 
-        // Text Colors
-        textPrimary: '#EDEDED',   // Off-white (Reduced Eye Strain)
-        textSecondary: '#A1A1AA', // Zinc 400
-        textTertiary: '#71717A',  // Zinc 500
+        // Text Colors (High Contrast for A11y)
+        textPrimary: '#FFFFFF',   // Pure White (Highest Contrast)
+        textSecondary: '#D1D5DB', // Gray 300 (AA Compliant on #121212)
+        textTertiary: '#9CA3AF',  // Gray 400 (AA Compliant for large text)
     },
 
     spacing: {
