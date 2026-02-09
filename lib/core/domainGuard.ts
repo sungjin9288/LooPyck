@@ -22,10 +22,10 @@ const BLOCKED_KEYWORDS = [
     '노트북', '컴퓨터', '마우스', '키보드', '모니터', '핸드폰', '스마트폰', '갤럭시', '아이폰',
     '냉장고', '세탁기', '청소기', '에어컨', '선풍기',
     '자동차', '오토바이', '자전거',
-    '음식', '식품', '과자', '음료', '커피',
+    '음식', '식품', '과자', '음료', '커피', '라면', '국수', '빵', '치킨', '피자',
     '부동산', '아파트', '주식', '코인',
     'computer', 'laptop', 'phone', 'galaxy', 'iphone', 'macbook',
-    'food', 'car', 'bike'
+    'food', 'car', 'bike', 'ramen', 'noodle'
 ];
 
 export function isFashionRelated(query: string): { allowed: boolean; reason?: string } {
@@ -36,7 +36,7 @@ export function isFashionRelated(query: string): { allowed: boolean; reason?: st
         if (lowerQuery.includes(blocked)) {
             return {
                 allowed: false,
-                reason: `'${blocked}' 관련 상품은 LooPyck에서 검색할 수 없습니다.`
+                reason: `LooPyck는 패션 전문 플랫폼입니다.\n'${blocked}' 관련 상품은 검색할 수 없습니다.`
             };
         }
     }

@@ -41,19 +41,9 @@ export default function ProductReviews() {
         <div className="mt-8 pt-8 border-t border-gray-100">
             <h3 className="text-lg font-bold mb-6">Community Reviews</h3>
 
-            {/* Existing Reviews Mock */}
+            {/* Existing Reviews Mock - Removed placeholder data */}
             <div className="space-y-6 mb-8">
-                <div className="flex gap-4">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold">JD</div>
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="font-bold text-sm">Jane Doe</span>
-                            <span className="text-yellow-400 text-xs">★★★★★</span>
-                            <span className="text-[10px] bg-gray-100 px-1 py-0.5 rounded text-gray-500">True to Size</span>
-                        </div>
-                        <p className="text-sm text-gray-600">This fits perfectly! The material is surprisingly premium for the price.</p>
-                    </div>
-                </div>
+                {/* No reviews initially */}
             </div>
 
             {/* Write Review Form */}
@@ -88,8 +78,8 @@ export default function ProductReviews() {
                                 type="button"
                                 onClick={() => setFit(opt as any)}
                                 className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-all ${fit === opt
-                                        ? 'bg-black text-white border-black'
-                                        : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                                    ? 'bg-black text-white border-black'
+                                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
                                     }`}
                             >
                                 {opt === 'small' ? 'Run Small' : opt === 'true' ? 'True to Size' : 'Runs Large'}

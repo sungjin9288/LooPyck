@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import VisualSearch from './VisualSearch';
+import { isFashionRelated } from '@/lib/core/domainGuard';
 
 interface SearchBarProps {
     onSearch: (query: string, sort: string) => void;
@@ -12,7 +13,7 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
     const [query, setQuery] = useState('');
     const [sort, setSort] = useState('sim');
 
-    import { isFashionRelated } from '@/lib/core/domainGuard';
+    const [sort, setSort] = useState('sim');
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();

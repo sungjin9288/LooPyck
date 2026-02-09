@@ -73,7 +73,7 @@ export default function FashionBattle() {
     };
 
     return (
-        <div className="w-full max-w-4xl mx-auto my-12 hidden md:block">
+        <div className="w-full max-w-4xl mx-auto my-12 block">
             <h2 className="text-2xl font-black text-center mb-1">Fashion Battle</h2>
             <p className="text-center text-gray-500 mb-8 text-sm">Which style defines this season?</p>
 
