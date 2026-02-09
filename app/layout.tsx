@@ -28,6 +28,7 @@ import ScrollToTop from "@/components/shared/ScrollToTop";
 import { UserProvider } from "@/contexts/UserContext";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import PWAInstallPrompt from "@/components/mobile/PWAInstallPrompt";
+import StyleChat from "@/components/ai/StyleChat";
 
 export default function RootLayout({
   children,
@@ -41,6 +42,7 @@ export default function RootLayout({
           <LanguageProvider>
             {children}
             <PWAInstallPrompt />
+            <StyleChat />
             <ScrollToTop />
           </LanguageProvider>
         </UserProvider>

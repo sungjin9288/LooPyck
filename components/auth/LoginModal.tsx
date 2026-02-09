@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { signInWithGoogle, signOut, auth } from '@/lib/auth/firebase';
 import { User } from 'firebase/auth';
 import StyleDashboard from '@/components/auth/StyleDashboard';
+import MyAsset from '@/components/profile/MyAsset'; // Portfolio Component
 
 interface LoginModalProps {
     isOpen: boolean;
@@ -100,6 +101,11 @@ export function UserProfile({ user }: { user: User }) {
                     {/* Style DNA Section */}
                     <div className="border-b border-gray-50">
                         <StyleDashboard />
+                    </div>
+
+                    {/* My Asset Portfolio */}
+                    <div className="border-b border-gray-50 p-4">
+                        <MyAsset />
                     </div>
 
                     <button

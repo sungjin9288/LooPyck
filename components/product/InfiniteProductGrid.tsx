@@ -9,6 +9,7 @@ import { designTokens } from '@/styles/designTokens';
 import { SourceBadge } from '@/components/search/SourceBadges';
 import FutureValueInsight from '@/components/product/FutureValueInsight'; // Phase 20 AI Component
 import ProductDetailModal from '@/components/product/ProductDetailModal';
+import FashionBattle from '@/components/social/FashionBattle'; // Phase 37 Social Component
 
 interface InfiniteProductGridProps {
     query: string;
@@ -129,11 +130,16 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
 
             {/* Bento Grid Layout (CSS Grid) */}
             <motion.div
-                className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 auto-rows-[280px]"
+                className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 auto-rows-[300px]"
                 variants={InteractionNarrative.staggerContainer}
                 initial="hidden"
                 animate="visible"
             >
+                {/* Feature: Social Battle (Insert at Start) */}
+                <div className="col-span-1 md:col-span-2 row-span-1 md:row-span-2">
+                    <FashionBattle />
+                </div>
+
                 {sortedProducts.map((product, index) => (
                     <motion.div
                         key={product.id}
