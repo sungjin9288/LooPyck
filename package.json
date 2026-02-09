@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@studio-freight/lenis": "^1.0.42",
     "cheerio": "^1.2.0",
     "clsx": "^2.1.1",
     "firebase": "^12.8.0",

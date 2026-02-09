@@ -53,16 +53,27 @@ export const EditorialCard: React.FC<EditorialCardProps> = ({ product, priority 
                     </div>
 
                     {/* HTML tags cleanup for title if needed, utilizing a dangerousSetInnerHTML or a utility if title has tags */}
-                    <h3 className="text-xl font-bold text-white mb-2 leading-tight line-clamp-2"
+                    <motion.h3
+                        className="text-xl font-bold text-white mb-2 leading-tight line-clamp-2"
                         style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
                         dangerouslySetInnerHTML={{ __html: product.title }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        initial={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.5, delay: 0.1 }}
+                        viewport={{ once: true }}
                     />
 
-                    <div className="flex items-center gap-3 mb-4">
+                    <motion.div
+                        className="flex items-center gap-3 mb-4"
+                        whileInView={{ opacity: 1, x: 0 }}
+                        initial={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                        viewport={{ once: true }}
+                    >
                         <span className="text-lg font-semibold text-white">
                             {formattedPrice}원
                         </span>
-                    </div>
+                    </motion.div>
 
                     {/* AI Insights Reveal on Hover */}
                     <div className="overflow-hidden h-0 group-hover:h-auto transition-all duration-500 ease-in-out">
