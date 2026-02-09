@@ -14,19 +14,35 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[6000] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl transform transition-all scale-100 opacity-100">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            {/* Backdrop with Blur */}
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity"
+                onClick={onClose}
+            />
+
+            {/* Modal Content - Glassmorphism */}
+            <div className="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-full max-w-sm shadow-2xl transform transition-all scale-100 opacity-100 overflow-hidden">
+                {/* Decorative Elements */}
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500" />
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/30 rounded-full blur-2xl" />
+                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-pink-500/30 rounded-full blur-2xl" />
+
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-400 hover:text-black"
+                    className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors z-10"
                 >
-                    ✕
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
 
-                <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold mb-2">Welcome to LooPyck</h2>
-                    <p className="text-gray-500 text-sm">Sign in to save your favorite items and get personalized recommendations.</p>
+                <div className="text-center mb-8 relative z-10">
+                    <h2 className="text-3xl font-black text-white mb-2 tracking-tight">LooPyck</h2>
+                    <p className="text-gray-200 text-sm font-light">
+                        Unlock your personal <br />
+                        <span className="font-bold text-white">Fashion Intelligence</span>
+                    </p>
                 </div>
 
                 <button
@@ -34,19 +50,24 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                         try {
                             await signInWithGoogle();
                             onClose();
-                        } catch (e) {
-                            alert('Login Failed');
+                        } catch (e: any) {
+                            console.error("Login Error:", e);
+                            alert(`Login failed: ${e.message || 'Unknown error'}. Please check your connection.`);
                         }
                     }}
-                    className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 hover:bg-gray-50 text-black font-medium py-3 px-4 rounded-xl transition-all"
+                    className="w-full relative z-10 flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-black font-bold py-4 px-6 rounded-2xl transition-all transform hover:scale-[1.02] shadow-lg group"
                 >
                     <img
                         src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                         alt="Google"
-                        className="w-5 h-5"
+                        className="w-5 h-5 group-hover:rotate-12 transition-transform"
                     />
-                    Continue with Google
+                    <span className="tracking-wide">Continue with Google</span>
                 </button>
+
+                <p className="text-center text-white/40 text-xs mt-6 relative z-10">
+                    By continuing, you agree to our Terms & Privacy.
+                </p>
             </div>
         </div>
     );

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LoginModal, UserProfile } from '@/components/auth/LoginModal';
 import { auth } from '@/lib/auth/firebase';
 import { User } from 'firebase/auth';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface NavbarProps {
     currentView: 'search' | 'favorites';
@@ -15,6 +16,11 @@ interface NavbarProps {
 export default function Navbar({ currentView, setCurrentView, onLogoClick }: NavbarProps) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
+    const { t, locale, setLocale } = useLanguage();
+
+    const toggleLanguage = () => {
+        setLocale(locale === 'ko' ? 'en' : 'ko');
+    };
 
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged((u) => setUser(u));
@@ -46,7 +52,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
                                     : 'text-gray-500 hover:text-black hover:bg-gray-200/50'
                                     }`}
                             >
-                                Search
+                                {t('nav.search')}
                             </button>
                             <button
                                 onClick={() => setCurrentView('favorites')}
@@ -55,7 +61,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
                                     : 'text-gray-500 hover:text-black hover:bg-gray-200/50'
                                     }`}
                             >
-                                Favorites
+                                {t('nav.favorites')}
                             </button>
                         </nav>
 
@@ -67,9 +73,17 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
                                 onClick={() => setIsLoginOpen(true)}
                                 className="px-4 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 transition-colors"
                             >
-                                Login
+                                {t('nav.login')}
                             </button>
                         )}
+
+                        {/* Language Toggle */}
+                        <button
+                            onClick={toggleLanguage}
+                            className="px-3 py-1 rounded-full border border-gray-200 text-xs font-bold text-gray-500 hover:text-black hover:border-black transition-all"
+                        >
+                            {locale === 'ko' ? 'EN' : 'KO'}
+                        </button>
                     </div>
                 </div>
             </div>

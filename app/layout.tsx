@@ -26,6 +26,8 @@ import ScrollToTop from "@/components/shared/ScrollToTop";
 // ... existing code ...
 
 import { UserProvider } from "@/contexts/UserContext";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
+import PWAInstallPrompt from "@/components/mobile/PWAInstallPrompt";
 
 export default function RootLayout({
   children,
@@ -36,8 +38,11 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <body className="antialiased" suppressHydrationWarning>
         <UserProvider>
-          {children}
-          <ScrollToTop />
+          <LanguageProvider>
+            {children}
+            <PWAInstallPrompt />
+            <ScrollToTop />
+          </LanguageProvider>
         </UserProvider>
       </body>
     </html>

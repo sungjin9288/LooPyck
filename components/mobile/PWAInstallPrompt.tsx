@@ -1,0 +1,78 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+export default function PWAInstallPrompt() {
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+    const [isVisible, setIsVisible] = useState(false);
+    const { t } = useLanguage();
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            // Check if user has dismissed it recently
+            const hasDismissed = localStorage.getItem('pwa_dismissed');
+            if (!hasDismissed) {
+                setIsVisible(true);
+            }
+        };
+
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleInstall = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setDeferredPrompt(null);
+            setIsVisible(false);
+        }
+    };
+
+    const handleDismiss = () => {
+        setIsVisible(false);
+        localStorage.setItem('pwa_dismissed', 'true');
+    };
+
+    return (
+        <AnimatePresence>
+            {isVisible && (
+                <motion.div
+                    initial={{ y: 100, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 100, opacity: 0 }}
+                    className="fixed bottom-4 left-4 right-4 z-[9999] bg-white rounded-2xl shadow-2xl p-5 border border-gray-100 max-w-sm mx-auto"
+                >
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center text-white font-bold text-xl">
+                            LP
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-900">{t('pwa.installTitle')}</h3>
+                            <p className="text-xs text-gray-500">{t('pwa.installDesc')}</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={handleDismiss}
+                            className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200"
+                        >
+                            {t('pwa.later')}
+                        </button>
+                        <button
+                            onClick={handleInstall}
+                            className="flex-1 py-2.5 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 shadow-md"
+                        >
+                            {t('pwa.installBtn')}
+                        </button>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+}

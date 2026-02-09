@@ -9,7 +9,7 @@ const BLOCKED_KEYWORDS = [
     'soju', 'beer', 'wine', 'alcohol', 'vodka', 'whiskey', // More sul
     'car', 'bike', 'tire', 'engine', 'automotive',
     'game', 'nintendo', 'playstation', 'xbox', 'switch',
-    'food', 'snack', 'beverage', 'water', 'coffee',
+    'food', 'snack', 'beverage', 'water', 'coffee', 'chicken', 'pizza', 'burger',
     'furniture', 'table', 'chair', 'sofa', 'bed', 'desk',
     'pet', 'dog', 'cat', 'feed', // Life but not fashion
     'ticket', 'voucher', 'coupon'

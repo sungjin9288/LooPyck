@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import DataVisualizer from '@/components/shared/DataVisualizer';
 import { forecastPrice } from '@/lib/ai/priceForecaster';
 import { analyzeTrend } from '@/lib/ai/trendScoring';
 import { designTokens } from '@/styles/designTokens';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
+import PriceHistoryChart from './PriceHistoryChart';
+import InvestmentReport from './InvestmentReport';
 
 interface FutureValueInsightProps {
     product: UnifiedProduct;
@@ -55,31 +56,16 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
                 </div>
             </div>
 
-            {/* Insight Text */}
-            <div className="bg-blue-50/50 rounded-lg p-4 mb-6 border border-blue-100">
-                <div className="flex gap-3">
-                    <span className="text-2xl">🤖</span>
-                    <div>
-                        <p className="text-sm text-gray-800 font-medium mb-1">
-                            {forecast.reason}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                            신뢰도: {Math.round(forecast.confidence * 100)}% • 데이터 소스: Global Edge Network
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Chart */}
-            <DataVisualizer
-                data={chartData}
-                // xKey="label" (Default)
-                // yKey="value" (Default)
-                referenceValue={product.price}
-                color={designTokens.colors.primary}
-                tooltipFormatter={(value) => [`${value.toLocaleString()}원`, '예측 가격']}
-                yAxisFormatter={(value) => `${(value / 10000).toFixed(1)}만`}
+            {/* Insight Report */}
+            <InvestmentReport
+                score={Math.round(forecast.confidence * 100)}
+                reason={forecast.reason}
             />
+
+            {/* Price Chart (Replaces old DataVisualizer) */}
+            <div className="mt-6">
+                <PriceHistoryChart currentPrice={product.price} />
+            </div>
 
             {/* Footer */}
             <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">

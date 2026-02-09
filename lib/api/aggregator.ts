@@ -11,7 +11,7 @@ export interface UnifiedProduct {
     brand?: string;
     category1?: string;
     category2?: string;
-    source: 'NAVER' | 'MUSINSA' | '29CM' | 'W_CONCEPT' | 'ZIGZAG';
+    source: 'NAVER' | 'MUSINSA' | '29CM' | 'W_CONCEPT' | 'ZIGZAG' | 'FARFETCH' | 'COUPANG' | 'SSENSE';
 }
 
 // 2. Data Simulation Helpers

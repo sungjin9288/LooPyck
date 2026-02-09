@@ -23,21 +23,25 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
         <div className="w-full max-w-4xl mx-auto mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="flex flex-col sm:flex-row gap-3 relative group">
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
+                    <div className="flex-1 relative">
+                        <input
+                            type="text"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="찾고 싶은 옷을 검색하세요 (예: 청바지, 맨투맨)"
+                            className="w-full px-4 py-3 pl-4 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 transition-all focus:scale-[1.01] shadow-sm focus:shadow-md"
+                            disabled={isLoading}
+                        />
+                    </div>
+                    {/* Independent Visual Search Button */}
+                    <div className="flex items-center">
                         <VisualSearch onSearch={(term) => onSearch(term, sort)} />
                     </div>
-                    <input
-                        type="text"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="찾고 싶은 옷을 검색하세요 (예: 청바지, 맨투맨)"
-                        className="flex-1 px-4 py-3 pl-4 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 transition-all focus:scale-[1.01] shadow-sm focus:shadow-md"
-                        disabled={isLoading}
-                    />
+
                     <button
                         type="submit"
                         disabled={isLoading || !query.trim()}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all font-medium hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all font-medium hover:scale-105 active:scale-95 shadow-md hover:shadow-lg whitespace-nowrap"
                     >
                         {isLoading ? '검색 중...' : '검색'}
                     </button>

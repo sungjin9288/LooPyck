@@ -8,6 +8,7 @@ import { analyzeMood, applyTheme } from '@/lib/ux/themeAdapter';
 import { designTokens } from '@/styles/designTokens';
 import { SourceBadge } from '@/components/search/SourceBadges';
 import FutureValueInsight from '@/components/product/FutureValueInsight'; // Phase 20 AI Component
+import ProductDetailModal from '@/components/product/ProductDetailModal';
 
 interface InfiniteProductGridProps {
     query: string;
@@ -25,6 +26,7 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
 
     const [sortedProducts, setSortedProducts] = React.useState<UnifiedProduct[]>([]);
     const [sortOption, setSortOption] = React.useState<'rel' | 'asc' | 'desc'>('rel');
+    const [selectedProduct, setSelectedProduct] = React.useState<UnifiedProduct | null>(null);
     const observerTarget = useRef<HTMLDivElement>(null);
 
     // Bento Grid Helper
@@ -138,7 +140,7 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
                         className={`relative group overflow-hidden rounded-xl bg-gray-50 ${getGridClass(index)}`}
                         variants={InteractionNarrative.parallaxReveal}
                         custom={index % 5}
-                        onClick={() => window.open(product.link, '_blank')}
+                        onClick={() => setSelectedProduct(product)}
                     >
                         {/* Image Layer */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -183,6 +185,11 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
                     End of Stream
                 </div>
             )}
+
+            <ProductDetailModal
+                product={selectedProduct}
+                onClose={() => setSelectedProduct(null)}
+            />
         </div>
     );
 }
