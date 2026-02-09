@@ -4,6 +4,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import FutureValueInsight from './FutureValueInsight';
+import ProductReviews from './ProductReviews'; // Phase 38 Component
+import RichShare from '@/components/shared/RichShare'; // Phase 39 Component
 
 interface ProductDetailModalProps {
     product: UnifiedProduct | null;
@@ -68,6 +70,15 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
                             >
                                 Buy Now
                             </a>
+
+                            {/* Phase 39: Rich Share Stock Card */}
+                            <div className="flex w-full">
+                                <RichShare
+                                    productTitle={product.title}
+                                    productImage={product.image}
+                                    currentPrice={product.price}
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -75,6 +86,9 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
                     <div className="border-t border-gray-100 pt-6">
                         <FutureValueInsight product={product} />
                     </div>
+
+                    {/* Community Reviews (Phase 38) */}
+                    <ProductReviews />
                 </motion.div>
             </div>
         </AnimatePresence>

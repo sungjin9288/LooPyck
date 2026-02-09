@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { haptics } from '@/lib/ux/hapticEngine';
 
 interface SwipeableProductCardProps {
     children: React.ReactNode;
@@ -23,8 +24,10 @@ export default function SwipeableProductCard({ children, onSwipeRight, onSwipeLe
 
     const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         if (info.offset.x > 100 && onSwipeRight) {
+            haptics.trigger('success'); // Tactile Pop
             onSwipeRight();
         } else if (info.offset.x < -100 && onSwipeLeft) {
+            haptics.trigger('medium'); // Tactile Tick
             onSwipeLeft();
         }
     };

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { haptics } from '@/lib/ux/hapticEngine';
 
 const BATTLE_ITEMS = [
     {
@@ -24,6 +25,7 @@ export default function FashionBattle() {
 
     const handleVote = (id: string) => {
         if (voted) return;
+        haptics.trigger('heavy'); // Solid Clack
         setVoted(id);
     };
 

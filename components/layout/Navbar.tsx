@@ -6,6 +6,7 @@ import { LoginModal, UserProfile } from '@/components/auth/LoginModal';
 import { auth } from '@/lib/auth/firebase';
 import { User } from 'firebase/auth';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import BrandTicker from '@/components/layout/BrandTicker'; // Phase 39 Ticker
 
 interface NavbarProps {
     currentView: 'search' | 'favorites';
@@ -29,6 +30,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
 
     return (
         <header className="bg-white/90 backdrop-blur-md sticky top-0 z-50 transition-all duration-300 border-b border-gray-100">
+            <BrandTicker />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div
@@ -64,6 +66,12 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
                                 {t('nav.favorites')}
                             </button>
                         </nav>
+
+                        {/* Notification Bell */}
+                        <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
+                            <span className="text-xl">🔔</span>
+                            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                        </button>
 
                         {/* Auth Section */}
                         {user ? (

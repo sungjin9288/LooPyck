@@ -29,6 +29,7 @@ import { UserProvider } from "@/contexts/UserContext";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import PWAInstallPrompt from "@/components/mobile/PWAInstallPrompt";
 import StyleChat from "@/components/ai/StyleChat";
+import NotificationSystem from "@/components/shared/NotificationSystem";
 
 export default function RootLayout({
   children,
@@ -42,7 +43,9 @@ export default function RootLayout({
           <LanguageProvider>
             {children}
             <PWAInstallPrompt />
+            <PWAInstallPrompt />
             <StyleChat />
+            <NotificationSystem />
             <ScrollToTop />
           </LanguageProvider>
         </UserProvider>
