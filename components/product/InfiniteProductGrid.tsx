@@ -10,7 +10,6 @@ import { SourceBadge } from '@/components/search/SourceBadges';
 import FutureValueInsight from '@/components/product/FutureValueInsight'; // Phase 20 AI Component
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import FashionBattle from '@/components/social/FashionBattle'; // Phase 37 Social Component
-import FashionBattle from '@/components/social/FashionBattle'; // Phase 37 Social Component
 
 
 interface InfiniteProductGridProps {

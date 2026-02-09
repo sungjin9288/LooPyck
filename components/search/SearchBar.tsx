@@ -13,8 +13,6 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
     const [query, setQuery] = useState('');
     const [sort, setSort] = useState('sim');
 
-    const [sort, setSort] = useState('sim');
-
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         if (query.trim()) {
