@@ -52,45 +52,47 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
     if (!query) return null;
 
     return (
-        <div style={styles.container}>
+        <div className="w-full max-w-7xl mx-auto px-4 py-8">
             <ScanningEffect isActive={isScanning} sources={sources.length > 0 ? sources : undefined} />
 
-            {/* Total Count Badge */}
-            <div style={styles.statsBar}>
-                <span style={styles.statsText}>
-                    검색 결과: <span style={{ color: designTokens.colors.primary }}>{products.length.toLocaleString()}</span>개 상품 (실시간)
-                </span>
-                <div style={styles.sourceTags}>
+            {/* Header / Stats */}
+            <div className="flex justify-between items-end mb-8">
+                <div>
+                    <h2 className="text-3xl font-bold text-black mb-2 tracking-tighter">
+                        New Arrivals
+                    </h2>
+                    <p className="text-gray-500 text-sm">
+                        실시간 수집된 <span className="text-black font-semibold">{products.length.toLocaleString()}</span>개의 아이템
+                    </p>
+                </div>
+                <div className="flex gap-2">
                     {sources.map(s => <SourceBadge key={s} source={s} />)}
                 </div>
             </div>
 
-            {/* Phase 20: AI Analytics Dashboard for Top Item */}
-            {products.length > 0 && (
-                <div className="mb-8">
-                    <FutureValueInsight product={products[0]} />
-                </div>
-            )}
-
-            <div style={styles.grid}>
+            {/* Masonry Grid Layout (CSS Columns) */}
+            <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
                 {products.map((product) => (
-                    <ProductCard key={product.id} product={product} />
+                    <div key={product.id} className="break-inside-avoid mb-4">
+                        <ProductCard product={product} />
+                    </div>
                 ))}
             </div>
 
             {/* Loading Indicator */}
-            <div ref={observerTarget} style={styles.loadingSentinel}>
+            <div ref={observerTarget} className="h-20 flex justify-center items-center mt-8">
                 {isLoading && !isScanning && (
-                    <div style={styles.loadingText}>실시간 데이터 수집 중...</div>
+                    <div className="flex flex-col items-center gap-2">
+                        <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs text-gray-400">Loading more...</span>
+                    </div>
                 )}
             </div>
 
             {!hasMore && products.length > 0 && (
-                <div style={styles.endMessage}>모든 실시간 데이터를 불러왔습니다.</div>
-            )}
-
-            {!isLoading && products.length === 0 && (
-                <div style={styles.endMessage}>검색 결과가 없습니다. (외부 소스 응답 지연 가능성)</div>
+                <div className="text-center py-12 text-gray-400 text-sm">
+                    End of Stream
+                </div>
             )}
         </div>
     );
@@ -98,113 +100,44 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
 
 function ProductCard({ product }: { product: UnifiedProduct }) {
     return (
-        <div style={styles.card}>
-            <div style={styles.imageContainer}>
+        <div
+            onClick={() => window.open(product.link, '_blank')}
+            className="group relative cursor-pointer"
+        >
+            {/* Image (Masonry relies on natural height) */}
+            <div className="relative w-full overflow-hidden rounded-lg bg-gray-100 mb-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={product.image} alt={product.title} style={styles.image} loading="lazy" />
-                <div style={styles.badgeContainer}>
-                    <SourceBadge source={product.source} />
+                <img
+                    src={product.image}
+                    alt={product.title}
+                    className="w-full h-auto object-cover transform transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                />
+
+                {/* Overlay Badge */}
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="bg-black/70 text-white text-[10px] px-2 py-1 rounded-full backdrop-blur-md">
+                        {product.mallName}
+                    </span>
                 </div>
             </div>
-            <div style={styles.info}>
-                <div style={styles.mallName}>{product.mallName}</div>
-                <div style={styles.title} title={product.title}>{product.title}</div>
-                <div style={styles.price}>{product.price.toLocaleString()}원</div>
+
+            {/* Minimal Info */}
+            <div className="space-y-1">
+                <div className="flex justify-between items-start">
+                    <h3 className="text-sm font-bold text-black leading-tight">
+                        {product.brand || product.mallName}
+                    </h3>
+                    <span className="text-sm font-semibold text-black">
+                        {product.price.toLocaleString()}
+                    </span>
+                </div>
+                <p className="text-xs text-gray-500 line-clamp-1 group-hover:text-black transition-colors">
+                    {product.title}
+                </p>
             </div>
         </div>
     );
 }
 
-const styles = {
-    container: {
-        width: '100%',
-        padding: '20px',
-        minHeight: '400px',
-        position: 'relative' as const,
-    },
-    statsBar: {
-        marginBottom: '16px',
-        fontSize: '14px',
-        color: designTokens.colors.textSecondary,
-        display: 'flex' as const,
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    statsText: {
-        fontWeight: 600,
-    },
-    sourceTags: {
-        display: 'flex',
-        gap: '4px',
-    },
-    grid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-        gap: '16px',
-    },
-    loadingSentinel: {
-        height: '60px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: '20px',
-    },
-    loadingText: {
-        color: designTokens.colors.textSecondary,
-        fontSize: '14px',
-    },
-    endMessage: {
-        textAlign: 'center' as const,
-        padding: '40px',
-        color: designTokens.colors.textSecondary,
-        fontSize: '14px',
-    },
-    // Card Styles
-    card: {
-        backgroundColor: designTokens.colors.surface,
-        borderRadius: '12px',
-        overflow: 'hidden',
-        border: `1px solid ${designTokens.colors.border}`,
-        transition: 'transform 0.2s',
-        cursor: 'pointer',
-    },
-    imageContainer: {
-        position: 'relative' as const,
-        aspectRatio: '1',
-        backgroundColor: '#f1f5f9',
-    },
-    image: {
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover' as const,
-    },
-    badgeContainer: {
-        position: 'absolute' as const,
-        top: '8px',
-        right: '8px',
-    },
-    info: {
-        padding: '12px',
-    },
-    mallName: {
-        fontSize: '11px',
-        color: designTokens.colors.textTertiary,
-        marginBottom: '2px',
-    },
-    title: {
-        fontSize: '13px',
-        fontWeight: 500,
-        color: designTokens.colors.textPrimary,
-        marginBottom: '4px',
-        display: '-webkit-box',
-        WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical' as const,
-        overflow: 'hidden',
-        height: '32px', // Approx 2 lines
-    },
-    price: {
-        fontSize: '15px',
-        fontWeight: 700,
-        color: designTokens.colors.primary,
-    },
-};
+// Inline styles removed in favor of Tailwind classes for cleaner "Radical" design code.

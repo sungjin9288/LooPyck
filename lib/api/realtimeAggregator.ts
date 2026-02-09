@@ -26,6 +26,9 @@ async function fetchHtml(url: string): Promise<string> {
     }
 }
 
+// Helper to proxy images for 29CM/Musinsa to bypass hotlink protection
+const proxyImage = (url: string) => `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=500&output=webp`;
+
 // 1. Naver API Wrapper
 async function fetchNaverRealtime(query: string, page: number = 1): Promise<UnifiedProduct[]> {
     const clientId = process.env.NAVER_CLIENT_ID;
@@ -33,7 +36,6 @@ async function fetchNaverRealtime(query: string, page: number = 1): Promise<Unif
     const start = (page - 1) * 20 + 1;
 
     if (!clientId || !clientSecret) {
-        // Fallback or just return empty if strict
         return [];
     }
 
@@ -52,7 +54,7 @@ async function fetchNaverRealtime(query: string, page: number = 1): Promise<Unif
             id: `naver_${item.productId}`,
             title: normalizeTitle(item.title).replace(/<[^>]*>?/gm, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
             price: parseInt(item.lprice, 10),
-            image: item.image,
+            image: item.image, // Naver images usually work fine
             link: item.link,
             mallName: item.mallName,
             brand: item.brand,
@@ -74,23 +76,23 @@ async function scrapeMusinsa(query: string, page: number = 1): Promise<UnifiedPr
     const $ = cheerio.load(html);
     const products: UnifiedProduct[] = [];
 
-    // Note: Selectors are hypothetical and prone to change.
-    // Musinsa structure assumption: .list-box .li_box
     $('.list-box .li_box').each((_, el) => {
         try {
             const $el = $(el);
-            const title = $el.find('.item_title').text() || $el.find('.list_info a').attr('title'); // Try getting text or title attr
+            const title = $el.find('.item_title').text() || $el.find('.list_info a').attr('title');
             const priceStr = $el.find('.price').text();
-            const imgUrl = $el.find('img').attr('data-original') || $el.find('img').attr('src');
+            let imgUrl = $el.find('img').attr('data-original') || $el.find('img').attr('src');
             const link = $el.find('.list_info a').attr('href');
             const brand = $el.find('.item_brand').text();
 
             if (title && priceStr && imgUrl) {
+                if (imgUrl.startsWith('//')) imgUrl = 'https:' + imgUrl;
+
                 products.push({
                     id: `musinsa_${link?.split('/').pop() || Math.random()}`,
                     title: normalizeTitle(title as string),
                     price: normalizePrice(priceStr),
-                    image: normalizeImageUrl(imgUrl, 'https:'),
+                    image: proxyImage(imgUrl), // Proxy applied
                     link: link ? `https://www.musinsa.com${link}` : '#',
                     mallName: 'Musinsa',
                     brand: normalizeBrand(brand),
@@ -98,38 +100,34 @@ async function scrapeMusinsa(query: string, page: number = 1): Promise<UnifiedPr
                 });
             }
         } catch (e) {
-            // Ignore single item error
+            // Ignore
         }
     });
 
-    return products.slice(0, 10); // Limit items per page fetch
+    return products.slice(0, 10);
 }
 
-// 3. 29CM Real-time Scraper (Assume API or HTML)
-// 29CM often loads via API. Let's try to hit their public search API endpoint if known, or fallback to HTML.
-// URL: https://search.29cm.co.kr/api/search?keyword=...
+// 3. 29CM Real-time Scraper
 async function scrape29CM(query: string, page: number = 1): Promise<UnifiedProduct[]> {
-    // Try API approach as it's more stable for 29CM
     const offset = (page - 1) * 10;
     try {
         const url = `https://search-api.29cm.co.kr/api/v4/products/search?keyword=${encodeURIComponent(query)}&limit=10&offset=${offset}`;
         const res = await fetch(url);
         const data = await res.json();
 
-        if (!data.data || !data.data.products) return []; // Structure assumption
+        if (!data.data || !data.data.products) return [];
 
         return data.data.products.map((item: any) => ({
             id: `29cm_${item.itemNo}`,
             title: normalizeTitle(item.itemName),
             price: item.salePrice || item.consumerPrice,
-            image: normalizeImageUrl(item.imageUrl, ''),
+            image: proxyImage(`https://img.29cm.co.kr${item.imageUrl}`.replace('https://img.29cm.co.krhttps', 'https')), // Fix double protocol if API returns full URL
             link: `https://product.29cm.co.kr/catalog/${item.itemNo}`,
             mallName: '29CM',
             brand: normalizeBrand(item.brandName),
             source: '29CM' as const
         }));
     } catch (e) {
-        console.warn('29CM API Failed, trying HTML fallback is not implemented to save tokens.');
         return [];
     }
 }

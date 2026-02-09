@@ -39,6 +39,31 @@
 
 ## 🚧 In Progress (진행 중)
 
+### Phase 32: UAT Remediation & Radical Overhaul 🚀 ✅ COMPLETED
+
+**[1] Plan**
+- [x] `tasks/todo.md` 업데이트 (MANDATORY)
+- [x] `implementation_plan.md` 생성
+
+**[2] Execute - Design Overhaul (Radical)**
+- [x] `components/product/InfiniteProductGrid.tsx`: Masonry Layout (Pinterest Style)
+- [x] `ProductCard`: Image-Centric Minimal Design
+
+**[3] Execute - Critical Fixes**
+- [x] `lib/api/realtimeAggregator.ts`: Image Proxy (weserv.nl) for 29CM/Musinsa
+- [x] `ProductCard`: Link Click Behavior Fix (window.open)
+- [x] `app/api/realtime-search/route.ts`: Category Guard Integration
+
+**[4] Execute - Features**
+- [x] `components/auth/LoginModal.tsx` & `Navbar.tsx`: Login Integration
+- [x] `app/manifest.ts`: PWA Manifest Link
+
+**[5] Verify**
+- [x] Build Success
+- [x] `walkthrough.md` & `_ko.md` Update
+
+---
+
 ### Phase 31: Brand Re-Engineering & Product Hardening 💎 ✅ COMPLETED
 
 **[1] Plan**

@@ -9,6 +9,7 @@ import ProductList from '@/components/product/ProductList';
 import FilterBar from '@/components/product/FilterBar';
 import FavoritesPage from '@/components/favorites/FavoritesPage';
 import InfiniteProductGrid from '@/components/product/InfiniteProductGrid';
+import Navbar from '@/components/layout/Navbar';
 
 export default function Home() {
   const router = useRouter();
@@ -42,43 +43,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-black selection:bg-neutral-100 selection:text-black">
       {/* 헤더 */}
-      <header className="bg-white/90 backdrop-blur-md sticky top-0 z-50 transition-all duration-300 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div
-              className="cursor-pointer group"
-              onClick={handleLogoClick}
-            >
-              <h1 className="text-2xl sm:text-3xl font-bold text-black tracking-tight group-hover:opacity-80 transition-all">
-                LooPyck
-              </h1>
-              <p className="text-gray-600 mt-1 text-sm sm:text-base group-hover:text-gray-900 transition-colors">
-                Multi-Source Price Compare & AI Curation
-              </p>
-            </div>
-            <nav className="flex gap-2 sm:gap-4 p-1 bg-gray-100/50 rounded-xl">
-              <button
-                onClick={() => setCurrentView('search')}
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'search'
-                  ? 'bg-white text-blue-600 shadow-sm scale-105'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
-                  }`}
-              >
-                🔍 검색
-              </button>
-              <button
-                onClick={() => setCurrentView('favorites')}
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'favorites'
-                  ? 'bg-white text-red-500 shadow-sm scale-105'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
-                  }`}
-              >
-                ❤️ 찜 목록
-              </button>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Navbar
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        onLogoClick={handleLogoClick}
+      />
 
       {/* 메인 콘텐츠 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-[calc(100vh-300px)]">

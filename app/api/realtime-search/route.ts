@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { aggregateRealtimeSearch } from '@/lib/api/realtimeAggregator';
+import { CategoryGuard } from '@/lib/ai/categoryGuard';
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -8,6 +9,16 @@ export async function GET(request: NextRequest) {
 
     if (!query) {
         return NextResponse.json({ error: 'Query parameter "q" is required' }, { status: 400 });
+    }
+
+    // Category Guard (Security & Identity)
+    // Blocks non-fashion queries (e.g. "RTX 4090", "Gaming PC", "Soju")
+    const guardResult = CategoryGuard.check(query);
+    if (!guardResult.isAllowed) {
+        return NextResponse.json({
+            error: guardResult.reason,
+            blocked: true
+        }, { status: 400 });
     }
 
     try {
