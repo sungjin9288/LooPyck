@@ -80,10 +80,19 @@ export function useMultiSourceSearch(query: string): UseMultiSourceSearchResult 
 
     const loadMore = useCallback(() => {
         if (isLoading || !hasMore || !query) return;
+
+        // Phase 42 Hardening: Memory Leak Protection
+        // Prevent infinite scroll from crashing the browser if > 500 items
+        if (products.length >= 500) {
+            console.warn('[Safety Cap] Product limit 500 reached. Stopping load.');
+            setHasMore(false);
+            return;
+        }
+
         const nextPage = page + 1;
         setPage(nextPage);
         fetchData(query, nextPage, false);
-    }, [isLoading, hasMore, query, page, fetchData]);
+    }, [isLoading, hasMore, query, page, products.length, fetchData]);
 
     return {
         products,

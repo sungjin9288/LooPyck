@@ -42,6 +42,7 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
                 onChange={handleFileChange}
             />
             <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${isAnalyzing ? 'animate-pulse' : ''}`}
                 title="Search by Image"

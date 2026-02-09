@@ -1,44 +1,88 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { haptics } from '@/lib/ux/hapticEngine';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot, updateDoc, increment, setDoc, getDoc } from 'firebase/firestore';
 
-const BATTLE_ITEMS = [
+const BATTLE_ID = 'season_2026_spring';
+
+const INITIAL_ITEMS = [
     {
         id: 'A',
         name: 'Classic Trench',
         image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=500&q=80',
-        votes: 1240
     },
     {
         id: 'B',
         name: 'Modern Bomber',
         image: 'https://images.unsplash.com/photo-1551028919-383718bccf3b?w=500&q=80',
-        votes: 980
     }
 ];
 
 export default function FashionBattle() {
+    const [votes, setVotes] = useState({ A: 1240, B: 980 }); // Initial Fallback
     const [voted, setVoted] = useState<string | null>(null);
-    const totalVotes = BATTLE_ITEMS[0].votes + BATTLE_ITEMS[1].votes + (voted ? 1 : 0);
+    const [totalVotes, setTotalVotes] = useState(2220);
 
-    const handleVote = (id: string) => {
+    // Real-time Sync
+    useEffect(() => {
+        if (!db) return;
+
+        const battleRef = doc(db, 'battles', BATTLE_ID);
+
+        // Subscribe
+        const unsubscribe = onSnapshot(battleRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.data();
+                setVotes(data.votes);
+                setTotalVotes(data.votes.A + data.votes.B);
+            } else {
+                // Initialize if missing (Self-Healing DB)
+                setDoc(battleRef, {
+                    votes: { A: 1240, B: 980 }, // Seed data
+                    items: INITIAL_ITEMS
+                }).catch(console.error);
+            }
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    const handleVote = async (id: string) => {
         if (voted) return;
-        haptics.trigger('heavy'); // Solid Clack
+        haptics.trigger('heavy');
         setVoted(id);
+
+        // Optimistic UI Update
+        setVotes(prev => ({ ...prev, [id]: (prev as any)[id] + 1 }));
+        setTotalVotes(prev => prev + 1);
+
+        if (db) {
+            const battleRef = doc(db, 'battles', BATTLE_ID);
+            try {
+                await updateDoc(battleRef, {
+                    [`votes.${id}`]: increment(1)
+                });
+            } catch (e) {
+                console.error("Vote failed:", e);
+                // Revert optimistic update if needed, but for MVP we skip
+            }
+        }
     };
 
     return (
-        <div className="w-full max-w-4xl mx-auto my-12">
+        <div className="w-full max-w-4xl mx-auto my-12 hidden md:block">
             <h2 className="text-2xl font-black text-center mb-1">Fashion Battle</h2>
             <p className="text-center text-gray-500 mb-8 text-sm">Which style defines this season?</p>
 
             <div className="flex flex-col md:flex-row gap-4 h-[400px] md:h-[500px]">
-                {BATTLE_ITEMS.map((item) => {
+                {INITIAL_ITEMS.map((item) => {
                     const isSelected = voted === item.id;
                     const isLoser = voted && voted !== item.id;
-                    const percent = Math.round(((item.votes + (isSelected ? 1 : 0)) / totalVotes) * 100);
+                    const voteCount = (votes as any)[item.id];
+                    const percent = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 50;
 
                     return (
                         <div
@@ -77,7 +121,7 @@ export default function FashionBattle() {
                                         className="text-center"
                                     >
                                         <div className="text-6xl font-black mb-1">{percent}%</div>
-                                        <div className="text-sm font-medium opacity-80">{item.votes + (isSelected ? 1 : 0)} Votes</div>
+                                        <div className="text-sm font-medium opacity-80">{voteCount.toLocaleString()} Votes</div>
                                     </motion.div>
                                 )}
                             </div>

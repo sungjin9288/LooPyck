@@ -12,9 +12,16 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
     const [query, setQuery] = useState('');
     const [sort, setSort] = useState('sim');
 
+    import { isFashionRelated } from '@/lib/core/domainGuard';
+
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         if (query.trim()) {
+            const check = isFashionRelated(query);
+            if (!check.allowed) {
+                alert(check.reason); // Simple alert for now, could be a toast later
+                return;
+            }
             onSearch(query, sort);
         }
     };
