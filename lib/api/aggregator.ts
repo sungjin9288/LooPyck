@@ -47,9 +47,11 @@ export async function fetchNaverProducts(query: string, start: number = 1): Prom
 
         return items.map((item) => ({
             id: `naver_${item.productId}`,
-            title: item.title.replace(/<[^>]*>?/gm, ''),
+            title: item.title.replace(/<[^>]*>?/gm, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
             price: parseInt(item.lprice, 10),
             image: item.image,
+            // Fix: Naver API returns unescaped HTML sometimes, but link is usually clean. 
+            // If it's a gateway link, we might need to handle it, but for now just pass it.
             link: item.link,
             mallName: item.mallName,
             brand: item.brand,

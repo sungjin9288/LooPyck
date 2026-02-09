@@ -26,34 +26,19 @@ async function fetchHtml(url: string): Promise<string> {
     }
 }
 
-// 1. Naver API Wrapper (Server-side call to avoid exposing secrets if we were using direct API, but here likely reusing internal API or logic)
-// In Phase 19, we treat Naver as just one of many reliable sources.
-async function fetchNaverRealtime(query: string): Promise<UnifiedProduct[]> {
-    // 내부 API Route를 호출하거나 직접 Naver API 호출 로직을 수행해야 함.
-    // 여기서는 로컬 호스트 API를 호출한다고 가정 (Self-call)
-    // 실제 프로덕션에서는 Naver API credential을 사용하여 직접 fetch 하는 함수를 분리하는 것이 좋음.
-    // 편의상 기존 aggregator의 로직을 본따되 직접 구현함.
-
-    // NOTE: In a real server component context, calling your own API route via fetch requires absolute URL.
-    // For simplicity, we assume we return empty here and rely on client-side Naver integration,
-    // OR we implement direct 3rd party API call here.
-    // Let's implement direct 3rd party API call if keys are available, otherwise use a placeholder strategy.
-
-    // 전략: 클라이언트가 Naver는 별도로 부르고, 이 Aggregator는 "Additional Sources"만 담당하게 할 수도 있지만,
-    // "Unified Orchestration"이 목표이므로 서버에서 다 처리하는 것이 맞음.
-    // 여기서는 Mock이 아닌 실제 API 호출을 시도하려면 KEYS가 필요함.
-    // 환경 변수 process.env.NAVER_CLIENT_ID 등이 있다고 가정.
-
+// 1. Naver API Wrapper
+async function fetchNaverRealtime(query: string, page: number = 1): Promise<UnifiedProduct[]> {
     const clientId = process.env.NAVER_CLIENT_ID;
     const clientSecret = process.env.NAVER_CLIENT_SECRET;
+    const start = (page - 1) * 20 + 1;
 
     if (!clientId || !clientSecret) {
-        console.warn('Naver API Keys missing in server environment');
+        // Fallback or just return empty if strict
         return [];
     }
 
     try {
-        const url = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&display=20&start=1&sort=sim`;
+        const url = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&display=20&start=${start}&sort=sim`;
         const res = await fetch(url, {
             headers: {
                 'X-Naver-Client-Id': clientId,
@@ -65,7 +50,7 @@ async function fetchNaverRealtime(query: string): Promise<UnifiedProduct[]> {
 
         return data.items.map((item: any) => ({
             id: `naver_${item.productId}`,
-            title: normalizeTitle(item.title),
+            title: normalizeTitle(item.title).replace(/<[^>]*>?/gm, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
             price: parseInt(item.lprice, 10),
             image: item.image,
             link: item.link,
@@ -81,8 +66,8 @@ async function fetchNaverRealtime(query: string): Promise<UnifiedProduct[]> {
 }
 
 // 2. Musinsa Real-time Scraper (HTML Parsing)
-async function scrapeMusinsa(query: string): Promise<UnifiedProduct[]> {
-    const url = `https://www.musinsa.com/search/goods?keyword=${encodeURIComponent(query)}`;
+async function scrapeMusinsa(query: string, page: number = 1): Promise<UnifiedProduct[]> {
+    const url = `https://www.musinsa.com/search/goods?keyword=${encodeURIComponent(query)}&page=${page}`;
     const html = await fetchHtml(url);
     if (!html) return [];
 
@@ -117,16 +102,17 @@ async function scrapeMusinsa(query: string): Promise<UnifiedProduct[]> {
         }
     });
 
-    return products.slice(0, 10); // Limit items
+    return products.slice(0, 10); // Limit items per page fetch
 }
 
 // 3. 29CM Real-time Scraper (Assume API or HTML)
 // 29CM often loads via API. Let's try to hit their public search API endpoint if known, or fallback to HTML.
 // URL: https://search.29cm.co.kr/api/search?keyword=...
-async function scrape29CM(query: string): Promise<UnifiedProduct[]> {
+async function scrape29CM(query: string, page: number = 1): Promise<UnifiedProduct[]> {
     // Try API approach as it's more stable for 29CM
+    const offset = (page - 1) * 10;
     try {
-        const url = `https://search-api.29cm.co.kr/api/v4/products/search?keyword=${encodeURIComponent(query)}&limit=10`;
+        const url = `https://search-api.29cm.co.kr/api/v4/products/search?keyword=${encodeURIComponent(query)}&limit=10&offset=${offset}`;
         const res = await fetch(url);
         const data = await res.json();
 
@@ -151,11 +137,11 @@ async function scrape29CM(query: string): Promise<UnifiedProduct[]> {
 /**
  * Main Aggregator Function
  */
-export async function aggregateRealtimeSearch(query: string): Promise<UnifiedProduct[]> {
+export async function aggregateRealtimeSearch(query: string, page: number = 1): Promise<UnifiedProduct[]> {
     const results = await Promise.allSettled([
-        fetchNaverRealtime(query),
-        scrapeMusinsa(query),
-        scrape29CM(query)
+        fetchNaverRealtime(query, page),
+        scrapeMusinsa(query, page),
+        scrape29CM(query, page)
     ]);
 
     let aggregated: UnifiedProduct[] = [];
@@ -165,12 +151,6 @@ export async function aggregateRealtimeSearch(query: string): Promise<UnifiedPro
             aggregated = [...aggregated, ...result.value];
         }
     });
-
-    // 만약 데이터가 너무 적으면(스크래핑 실패 등), 최소한의 경험을 위해 네이버 데이터라도 있으면 성공 취급
-    // 아예 0개라면? Phase 19 목표인 "Procuction Data"상 빈 화면이 맞음. 
-    // 하지만 데모 시연을 위해 "Mock Data"를 완전히 제거하라고 했지만,
-    // "Fallback strategy"를 Constraint에서 "Graceful Degradation"라고 했으므로,
-    // 스크래핑 실패는 그냥 데이터 없음으로 처리함. (Mock 섞지 않음)
 
     return aggregated.sort((a, b) => a.price - b.price);
 }

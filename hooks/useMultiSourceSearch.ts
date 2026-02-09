@@ -18,65 +18,79 @@ export function useMultiSourceSearch(query: string): UseMultiSourceSearchResult 
     const [isScanning, setIsScanning] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [sources, setSources] = useState<string[]>([]);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
 
-    // API Route doesn't support pagination yet in this phase plan (Real-time usually 1-shot)
-    // So 'loadMore' might be limited or just a placeholder implementation.
-    const [hasMore, setHasMore] = useState(false);
+    const fetchData = useCallback(async (searchQuery: string, pageNum: number, isInitial: boolean) => {
+        if (!searchQuery) return;
 
+        setIsLoading(true);
+        if (isInitial) setIsScanning(true);
+
+        try {
+            const res = await fetch(`/api/realtime-search?q=${encodeURIComponent(searchQuery)}&page=${pageNum}`);
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error || 'Server Error');
+
+            const newProducts: UnifiedProduct[] = data.products || [];
+
+            if (isInitial) {
+                setProducts(newProducts);
+                // Optional scanning effect delay
+                await new Promise(r => setTimeout(r, 1000));
+            } else {
+                setProducts(prev => {
+                    const existingIds = new Set(prev.map(p => p.id));
+                    const uniqueNew = newProducts.filter(p => !existingIds.has(p.id));
+                    return [...prev, ...uniqueNew];
+                });
+            }
+
+            // Extract unique sources
+            const uniqueSources = Array.from(new Set(newProducts.map(p => p.source)));
+            setSources(prev => Array.from(new Set([...prev, ...uniqueSources])));
+
+            // If empty return, likely no more data
+            if (newProducts.length === 0) {
+                setHasMore(false);
+            }
+
+        } catch (err: any) {
+            console.error('Real-time Search Failed:', err);
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+            if (isInitial) setIsScanning(false);
+        }
+    }, []);
+
+    // Reset on query change
     useEffect(() => {
         if (!query) return;
 
-        const fetchData = async () => {
-            setIsLoading(true);
-            setIsScanning(true);
-            setProducts([]);
-            setError(null);
-            setSources([]);
+        setProducts([]);
+        setPage(1);
+        setHasMore(true);
+        setError(null);
+        setSources([]);
 
-            try {
-                // Call API Route
-                const res = await fetch(`/api/realtime-search?q=${encodeURIComponent(query)}`);
-                const data = await res.json();
-
-                if (!res.ok) throw new Error(data.error || 'Server Error');
-
-                const newProducts: UnifiedProduct[] = data.products || [];
-
-                setProducts(newProducts);
-
-                // Extract sources
-                const uniqueSources = Array.from(new Set(newProducts.map(p => p.source)));
-                setSources(uniqueSources);
-
-                // Scanning effect end
-                // await new Promise(r => setTimeout(r, 1000)); // Optional delay for effect
-
-            } catch (err: any) {
-                console.error('Real-time Search Failed:', err);
-                setError(err.message);
-            } finally {
-                setIsLoading(false);
-                setIsScanning(false);
-            }
-        };
-
-        fetchData();
-    }, [query]);
-
-    // Phase 19 plan says "Streaming UI". Currently API returns all at once.
-    // Future improvement: Server-Sent Events or Streaming Response.
-    // This hook simply fetches once.
+        fetchData(query, 1, true);
+    }, [query, fetchData]);
 
     const loadMore = useCallback(() => {
-        // Not implemented for API-based real-time search in this iteration
-    }, []);
+        if (isLoading || !hasMore || !query) return;
+        const nextPage = page + 1;
+        setPage(nextPage);
+        fetchData(query, nextPage, false);
+    }, [isLoading, hasMore, query, page, fetchData]);
 
     return {
         products,
         isLoading,
         error,
         loadMore,
-        hasMore, // Always false for single-page realtime search
+        hasMore,
         sources,
         isScanning,
         totalCount: products.length

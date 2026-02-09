@@ -21,7 +21,7 @@ const getSpanClass = (index: number, price: number) => {
 export const BentoFeed: React.FC<BentoFeedProps> = ({ products }) => {
     return (
         <div className="w-full max-w-7xl mx-auto px-4 py-8">
-            <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">
+            <h2 className="text-2xl font-bold text-black mb-6 tracking-tight">
                 Trending Now
             </h2>
 

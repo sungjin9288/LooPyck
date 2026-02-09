@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import SearchBar from '@/components/search/SearchBar';
 import RecentSearches from '@/components/search/RecentSearches';
@@ -10,6 +11,7 @@ import FavoritesPage from '@/components/favorites/FavoritesPage';
 import InfiniteProductGrid from '@/components/product/InfiniteProductGrid';
 
 export default function Home() {
+  const router = useRouter();
   // Legacy Hook for Analytics & History
   const {
     filteredProducts,
@@ -31,17 +33,23 @@ export default function Home() {
     handleSearch(query, 'sim'); // Legacy call for side effects
   };
 
+  const handleLogoClick = () => {
+    setSearchQuery('');
+    setCurrentView('search');
+    router.push('/');
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-white text-black selection:bg-neutral-100 selection:text-black">
       {/* 헤더 */}
-      <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 transition-all duration-300">
+      <header className="bg-white/90 backdrop-blur-md sticky top-0 z-50 transition-all duration-300 border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div
               className="cursor-pointer group"
-              onClick={() => setCurrentView('search')}
+              onClick={handleLogoClick}
             >
-              <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 group-hover:from-blue-700 group-hover:to-purple-700 transition-all">
+              <h1 className="text-2xl sm:text-3xl font-bold text-black tracking-tight group-hover:opacity-80 transition-all">
                 LooPyck
               </h1>
               <p className="text-gray-600 mt-1 text-sm sm:text-base group-hover:text-gray-900 transition-colors">

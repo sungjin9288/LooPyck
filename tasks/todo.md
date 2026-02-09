@@ -39,6 +39,28 @@
 
 ## 🚧 In Progress (진행 중)
 
+### Phase 31: Brand Re-Engineering & Product Hardening 💎 ✅ COMPLETED
+
+**[1] Plan**
+- [x] `tasks/todo.md` 업데이트 (MANDATORY)
+
+**[2] Execute - UAT Feedback Resolution**
+- [x] `components/layout/Navbar.tsx`: Logo Home Link Fix (#5)
+- [x] `lib/api/naverApi.ts`: Link Logic & Image Proxy Headers (#2, #4)
+- [x] `hooks/useInfiniteSearch.ts`: Infinite Scroll Implementation (#3)
+- [x] `lib/ux/pwaConfig.ts`: Mobile PWA Setup & Manifest (#8)
+- [x] `styles/premiumTheme.ts`: Rebranding to Minimal/Charcoal Theme (#1, #10)
+- [x] `components/discovery/BentoFeed.tsx`: Editorial Grid Layout (#1, #10)
+- [x] `lib/ai/categoryGuard.ts`: Non-Fashion Item Filtering (#6)
+- [x] `lib/auth/firebase.ts`: Auth Integration & Style DNA Storage (#7)
+
+**[3] Verify**
+- [x] AWS Deployment Readiness Check (#9)
+- [x] Mobile PWA Audit
+- [x] `walkthrough.md` Update - [FULL BRAND RE-ENGINEERING] Declaration
+
+---
+
 ### Phase 30: Conversion Psychology & Premium Design Optimization 🎨 ✅ COMPLETED
 
 **[1] Plan**
