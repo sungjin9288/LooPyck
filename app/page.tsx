@@ -10,6 +10,7 @@ import FilterBar from '@/components/product/FilterBar';
 import FavoritesPage from '@/components/favorites/FavoritesPage';
 import InfiniteProductGrid from '@/components/product/InfiniteProductGrid';
 import Navbar from '@/components/layout/Navbar';
+import { MoodEngine } from '@/lib/ai/moodEngine';
 
 export default function Home() {
   const router = useRouter();
@@ -30,8 +31,12 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const onSearch = (query: string) => {
-    setSearchQuery(query);
-    handleSearch(query, 'sim'); // Legacy call for side effects
+    // Phase 33: Mood Engine Integration
+    // Expands abstract queries (e.g., "가을 데이트룩") into concrete keywords
+    const expandedQuery = MoodEngine.analyze(query);
+
+    setSearchQuery(expandedQuery);
+    handleSearch(expandedQuery, 'sim');
   };
 
   const handleLogoClick = () => {

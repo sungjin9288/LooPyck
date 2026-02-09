@@ -1,4 +1,6 @@
 import React, { useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { InteractionNarrative } from '@/lib/ux/interactionNarrative';
 import { useMultiSourceSearch } from '@/hooks/useMultiSourceSearch';
 import { ScanningEffect } from '@/components/agent/ScanningEffect';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
@@ -21,7 +23,29 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
         sources
     } = useMultiSourceSearch(query);
 
+    const [sortedProducts, setSortedProducts] = React.useState<UnifiedProduct[]>([]);
+    const [sortOption, setSortOption] = React.useState<'rel' | 'asc' | 'desc'>('rel');
     const observerTarget = useRef<HTMLDivElement>(null);
+
+    // Bento Grid Helper
+    const getGridClass = (index: number) => {
+        const pattern = index % 10;
+        if (pattern === 0) return "col-span-2 row-span-2"; // Big Feature
+        if (pattern === 3) return "col-span-1 row-span-2"; // Tall
+        if (pattern === 6) return "col-span-2"; // Wide
+        return "col-span-1";
+    };
+
+    // Sort Logic
+    useEffect(() => {
+        let sorted = [...products];
+        if (sortOption === 'asc') {
+            sorted.sort((a, b) => a.price - b.price);
+        } else if (sortOption === 'desc') {
+            sorted.sort((a, b) => b.price - a.price);
+        }
+        setSortedProducts(sorted);
+    }, [products, sortOption]);
 
     // 1. Intersection Observer for Infinite Scroll
     useEffect(() => {
@@ -56,7 +80,7 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
             <ScanningEffect isActive={isScanning} sources={sources.length > 0 ? sources : undefined} />
 
             {/* Header / Stats */}
-            <div className="flex justify-between items-end mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
                 <div>
                     <h2 className="text-3xl font-bold text-black mb-2 tracking-tighter">
                         New Arrivals
@@ -65,19 +89,84 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
                         실시간 수집된 <span className="text-black font-semibold">{products.length.toLocaleString()}</span>개의 아이템
                     </p>
                 </div>
-                <div className="flex gap-2">
-                    {sources.map(s => <SourceBadge key={s} source={s} />)}
+
+                <div className="flex flex-col items-end gap-3">
+                    <div className="flex gap-2">
+                        {sources.map(s => <SourceBadge key={s} source={s} />)}
+                    </div>
+                    {/* Sort Buttons */}
+                    <div className="flex gap-2 text-sm">
+                        <button
+                            onClick={() => setSortOption('rel')}
+                            className={`px-3 py-1 rounded-full border transition-all ${sortOption === 'rel' ? 'bg-black text-white border-black' : 'text-gray-500 border-gray-200 hover:border-gray-400'}`}
+                        >
+                            신상품순
+                        </button>
+                        <button
+                            onClick={() => setSortOption('asc')}
+                            className={`px-3 py-1 rounded-full border transition-all ${sortOption === 'asc' ? 'bg-black text-white border-black' : 'text-gray-500 border-gray-200 hover:border-gray-400'}`}
+                        >
+                            낮은가격순
+                        </button>
+                        <button
+                            onClick={() => setSortOption('desc')}
+                            className={`px-3 py-1 rounded-full border transition-all ${sortOption === 'desc' ? 'bg-black text-white border-black' : 'text-gray-500 border-gray-200 hover:border-gray-400'}`}
+                        >
+                            높은가격순
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* Masonry Grid Layout (CSS Columns) */}
-            <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-                {products.map((product) => (
-                    <div key={product.id} className="break-inside-avoid mb-4">
-                        <ProductCard product={product} />
-                    </div>
+            {/* Price Graph & AI Insight */}
+            {sortedProducts.length > 0 && (
+                <div className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <FutureValueInsight product={sortedProducts[0]} />
+                </div>
+            )}
+
+            {/* Bento Grid Layout (CSS Grid) */}
+            <motion.div
+                className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 auto-rows-[280px]"
+                variants={InteractionNarrative.staggerContainer}
+                initial="hidden"
+                animate="visible"
+            >
+                {sortedProducts.map((product, index) => (
+                    <motion.div
+                        key={product.id}
+                        className={`relative group overflow-hidden rounded-xl bg-gray-50 ${getGridClass(index)}`}
+                        variants={InteractionNarrative.parallaxReveal}
+                        custom={index % 5}
+                        onClick={() => window.open(product.link, '_blank')}
+                    >
+                        {/* Image Layer */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src={product.image}
+                            alt={product.title}
+                            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                            loading="lazy"
+                        />
+
+                        {/* Overlay Gradient */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                        {/* Content Layer (Parallax Reveal) */}
+                        <div className="absolute bottom-0 left-0 p-4 w-full text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100">
+                            <span className="text-[10px] font-bold tracking-widest uppercase mb-1 block text-yellow-400">
+                                {product.mallName}
+                            </span>
+                            <h3 className="text-sm md:text-base font-serif leading-tight mb-1 line-clamp-2">
+                                {product.title}
+                            </h3>
+                            <p className="text-xs font-medium opacity-90">
+                                {product.price.toLocaleString()}원
+                            </p>
+                        </div>
+                    </motion.div>
                 ))}
-            </div>
+            </motion.div>
 
             {/* Loading Indicator */}
             <div ref={observerTarget} className="h-20 flex justify-center items-center mt-8">
@@ -97,47 +186,8 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
         </div>
     );
 }
+// Removed ProductCard component as it is now inline for Bento Grid flexibility
 
-function ProductCard({ product }: { product: UnifiedProduct }) {
-    return (
-        <div
-            onClick={() => window.open(product.link, '_blank')}
-            className="group relative cursor-pointer"
-        >
-            {/* Image (Masonry relies on natural height) */}
-            <div className="relative w-full overflow-hidden rounded-lg bg-gray-100 mb-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                    src={product.image}
-                    alt={product.title}
-                    className="w-full h-auto object-cover transform transition-transform duration-500 group-hover:scale-105"
-                    loading="lazy"
-                />
 
-                {/* Overlay Badge */}
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="bg-black/70 text-white text-[10px] px-2 py-1 rounded-full backdrop-blur-md">
-                        {product.mallName}
-                    </span>
-                </div>
-            </div>
-
-            {/* Minimal Info */}
-            <div className="space-y-1">
-                <div className="flex justify-between items-start">
-                    <h3 className="text-sm font-bold text-black leading-tight">
-                        {product.brand || product.mallName}
-                    </h3>
-                    <span className="text-sm font-semibold text-black">
-                        {product.price.toLocaleString()}
-                    </span>
-                </div>
-                <p className="text-xs text-gray-500 line-clamp-1 group-hover:text-black transition-colors">
-                    {product.title}
-                </p>
-            </div>
-        </div>
-    );
-}
 
 // Inline styles removed in favor of Tailwind classes for cleaner "Radical" design code.

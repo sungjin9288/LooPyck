@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
+import VisualSearch from './VisualSearch';
 
 interface SearchBarProps {
     onSearch: (query: string, sort: string) => void;
@@ -22,12 +23,15 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
         <div className="w-full max-w-4xl mx-auto mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="flex flex-col sm:flex-row gap-3 relative group">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
+                        <VisualSearch onSearch={(term) => onSearch(term, sort)} />
+                    </div>
                     <input
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="찾고 싶은 옷을 검색하세요 (예: 청바지, 맨투맨)"
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 transition-all focus:scale-[1.01] shadow-sm focus:shadow-md"
+                        className="flex-1 px-4 py-3 pl-4 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 transition-all focus:scale-[1.01] shadow-sm focus:shadow-md"
                         disabled={isLoading}
                     />
                     <button
@@ -52,8 +56,8 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
                             type="button"
                             onClick={() => setSort(option.value)}
                             className={`px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${sort === option.value
-                                    ? 'bg-blue-600 text-white shadow-md scale-105'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:scale-105'
+                                ? 'bg-blue-600 text-white shadow-md scale-105'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:scale-105'
                                 }`}
                         >
                             {option.label}

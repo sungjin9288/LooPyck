@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { signInWithGoogle, signOut, auth } from '@/lib/auth/firebase';
 import { User } from 'firebase/auth';
+import StyleDashboard from '@/components/auth/StyleDashboard';
 
 interface LoginModalProps {
     isOpen: boolean;
@@ -69,14 +70,20 @@ export function UserProfile({ user }: { user: User }) {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
-                    <div className="px-4 py-2 border-b border-gray-50">
-                        <p className="text-sm font-medium text-black truncate">{user.displayName}</p>
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-50 bg-gray-50/50">
+                        <p className="text-sm font-bold text-black truncate">{user.displayName}</p>
                         <p className="text-xs text-gray-500 truncate">{user.email}</p>
                     </div>
+
+                    {/* Style DNA Section */}
+                    <div className="border-b border-gray-50">
+                        <StyleDashboard />
+                    </div>
+
                     <button
                         onClick={() => signOut()}
-                        className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50"
+                        className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-red-50 font-medium transition-colors"
                     >
                         Sign Out
                     </button>
