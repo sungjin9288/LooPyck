@@ -1,225 +1,60 @@
 /**
- * Freeze - Final Kill-switch 로직
- * API 비용 발생 방지 및 설정 동결
+ * System Freeze (Observation Mode)
+ * 
+ * 이 모듈은 프로젝트가 [MISSION ACCOMPLISHED] 상태에 도달했음을 선언하고,
+ * 시스템을 '관찰 모드(Observation Mode)'로 전환하여 
+ * 더 이상의 데이터 변형(Mutation)이나 비용이 발생하는 API 호출을 제어합니다.
  */
 
-// ============================================
-// FREEZE STATUS
-// ============================================
+export const PLAN_STATUS = 'MISSION_ACCOMPLISHED';
 
-export type FreezeMode = 'ACTIVE' | 'FROZEN' | 'DEMO_ONLY';
+// 시스템 동결 설정
+export const FREEZE_CONFIG = {
+    // 모든 쓰기 작업(DB 생성/수정/삭제) 제한
+    READ_ONLY_MODE: true,
 
-interface FreezeConfig {
-    mode: FreezeMode;
-    frozenAt?: Date;
-    reason?: string;
-    allowedOperations: string[];
-}
+    // 비용이 발생하는 AI API 호출 차단 (캐시된 데이터만 허용)
+    BLOCK_PAID_API_CALLS: true,
 
-let currentConfig: FreezeConfig = {
-    mode: 'ACTIVE',
-    allowedOperations: ['*'],
+    // 신규 회원 가입 제한
+    ALLOW_NEW_SIGNUPS: false,
 };
 
-// ============================================
-// FREEZE FUNCTIONS
-// ============================================
-
 /**
- * 시스템 동결 - 모든 API 호출 차단
+ * 시스템 상태 확인 함
+ * @returns {boolean} 현재 시스템이 동결 상태인지 여부
  */
-export function freeze(reason: string = 'Project archived'): FreezeConfig {
-    currentConfig = {
-        mode: 'FROZEN',
-        frozenAt: new Date(),
-        reason,
-        allowedOperations: [],
-    };
-
-    console.log(`[FREEZE] System frozen at ${currentConfig.frozenAt?.toISOString()}`);
-    console.log(`[FREEZE] Reason: ${reason}`);
-
-    return currentConfig;
-}
-
-/**
- * 데모 모드 전환 - 읽기 전용, 캐시된 데이터만 반환
- */
-export function setDemoMode(): FreezeConfig {
-    currentConfig = {
-        mode: 'DEMO_ONLY',
-        frozenAt: new Date(),
-        reason: 'Demo mode - cached data only',
-        allowedOperations: ['read', 'cache_read'],
-    };
-
-    return currentConfig;
-}
-
-/**
- * 시스템 활성화
- */
-export function unfreeze(authToken: string): FreezeConfig | null {
-    // 보안: 관리자 토큰 검증 필요
-    if (authToken !== process.env.ADMIN_UNFREEZE_TOKEN) {
-        console.error('[FREEZE] Invalid unfreeze token');
-        return null;
+export function isSystemFrozen(): boolean {
+    // 환경 변수로 오버라이드 가능 (긴급 유지보수 시)
+    if (process.env.NEXT_PUBLIC_FORCE_UNFREEZE === 'true') {
+        return false;
     }
-
-    currentConfig = {
-        mode: 'ACTIVE',
-        allowedOperations: ['*'],
-    };
-
-    console.log('[FREEZE] System unfrozen');
-    return currentConfig;
-}
-
-// ============================================
-// OPERATION GUARDS
-// ============================================
-
-/**
- * 작업 실행 가능 여부 확인
- */
-export function canExecute(operation: string): boolean {
-    if (currentConfig.mode === 'ACTIVE') return true;
-    if (currentConfig.mode === 'FROZEN') return false;
-
-    // DEMO_ONLY: 허용된 작업만
-    return currentConfig.allowedOperations.includes(operation) ||
-        currentConfig.allowedOperations.includes('*');
+    return true;
 }
 
 /**
- * API 호출 가드
+ * 작업 허용 여부 확인
+ * @param actionType 작업을 수행하려는 액션 타입 ('write' | 'paid_api' | 'signup')
+ * @returns {boolean} 작업 허용 여부
  */
-export function apiGuard(): { allowed: boolean; reason: string } {
-    if (currentConfig.mode === 'FROZEN') {
-        return {
-            allowed: false,
-            reason: `System frozen: ${currentConfig.reason}`,
-        };
+export function canPerformAction(actionType: 'write' | 'paid_api' | 'signup'): boolean {
+    if (!isSystemFrozen()) return true;
+
+    switch (actionType) {
+        case 'write':
+            return !FREEZE_CONFIG.READ_ONLY_MODE;
+        case 'paid_api':
+            return !FREEZE_CONFIG.BLOCK_PAID_API_CALLS;
+        case 'signup':
+            return !FREEZE_CONFIG.ALLOW_NEW_SIGNUPS;
+        default:
+            return true;
     }
-
-    if (currentConfig.mode === 'DEMO_ONLY') {
-        return {
-            allowed: false,
-            reason: 'Demo mode: API calls disabled, using cached data',
-        };
-    }
-
-    return { allowed: true, reason: 'OK' };
 }
 
 /**
- * 비용 발생 가능 작업 차단
+ * 동결 상태에 따른 메시지 반환
  */
-export function costGuard(estimatedCost: number): { allowed: boolean; reason: string } {
-    const guard = apiGuard();
-    if (!guard.allowed) return guard;
-
-    // 비용 임계값 (원화)
-    const MAX_SINGLE_OPERATION_COST = 100; // ₩100
-    const MAX_DAILY_COST = 10000; // ₩10,000
-
-    if (estimatedCost > MAX_SINGLE_OPERATION_COST) {
-        return {
-            allowed: false,
-            reason: `Cost exceeds limit: ₩${estimatedCost} > ₩${MAX_SINGLE_OPERATION_COST}`,
-        };
-    }
-
-    return { allowed: true, reason: 'OK' };
+export function getFreezeMessage(): string {
+    return "⛔ Project LooPyck is currently in [ARCHIVED] state. System is read-only.";
 }
-
-// ============================================
-// STATUS & REPORTING
-// ============================================
-
-/**
- * 현재 상태 조회
- */
-export function getStatus(): FreezeConfig & { uptime: string } {
-    let uptime = 'N/A';
-
-    if (currentConfig.frozenAt) {
-        const ms = Date.now() - currentConfig.frozenAt.getTime();
-        const hours = Math.floor(ms / (1000 * 60 * 60));
-        const days = Math.floor(hours / 24);
-        uptime = days > 0 ? `${days}d ${hours % 24}h` : `${hours}h`;
-    }
-
-    return { ...currentConfig, uptime };
-}
-
-/**
- * API 사용량 리포트 (시뮬레이션)
- */
-export interface UsageReport {
-    totalCalls: number;
-    totalCost: number;
-    savedCost: number;
-    blockedCalls: number;
-}
-
-export function getUsageReport(): UsageReport {
-    // 시뮬레이션 데이터
-    return {
-        totalCalls: 15420,
-        totalCost: 771, // ₩771 (₩0.05/call)
-        savedCost: 385350000, // ₩3.85억 (수동 대비)
-        blockedCalls: currentConfig.mode === 'FROZEN' ? 1250 : 0,
-    };
-}
-
-// ============================================
-// FINAL ARCHIVE
-// ============================================
-
-/**
- * 프로젝트 최종 아카이브
- */
-export interface ArchiveManifest {
-    version: string;
-    archivedAt: Date;
-    totalPhases: number;
-    totalFiles: number;
-    totalLinesOfCode: number;
-    status: 'MISSION_COMPLETE';
-    achievements: string[];
-}
-
-export function createArchiveManifest(): ArchiveManifest {
-    return {
-        version: '1.0.0',
-        archivedAt: new Date(),
-        totalPhases: 15,
-        totalFiles: 68,
-        totalLinesOfCode: 12500,
-        status: 'MISSION_COMPLETE',
-        achievements: [
-            '99.8% 비용 절감',
-            '94.2% 자동화율',
-            '₩299M 연간 절감',
-            '₩0 인프라 비용',
-            '7개 쇼핑몰 지원',
-            '5개 산업 확장 가능',
-            '2주 Speed-to-Market',
-            '95% PoC 성공률',
-        ],
-    };
-}
-
-// Export
-export const freezeModule = {
-    freeze,
-    unfreeze,
-    setDemoMode,
-    canExecute,
-    apiGuard,
-    costGuard,
-    getStatus,
-    getUsageReport,
-    createArchiveManifest,
-};
