@@ -5,20 +5,20 @@ import { useMultiSourceSearch } from '@/hooks/useMultiSourceSearch';
 import { ScanningEffect } from '@/components/agent/ScanningEffect';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import { analyzeMood, applyTheme } from '@/lib/ux/themeAdapter';
-import { designTokens } from '@/styles/designTokens';
 import { SourceBadge } from '@/components/search/SourceBadges';
-import FutureValueInsight from '@/components/product/FutureValueInsight'; // Phase 20 AI Component
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import FashionBattle from '@/components/social/FashionBattle'; // Phase 37 Social Component
 
+type SearchSort = 'sim' | 'date' | 'asc' | 'dsc';
 
 interface InfiniteProductGridProps {
     query: string;
+    sort?: SearchSort;
 }
 
 import RecommendedSection from '@/components/product/RecommendedSection';
 
-export default function InfiniteProductGrid({ query }: InfiniteProductGridProps) {
+export default function InfiniteProductGrid({ query, sort = 'sim' }: InfiniteProductGridProps) {
     const {
         products,
         isLoading,
@@ -26,7 +26,7 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
         loadMore,
         isScanning,
         sources
-    } = useMultiSourceSearch(query);
+    } = useMultiSourceSearch(query, sort);
 
     const [sortedProducts, setSortedProducts] = React.useState<UnifiedProduct[]>([]);
     const [sortOption, setSortOption] = React.useState<'rel' | 'asc' | 'desc'>('rel');
@@ -52,6 +52,12 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
         }
         setSortedProducts(sorted);
     }, [products, sortOption]);
+
+    useEffect(() => {
+        if (sort === 'asc') setSortOption('asc');
+        else if (sort === 'dsc') setSortOption('desc');
+        else setSortOption('rel');
+    }, [sort]);
 
     // 1. Intersection Observer for Infinite Scroll
     useEffect(() => {

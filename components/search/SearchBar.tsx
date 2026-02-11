@@ -5,13 +5,19 @@ import VisualSearch from './VisualSearch';
 import { isFashionRelated } from '@/lib/core/domainGuard';
 
 interface SearchBarProps {
-    onSearch: (query: string, sort: string) => void;
-    isLoading: boolean;
+    onSearch: (query: string, sort: 'sim' | 'date' | 'asc' | 'dsc') => void;
+    isLoading?: boolean;
 }
 
 export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
     const [query, setQuery] = useState('');
-    const [sort, setSort] = useState('sim');
+    const [sort, setSort] = useState<'sim' | 'date' | 'asc' | 'dsc'>('sim');
+    const sortOptions: Array<{ value: 'sim' | 'date' | 'asc' | 'dsc'; label: string }> = [
+        { value: 'sim', label: '정확도순' },
+        { value: 'date', label: '최신순' },
+        { value: 'asc', label: '낮은 가격순' },
+        { value: 'dsc', label: '높은 가격순' },
+    ];
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
@@ -55,12 +61,7 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
 
                 <div className="flex items-center gap-2 flex-wrap">
                     <label className="text-sm font-medium text-gray-700">정렬:</label>
-                    {[
-                        { value: 'sim', label: '정확도순' },
-                        { value: 'date', label: '최신순' },
-                        { value: 'asc', label: '낮은 가격순' },
-                        { value: 'dsc', label: '높은 가격순' },
-                    ].map((option) => (
+                    {sortOptions.map((option) => (
                         <button
                             key={option.value}
                             type="button"

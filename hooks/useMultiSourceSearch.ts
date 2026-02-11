@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { UnifiedProduct } from '@/lib/api/aggregator'; // Type definition reuse
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
+
+type SearchSort = 'sim' | 'date' | 'asc' | 'dsc';
 
 interface UseMultiSourceSearchResult {
     products: UnifiedProduct[];
@@ -12,7 +14,7 @@ interface UseMultiSourceSearchResult {
     totalCount: number;
 }
 
-export function useMultiSourceSearch(query: string): UseMultiSourceSearchResult {
+export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): UseMultiSourceSearchResult {
     const [products, setProducts] = useState<UnifiedProduct[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
@@ -20,15 +22,24 @@ export function useMultiSourceSearch(query: string): UseMultiSourceSearchResult 
     const [sources, setSources] = useState<string[]>([]);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const controllerRef = useRef<AbortController | null>(null);
 
     const fetchData = useCallback(async (searchQuery: string, pageNum: number, isInitial: boolean) => {
         if (!searchQuery) return;
+
+        if (controllerRef.current) {
+            controllerRef.current.abort();
+        }
+        controllerRef.current = new AbortController();
 
         setIsLoading(true);
         if (isInitial) setIsScanning(true);
 
         try {
-            const res = await fetch(`/api/realtime-search?q=${encodeURIComponent(searchQuery)}&page=${pageNum}`);
+            const res = await fetch(
+                `/api/realtime-search?q=${encodeURIComponent(searchQuery)}&page=${pageNum}&sort=${sort}`,
+                { signal: controllerRef.current.signal }
+            );
             const data = await res.json();
 
             if (!res.ok) throw new Error(data.error || 'Server Error');
@@ -57,15 +68,17 @@ export function useMultiSourceSearch(query: string): UseMultiSourceSearchResult 
             }
 
         } catch (err: any) {
+            if (err?.name === 'AbortError') {
+                return;
+            }
             console.error('Real-time Search Failed:', err);
             setError(err.message);
         } finally {
             setIsLoading(false);
             if (isInitial) setIsScanning(false);
         }
-    }, []);
+    }, [sort]);
 
-    // Reset on query change
     useEffect(() => {
         if (!query) return;
 
@@ -76,7 +89,15 @@ export function useMultiSourceSearch(query: string): UseMultiSourceSearchResult 
         setSources([]);
 
         fetchData(query, 1, true);
-    }, [query, fetchData]);
+    }, [query, sort, fetchData]);
+
+    useEffect(() => {
+        return () => {
+            if (controllerRef.current) {
+                controllerRef.current.abort();
+            }
+        };
+    }, []);
 
     const loadMore = useCallback(() => {
         if (isLoading || !hasMore || !query) return;

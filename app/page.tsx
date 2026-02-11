@@ -2,42 +2,28 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useProductSearch } from '@/hooks/useProductSearch';
 import SearchBar from '@/components/search/SearchBar';
 import RecentSearches from '@/components/search/RecentSearches';
-import ProductList from '@/components/product/ProductList';
-import FilterBar from '@/components/product/FilterBar';
 import FavoritesPage from '@/components/favorites/FavoritesPage';
 import InfiniteProductGrid from '@/components/product/InfiniteProductGrid';
 import Navbar from '@/components/layout/Navbar';
 import { MoodEngine } from '@/lib/ai/moodEngine';
 import TrendDiscovery from '@/components/home/TrendDiscovery';
 
+type SearchSort = 'sim' | 'date' | 'asc' | 'dsc';
+
 export default function Home() {
   const router = useRouter();
-  // Legacy Hook for Analytics & History
-  const {
-    filteredProducts,
-    isLoading,
-    error,
-    hasSearched,
-    availableBrands,
-    handleSearch,
-    handleFilterChange
-  } = useProductSearch();
-
   const [currentView, setCurrentView] = useState<'search' | 'favorites'>('search');
 
-  // Phase 18: New Search State
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchSort, setSearchSort] = useState<SearchSort>('sim');
 
-  const onSearch = (query: string) => {
-    // Phase 33: Mood Engine Integration
-    // Expands abstract queries (e.g., "가을 데이트룩") into concrete keywords
+  const onSearch = (query: string, sort: SearchSort = 'sim') => {
     const expandedQuery = MoodEngine.analyze(query);
 
     setSearchQuery(expandedQuery);
-    handleSearch(expandedQuery, 'sim');
+    setSearchSort(sort);
   };
 
   const handleLogoClick = () => {
@@ -59,25 +45,12 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-[calc(100vh-300px)]">
         {currentView === 'search' ? (
           <div className="space-y-6">
-            {/* 검색바 */}
-            <SearchBar onSearch={onSearch} isLoading={isLoading} />
+            <SearchBar onSearch={onSearch} />
 
-            {/* 최근 검색어 */}
             {!searchQuery && <RecentSearches onSearch={onSearch} />}
 
-            {/* 필터바 (Phase 18에서는 잠시 숨김 or 호환성 확인 필요) */}
-            {/* 
-            {hasSearched && !isLoading && (
-              <FilterBar
-                onFilterChange={handleFilterChange}
-                availableBrands={availableBrands}
-              />
-            )}
-            */}
-
-            {/* 상품 리스트 (Phase 18 Grid) */}
             {searchQuery ? (
-              <InfiniteProductGrid query={searchQuery} />
+              <InfiniteProductGrid query={searchQuery} sort={searchSort} />
             ) : (
               <TrendDiscovery onSearch={onSearch} />
             )}

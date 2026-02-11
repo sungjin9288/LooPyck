@@ -2,8 +2,8 @@ import React from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Product } from '../../types/product';
-import { designTokens } from '../../styles/designTokens';
 import { MOTION_VARIANTS } from '../../lib/ux/motionPath';
+import { stripHtmlTags } from '@/lib/api';
 
 interface EditorialCardProps {
     product: Product;
@@ -15,6 +15,7 @@ export const EditorialCard: React.FC<EditorialCardProps> = ({ product, priority 
     // Price formatting
     const price = parseInt(product.lprice, 10);
     const formattedPrice = isNaN(price) ? product.lprice : price.toLocaleString();
+    const safeTitle = stripHtmlTags(product.title);
 
     return (
         <motion.div
@@ -52,16 +53,16 @@ export const EditorialCard: React.FC<EditorialCardProps> = ({ product, priority 
                         </span>
                     </div>
 
-                    {/* HTML tags cleanup for title if needed, utilizing a dangerousSetInnerHTML or a utility if title has tags */}
                     <motion.h3
                         className="text-xl font-bold text-white mb-2 leading-tight line-clamp-2"
                         style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
-                        dangerouslySetInnerHTML={{ __html: product.title }}
                         whileInView={{ opacity: 1, y: 0 }}
                         initial={{ opacity: 0, y: 10 }}
                         transition={{ duration: 0.5, delay: 0.1 }}
                         viewport={{ once: true }}
-                    />
+                    >
+                        {safeTitle}
+                    </motion.h3>
 
                     <motion.div
                         className="flex items-center gap-3 mb-4"

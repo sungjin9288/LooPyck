@@ -34,7 +34,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
 
     const linkAccount = async () => {
-        if (!auth.currentUser) return;
+        if (!auth || !auth.currentUser) return;
         const provider = new GoogleAuthProvider();
         try {
             await linkWithPopup(auth.currentUser, provider);
@@ -45,6 +45,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
+        if (!auth) {
+            setLoading(false);
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             setUser(currentUser);
             setLoading(false);

@@ -1,8 +1,9 @@
 import * as cheerio from 'cheerio';
-import { UnifiedProduct } from './aggregator'; // Type Reuse
-import { normalizeBrand, normalizeImageUrl, normalizePrice, normalizeTitle } from '@/lib/core/dataNormalizer';
+import { UnifiedProduct } from './types';
+import { normalizeBrand, normalizePrice, normalizeTitle } from '@/lib/core/dataNormalizer';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+type SearchSort = 'sim' | 'date' | 'asc' | 'dsc';
 
 // Re-export type for API usage
 export type { UnifiedProduct };
@@ -30,7 +31,11 @@ async function fetchHtml(url: string): Promise<string> {
 const proxyImage = (url: string) => `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=500&output=webp`;
 
 // 1. Naver API Wrapper
-async function fetchNaverRealtime(query: string, page: number = 1): Promise<UnifiedProduct[]> {
+async function fetchNaverRealtime(
+    query: string,
+    page: number = 1,
+    sort: SearchSort = 'sim'
+): Promise<UnifiedProduct[]> {
     const clientId = process.env.NAVER_CLIENT_ID;
     const clientSecret = process.env.NAVER_CLIENT_SECRET;
     const start = (page - 1) * 20 + 1;
@@ -40,13 +45,14 @@ async function fetchNaverRealtime(query: string, page: number = 1): Promise<Unif
     }
 
     try {
-        const url = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&display=20&start=${start}&sort=sim`;
+        const url = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&display=20&start=${start}&sort=${sort}`;
         const res = await fetch(url, {
             headers: {
                 'X-Naver-Client-Id': clientId,
                 'X-Naver-Client-Secret': clientSecret
             }
         });
+        if (!res.ok) return [];
         const data = await res.json();
         if (!data.items) return [];
 
@@ -89,7 +95,9 @@ async function scrapeMusinsa(query: string, page: number = 1): Promise<UnifiedPr
                 if (imgUrl.startsWith('//')) imgUrl = 'https:' + imgUrl;
 
                 products.push({
-                    id: `musinsa_${link?.split('/').pop() || Math.random()}`,
+                    id: link?.split('/').pop()
+                        ? `musinsa_${link.split('/').pop()}`
+                        : `musinsa_${normalizeTitle(String(title)).slice(0, 24)}_${products.length}`,
                     title: normalizeTitle(title as string),
                     price: normalizePrice(priceStr),
                     image: proxyImage(imgUrl), // Proxy applied
@@ -135,12 +143,15 @@ async function scrape29CM(query: string, page: number = 1): Promise<UnifiedProdu
 /**
  * Main Aggregator Function
  */
-export async function aggregateRealtimeSearch(query: string, page: number = 1): Promise<UnifiedProduct[]> {
+export async function aggregateRealtimeSearch(
+    query: string,
+    page: number = 1,
+    sort: SearchSort = 'sim'
+): Promise<UnifiedProduct[]> {
     const results = await Promise.allSettled([
-        fetchNaverRealtime(query, page),
+        fetchNaverRealtime(query, page, sort),
         scrapeMusinsa(query, page),
-        scrape29CM(query, page),
-        mockGlobalMalls(query, page) // Verified Mock Data
+        scrape29CM(query, page)
     ]);
 
     let aggregated: UnifiedProduct[] = [];
@@ -151,65 +162,28 @@ export async function aggregateRealtimeSearch(query: string, page: number = 1): 
         }
     });
 
-    return aggregated.sort((a, b) => a.price - b.price);
+    if (sort === 'asc') {
+        return aggregated.sort((a, b) => a.price - b.price);
+    }
+    if (sort === 'dsc') {
+        return aggregated.sort((a, b) => b.price - a.price);
+    }
+    return aggregated;
 }
 
-// 4. Mock Global Malls (Simulation for Diversity)
-async function mockGlobalMalls(query: string, page: number): Promise<UnifiedProduct[]> {
-    // Only return mocks on page 1 to avoid clutter
-    if (page > 1) return [];
-
-    const mocks: UnifiedProduct[] = [
-        {
-            id: `farfetch_${Math.random()}`,
-            title: `[Farfetch Global] ${query} Premium Collection`,
-            price: Math.floor(Math.random() * 500000) + 150000,
-            image: `https://loremflickr.com/400/500/fashion,luxury?random=${Math.random()}`,
-            link: 'https://www.farfetch.com',
-            mallName: 'Farfetch',
-            brand: 'Off-White',
-            source: 'FARFETCH' as const
-        },
-        {
-            id: `coupang_${Math.random()}`,
-            title: `[Rocket Delivery] ${query} Daily Essential`,
-            price: Math.floor(Math.random() * 50000) + 10000,
-            image: `https://loremflickr.com/400/500/clothing,casual?random=${Math.random()}`,
-            link: 'https://www.coupang.com',
-            mallName: 'Coupang',
-            brand: 'Base Alpha',
-            source: 'COUPANG' as const
-        },
-        {
-            id: `ssense_${Math.random()}`,
-            title: `[SSENSE Exclusive] ${query} Limited Edition`,
-            price: Math.floor(Math.random() * 800000) + 300000,
-            image: `https://loremflickr.com/400/500/model,streetwear?random=${Math.random()}`,
-            link: 'https://www.ssense.com',
-            mallName: 'SSENSE',
-            brand: 'Essentials',
-            source: 'SSENSE' as const
-        }
-    ];
-
-    return mocks;
-}
-// 5. Mock Product Fetcher by ID (Phase 40: SEO Support)
+// Product detail requires a verified upstream source.
 export async function getProductById(id: string): Promise<UnifiedProduct | null> {
-    // In a real scenario, this would fetch from Firestore or decode the ID to scrape.
-    // For now, we return a mock based on the ID to allow the page to render.
-
-    // Simulate lookup delay
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    return {
-        id: id,
-        title: `[Specimen] High-End Fashion Item ${id.substring(0, 5)}`,
-        price: 125000,
-        image: `https://loremflickr.com/500/700/fashion,outfit?random=${id}`,
-        link: 'https://www.musinsa.com',
-        mallName: 'Musinsa',
-        brand: 'LooPyck Selection',
-        source: 'MUSINSA' as const
-    };
+    if (process.env.NODE_ENV !== 'production') {
+        return {
+            id,
+            title: `[DEV ONLY] Product Preview ${id.substring(0, 8)}`,
+            price: 0,
+            image: 'https://shopping-phinf.pstatic.net/main_8514496/85144968253.8.jpg',
+            link: '#',
+            mallName: 'Development Placeholder',
+            brand: 'LooPyck',
+            source: 'NAVER'
+        };
+    }
+    return null;
 }

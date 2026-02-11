@@ -81,7 +81,7 @@ Zero-Cost AI Agent
 ## 🛠 기술 스택
 
 ```
-Frontend:   Next.js 16, React 19, TypeScript
+Frontend:   Next.js 16, React 18, TypeScript
 AI:         Gemini 2.5 Flash (Vision + Text)
 Auth:       Firebase Authentication
 Database:   Cloud Firestore
@@ -114,8 +114,14 @@ npm run dev
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GEMINI_API_KEY` | ✅ | [Google AI Studio](https://aistudio.google.com) |
-| `NEXT_PUBLIC_FIREBASE_CONFIG` | ✅ | Firebase 설정 |
+| `NAVER_CLIENT_ID` | ✅ | 네이버 쇼핑 검색 API Client ID |
+| `NAVER_CLIENT_SECRET` | ✅ | 네이버 쇼핑 검색 API Client Secret |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | ✅ | Firebase Web API Key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | ✅ | Firebase Auth Domain |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | ✅ | Firebase Project ID |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | ✅ | Firebase Storage Bucket |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | ✅ | Firebase Messaging Sender ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | ✅ | Firebase App ID |
 
 ---
 

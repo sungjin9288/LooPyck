@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { LoginModal, UserProfile } from '@/components/auth/LoginModal';
 import { auth } from '@/lib/auth/firebase';
-import { User } from 'firebase/auth';
+import { User, onAuthStateChanged } from 'firebase/auth';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import BrandTicker from '@/components/layout/BrandTicker'; // Phase 39 Ticker
 
@@ -24,7 +23,8 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
     };
 
     useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged((u) => setUser(u));
+        if (!auth) return;
+        const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
         return () => unsubscribe();
     }, []);
 

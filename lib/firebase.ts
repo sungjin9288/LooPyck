@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { Auth, getAuth } from 'firebase/auth';
+import { Firestore, getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,8 +13,8 @@ const firebaseConfig = {
 
 // Initialize Firebase (Singleton pattern) safely
 let app;
-let auth: any;
-let db: any;
+let auth: Auth | null = null;
+let db: Firestore | null = null;
 
 if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
     try {
@@ -24,11 +24,6 @@ if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
     } catch (error) {
         console.error("Firebase Initialization Error:", error);
     }
-} else {
-    // Return mocks or nulls during SSR or if config missing to prevent build crash
-    // We can cast them to avoid TS errors
-    auth = {} as any;
-    db = {} as any;
 }
 
 export { auth, db };

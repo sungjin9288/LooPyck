@@ -9,9 +9,12 @@ export async function GET(request: NextRequest) {
     // 쿼리 파라미터 추출
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('query');
-    const display = searchParams.get('display') || '20';
-    const start = searchParams.get('start') || '1';
-    const sort = searchParams.get('sort') || 'sim';
+    const displayRaw = Number.parseInt(searchParams.get('display') || '20', 10);
+    const startRaw = Number.parseInt(searchParams.get('start') || '1', 10);
+    const sortRaw = searchParams.get('sort') || 'sim';
+    const sort = ['sim', 'date', 'asc', 'dsc'].includes(sortRaw) ? sortRaw : 'sim';
+    const display = Number.isFinite(displayRaw) ? Math.min(Math.max(displayRaw, 1), 100) : 20;
+    const start = Number.isFinite(startRaw) ? Math.min(Math.max(startRaw, 1), 1000) : 1;
 
     // 검색어가 없으면 에러 반환
     if (!query) {

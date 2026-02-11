@@ -21,7 +21,7 @@ export function useCloudStorage() {
 
     // 1. Initial Load & Realtime Sync
     useEffect(() => {
-        if (!isAuthenticated || !userId) {
+        if (!db || !isAuthenticated || !userId) {
             setLoading(false);
             return;
         }
@@ -52,7 +52,7 @@ export function useCloudStorage() {
     // 2. Migration Logic (Local -> Cloud)
     useEffect(() => {
         const migrate = async () => {
-            if (!isAuthenticated || !userId || loading) return;
+            if (!db || !isAuthenticated || !userId || loading) return;
 
             const path = getCollectionPath();
             if (!path) return;
@@ -103,7 +103,7 @@ export function useCloudStorage() {
     };
 
     const addFavorite = async (product: Product) => {
-        if (!userId) return;
+        if (!db || !userId) return;
         const userPath = getCollectionPath();
         if (!userPath) return;
 
@@ -133,7 +133,7 @@ export function useCloudStorage() {
     };
 
     const removeFavorite = async (productId: string) => {
-        if (!userId) return;
+        if (!db || !userId) return;
         const userPath = getCollectionPath();
         if (!userPath) return;
 

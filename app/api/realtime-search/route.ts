@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { aggregateRealtimeSearch } from '@/lib/api/realtimeAggregator';
-import { CategoryGuard } from '@/lib/ai/categoryGuard';
+import { isFashionRelated } from '@/lib/core/domainGuard';
+
+type SearchSort = 'sim' | 'date' | 'asc' | 'dsc';
+const ALLOWED_SORTS: SearchSort[] = ['sim', 'date', 'asc', 'dsc'];
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q');
-    const page = parseInt(searchParams.get('page') || '1', 10);
+    const pageRaw = parseInt(searchParams.get('page') || '1', 10);
+    const sortRaw = searchParams.get('sort') || 'sim';
+    const sort: SearchSort = ALLOWED_SORTS.includes(sortRaw as SearchSort) ? (sortRaw as SearchSort) : 'sim';
+    const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
     if (!query) {
         return NextResponse.json({ error: 'Query parameter "q" is required' }, { status: 400 });
     }
 
-    // Category Guard (Security & Identity)
-    // Blocks non-fashion queries (e.g. "RTX 4090", "Gaming PC", "Soju")
-    const guardResult = CategoryGuard.check(query);
-    if (!guardResult.isAllowed) {
+    const guardResult = isFashionRelated(query);
+    if (!guardResult.allowed) {
         return NextResponse.json({
             error: guardResult.reason,
             blocked: true
@@ -22,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const products = await aggregateRealtimeSearch(query, page);
+        const products = await aggregateRealtimeSearch(query, page, sort);
 
         // Cache Control: Public, s-maxage=60 (CDN cache), stale-while-revalidate=30
         return NextResponse.json({ products }, {
