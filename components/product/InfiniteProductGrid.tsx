@@ -16,6 +16,8 @@ interface InfiniteProductGridProps {
     query: string;
 }
 
+import RecommendedSection from '@/components/product/RecommendedSection';
+
 export default function InfiniteProductGrid({ query }: InfiniteProductGridProps) {
     const {
         products,
@@ -77,6 +79,11 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
         }
     }, [query]);
 
+    // Split for Recommended Section
+    // logic: take top 3 for recommendation, rest for grid
+    const recommendedProducts = sortedProducts.slice(0, 3);
+    const gridProducts = sortedProducts.slice(3);
+
     if (!query) return null;
 
     return (
@@ -122,7 +129,13 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
                 </div>
             </div>
 
-
+            {/* Recommended Section */}
+            {recommendedProducts.length > 0 && (
+                <RecommendedSection
+                    products={recommendedProducts}
+                    onProductClick={setSelectedProduct}
+                />
+            )}
 
             {/* Bento Grid Layout (CSS Grid) */}
             <motion.div
@@ -136,7 +149,7 @@ export default function InfiniteProductGrid({ query }: InfiniteProductGridProps)
                     <FashionBattle />
                 </div>
 
-                {sortedProducts.map((product, index) => (
+                {gridProducts.map((product, index) => (
                     <motion.div
                         key={product.id}
                         className={`relative group overflow-hidden rounded-xl bg-gray-50 ${getGridClass(index)}`}
