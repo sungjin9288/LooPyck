@@ -23,7 +23,11 @@ const config: Config = {
       },
       transitionDuration: {
         '300': '0.3s',
-      }
+      },
+      fontFamily: {
+        serif: ['var(--font-playfair)', 'serif'],
+        sans: ['var(--font-dm-sans)', 'sans-serif'],
+      },
     },
   },
   plugins: [],
