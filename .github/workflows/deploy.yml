@@ -1,4 +1,4 @@
-name: Deploy with Load Test
+name: Build & Test (Ready for Vercel)
 
 on:
   push:
@@ -79,75 +79,3 @@ jobs:
           name: load-test-results
           path: tests/load/results_*.json
           retention-days: 7
-
-  # Lighthouse 성능 테스트
-  lighthouse:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-output
-          path: .next/
-
-      - name: Start server & Run Lighthouse
-        run: |
-          npm start &
-          sleep 10
-          npx lighthouse http://localhost:3000 --output json --output-path lighthouse-report.json --preset desktop --chrome-flags="--headless --no-sandbox"
-          
-          # 점수 추출
-          PERF_SCORE=$(jq '.categories.performance.score * 100 | floor' lighthouse-report.json)
-          SEO_SCORE=$(jq '.categories.seo.score * 100 | floor' lighthouse-report.json)
-          A11Y_SCORE=$(jq '.categories.accessibility.score * 100 | floor' lighthouse-report.json)
-          
-          echo "Performance: ${PERF_SCORE}, SEO: ${SEO_SCORE}, Accessibility: ${A11Y_SCORE}"
-          
-          if [ "$PERF_SCORE" -lt 90 ]; then
-            echo "⚠️ Performance score below 90: ${PERF_SCORE}"
-          fi
-
-      - name: Upload Lighthouse report
-        uses: actions/upload-artifact@v4
-        with:
-          name: lighthouse-report
-          path: lighthouse-report.json
-          retention-days: 7
-
-  # Vercel 배포 (main 브랜치만)
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [build, load-test]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-
-      - name: Deployment Summary
-        run: |
-          echo "## ✅ Deployment Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch**: main" >> $GITHUB_STEP_SUMMARY
-          echo "- **Load Test**: Passed" >> $GITHUB_STEP_SUMMARY
-          echo "- **Environment**: Production" >> $GITHUB_STEP_SUMMARY
