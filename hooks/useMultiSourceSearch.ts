@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
-
-type SearchSort = 'sim' | 'date' | 'asc' | 'dsc';
+import { SearchSort } from '@/types/searchSort';
 
 interface UseMultiSourceSearchResult {
     products: UnifiedProduct[];
@@ -48,8 +47,6 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
 
             if (isInitial) {
                 setProducts(newProducts);
-                // Optional scanning effect delay
-                await new Promise(r => setTimeout(r, 1000));
             } else {
                 setProducts(prev => {
                     const existingIds = new Set(prev.map(p => p.id));
@@ -67,12 +64,12 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
                 setHasMore(false);
             }
 
-        } catch (err: any) {
-            if (err?.name === 'AbortError') {
+        } catch (err: unknown) {
+            if (err instanceof DOMException && err.name === 'AbortError') {
                 return;
             }
             console.error('Real-time Search Failed:', err);
-            setError(err.message);
+            setError(err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setIsLoading(false);
             if (isInitial) setIsScanning(false);

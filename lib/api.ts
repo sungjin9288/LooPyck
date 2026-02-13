@@ -1,4 +1,5 @@
 import { NaverShoppingResponse, SearchParams } from '@/types/product';
+import { normalizeTitle } from '@/lib/core/dataNormalizer';
 
 /**
  * 네이버 쇼핑 API를 호출하여 상품 검색
@@ -48,10 +49,10 @@ export function formatPrice(price: string | number): string {
 }
 
 /**
- * HTML 태그 제거
+ * HTML 태그 제거 (dataNormalizer.normalizeTitle로 위임)
  * @param text HTML 태그가 포함된 텍스트
  * @returns HTML 태그가 제거된 텍스트
  */
 export function stripHtmlTags(text: string): string {
-  return text.replace(/<[^>]*>/g, '');
+  return normalizeTitle(text);
 }

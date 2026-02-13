@@ -7,9 +7,8 @@ import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import { analyzeMood, applyTheme } from '@/lib/ux/themeAdapter';
 import { SourceBadge } from '@/components/search/SourceBadges';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
-import FashionBattle from '@/components/social/FashionBattle'; // Phase 37 Social Component
-
-type SearchSort = 'sim' | 'date' | 'asc' | 'dsc';
+import FashionBattle from '@/components/social/FashionBattle';
+import { SearchSort } from '@/types/searchSort';
 
 interface InfiniteProductGridProps {
     query: string;
@@ -214,8 +213,3 @@ export default function InfiniteProductGrid({ query, sort = 'sim' }: InfinitePro
         </div>
     );
 }
-// Removed ProductCard component as it is now inline for Bento Grid flexibility
-
-
-
-// Inline styles removed in favor of Tailwind classes for cleaner "Radical" design code.

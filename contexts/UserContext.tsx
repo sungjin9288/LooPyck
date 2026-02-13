@@ -4,6 +4,12 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { signInAnonymously, onAuthStateChanged, User, GoogleAuthProvider, linkWithPopup } from 'firebase/auth';
 
+declare global {
+    interface Window {
+        __app_id?: string;
+    }
+}
+
 interface UserContextType {
     user: User | null;
     userId: string | null;
@@ -27,8 +33,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     // Safe resolution of global __app_id
     const [appId] = useState(() => {
-        if (typeof window !== 'undefined' && (window as any).__app_id) {
-            return (window as any).__app_id;
+        if (typeof window !== 'undefined' && window.__app_id) {
+            return window.__app_id;
         }
         return 'default-app-id';
     });

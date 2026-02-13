@@ -1,12 +1,34 @@
 import * as cheerio from 'cheerio';
 import { UnifiedProduct } from './types';
 import { normalizeBrand, normalizePrice, normalizeTitle } from '@/lib/core/dataNormalizer';
+import { SearchSort } from '@/types/searchSort';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-type SearchSort = 'sim' | 'date' | 'asc' | 'dsc';
 
 // Re-export type for API usage
 export type { UnifiedProduct };
+
+// Naver Shopping API response item shape
+interface NaverShopItem {
+    productId: string;
+    title: string;
+    lprice: string;
+    image: string;
+    link: string;
+    mallName: string;
+    brand: string;
+    category1: string;
+}
+
+// 29CM API response item shape
+interface TwentyNineCMItem {
+    itemNo: string;
+    itemName: string;
+    salePrice: number;
+    consumerPrice: number;
+    imageUrl: string;
+    brandName: string;
+}
 
 // Helper Fetcher with Validation
 async function fetchHtml(url: string): Promise<string> {
@@ -56,7 +78,7 @@ async function fetchNaverRealtime(
         const data = await res.json();
         if (!data.items) return [];
 
-        return data.items.map((item: any) => ({
+        return data.items.map((item: NaverShopItem) => ({
             id: `naver_${item.productId}`,
             title: normalizeTitle(item.title).replace(/<[^>]*>?/gm, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
             price: parseInt(item.lprice, 10),
@@ -125,7 +147,7 @@ async function scrape29CM(query: string, page: number = 1): Promise<UnifiedProdu
 
         if (!data.data || !data.data.products) return [];
 
-        return data.data.products.map((item: any) => ({
+        return data.data.products.map((item: TwentyNineCMItem) => ({
             id: `29cm_${item.itemNo}`,
             title: normalizeTitle(item.itemName),
             price: item.salePrice || item.consumerPrice,
@@ -136,6 +158,7 @@ async function scrape29CM(query: string, page: number = 1): Promise<UnifiedProdu
             source: '29CM' as const
         }));
     } catch (e) {
+        console.error('29CM API Error:', e);
         return [];
     }
 }
@@ -171,8 +194,3 @@ export async function aggregateRealtimeSearch(
     return aggregated;
 }
 
-// Product detail requires a verified upstream source.
-export async function getProductById(id: string): Promise<UnifiedProduct | null> {
-    void id;
-    return null;
-}

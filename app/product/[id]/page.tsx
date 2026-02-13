@@ -1,6 +1,5 @@
 import type { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getProductById } from '@/lib/api/realtimeAggregator';
 import { decodeProductSnapshot } from '@/lib/api/productSnapshot';
 import type { UnifiedProduct } from '@/lib/api/types';
 
@@ -16,9 +15,6 @@ function extractSnapshot(searchParams: Props['searchParams']): string | null {
 }
 
 async function resolveProduct(params: Props['params'], searchParams: Props['searchParams']): Promise<UnifiedProduct | null> {
-    const fromLookup = await getProductById(params.id);
-    if (fromLookup) return fromLookup;
-
     const snapshotRaw = extractSnapshot(searchParams);
     if (!snapshotRaw) return null;
 

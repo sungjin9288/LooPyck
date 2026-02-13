@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { aggregateRealtimeSearch } from '@/lib/api/realtimeAggregator';
 import { isFashionRelated } from '@/lib/core/domainGuard';
-
-type SearchSort = 'sim' | 'date' | 'asc' | 'dsc';
-const ALLOWED_SORTS: SearchSort[] = ['sim', 'date', 'asc', 'dsc'];
+import { SearchSort, ALLOWED_SORTS } from '@/types/searchSort';
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
