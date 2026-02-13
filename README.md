@@ -122,6 +122,7 @@ npm run dev
 | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | ✅ | Firebase Storage Bucket |
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | ✅ | Firebase Messaging Sender ID |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | ✅ | Firebase App ID |
+| `NEXT_PUBLIC_ADMIN_UIDS` | 선택 | Admin 대시보드 접근 UID 목록(쉼표 구분) |
 
 ---
 

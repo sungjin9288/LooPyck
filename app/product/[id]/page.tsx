@@ -1,18 +1,42 @@
 import type { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getProductById } from '@/lib/api/realtimeAggregator';
+import { decodeProductSnapshot } from '@/lib/api/productSnapshot';
+import type { UnifiedProduct } from '@/lib/api/types';
 
 type Props = {
     params: { id: string };
     searchParams: { [key: string]: string | string[] | undefined };
 };
 
+function extractSnapshot(searchParams: Props['searchParams']): string | null {
+    const snapshot = searchParams?.snapshot;
+    if (Array.isArray(snapshot)) return snapshot[0] || null;
+    return snapshot || null;
+}
+
+async function resolveProduct(params: Props['params'], searchParams: Props['searchParams']): Promise<UnifiedProduct | null> {
+    const fromLookup = await getProductById(params.id);
+    if (fromLookup) return fromLookup;
+
+    const snapshotRaw = extractSnapshot(searchParams);
+    if (!snapshotRaw) return null;
+
+    const fromSnapshot = decodeProductSnapshot(snapshotRaw);
+    if (!fromSnapshot) return null;
+
+    if (fromSnapshot.id !== params.id) {
+        return null;
+    }
+
+    return fromSnapshot;
+}
+
 export async function generateMetadata(
     { params, searchParams }: Props,
     parent: ResolvingMetadata
 ): Promise<Metadata> {
-    const id = params.id;
-    const product = await getProductById(id);
+    const product = await resolveProduct(params, searchParams);
 
     if (!product) {
         return {
@@ -31,8 +55,8 @@ export async function generateMetadata(
     };
 }
 
-export default async function ProductPage({ params }: Props) {
-    const product = await getProductById(params.id);
+export default async function ProductPage({ params, searchParams }: Props) {
+    const product = await resolveProduct(params, searchParams);
 
     if (!product) {
         notFound();

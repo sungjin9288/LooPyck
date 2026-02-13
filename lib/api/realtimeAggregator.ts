@@ -173,17 +173,6 @@ export async function aggregateRealtimeSearch(
 
 // Product detail requires a verified upstream source.
 export async function getProductById(id: string): Promise<UnifiedProduct | null> {
-    if (process.env.NODE_ENV !== 'production') {
-        return {
-            id,
-            title: `[DEV ONLY] Product Preview ${id.substring(0, 8)}`,
-            price: 0,
-            image: 'https://shopping-phinf.pstatic.net/main_8514496/85144968253.8.jpg',
-            link: '#',
-            mallName: 'Development Placeholder',
-            brand: 'LooPyck',
-            source: 'NAVER'
-        };
-    }
+    void id;
     return null;
 }

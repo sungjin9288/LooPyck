@@ -12,7 +12,10 @@ import { concurrencyManager, QueueStats } from '@/lib/agent/concurrency';
 import { usageTracker } from '@/lib/ai/usageTracker';
 
 // Admin UID 목록 (환경변수로 관리 권장)
-const ADMIN_UIDS = ['admin_uid_here']; // TODO: 실제 UID로 교체
+const ADMIN_UIDS = (process.env.NEXT_PUBLIC_ADMIN_UIDS || '')
+    .split(',')
+    .map((uid) => uid.trim())
+    .filter(Boolean);
 
 // 대시보드 데이터 타입
 interface DashboardData {

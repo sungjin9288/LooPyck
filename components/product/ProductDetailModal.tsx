@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
+import { buildProductDetailHref } from '@/lib/api/productSnapshot';
 import FutureValueInsight from './FutureValueInsight';
 import ProductReviews from './ProductReviews'; // Phase 38 Component
 import RichShare from '@/components/shared/RichShare'; // Phase 39 Component
@@ -69,6 +70,13 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
                                 className="block w-full py-4 bg-black text-white text-center font-bold rounded-xl hover:bg-gray-800 transition-all mb-4"
                             >
                                 Buy Now
+                            </a>
+
+                            <a
+                                href={buildProductDetailHref(product)}
+                                className="block w-full py-3 border border-gray-300 text-gray-800 text-center font-semibold rounded-xl hover:bg-gray-50 transition-all mb-4"
+                            >
+                                View Detail
                             </a>
 
                             {/* Phase 39: Rich Share Stock Card */}
