@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  NODE_VERSION: '20.x'
+  NODE_VERSION: '22.x'
   LOAD_TEST_THRESHOLD: 90
 
 jobs:
@@ -61,7 +61,7 @@ jobs:
           cat loadtest_output.txt
           
           # 성공률 추출
-          SUCCESS_RATE=$(grep -oP 'Success Rate:\s+\K\d+' loadtest_output.txt || echo "0")
+          SUCCESS_RATE=$(grep -o 'Success Rate: *[0-9]*' loadtest_output.txt | grep -o '[0-9]*' || echo "0")
           echo "success_rate=$SUCCESS_RATE" >> $GITHUB_OUTPUT
           
           # 임계값 확인
