@@ -1,46 +1,67 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import * as mobilenet from '@tensorflow-models/mobilenet';
-import '@tensorflow/tfjs-backend-webgl'; // Backend for tfjs
+
+interface MobileNetModel {
+    classify: (img: HTMLImageElement) => Promise<Array<{ className: string }>>;
+}
 
 export default function VisualSearch({ onSearch }: { onSearch: (term: string) => void }) {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [model, setModel] = useState<mobilenet.MobileNet | null>(null);
+    const [model, setModel] = useState<MobileNetModel | null>(null);
+    const [isModelLoading, setIsModelLoading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const modelRef = useRef<MobileNetModel | null>(null);
+    const modelLoadPromiseRef = useRef<Promise<MobileNetModel | null> | null>(null);
 
-    // Load AI Model on Mount
-    useEffect(() => {
-        const loadModel = async () => {
+    const loadModelIfNeeded = async (): Promise<MobileNetModel | null> => {
+        if (modelRef.current) return modelRef.current;
+        if (modelLoadPromiseRef.current) return modelLoadPromiseRef.current;
+
+        const loadPromise = (async () => {
+            setIsModelLoading(true);
             try {
-                console.log("Loading MobileNet model...");
+                await import('@tensorflow/tfjs-backend-webgl');
+                const mobilenet = await import('@tensorflow-models/mobilenet');
                 const loadedModel = await mobilenet.load();
+                modelRef.current = loadedModel;
                 setModel(loadedModel);
-                console.log("MobileNet model loaded.");
+                return loadedModel;
             } catch (error) {
-                console.error("Failed to load AI model:", error);
+                console.error('Failed to load AI model:', error);
+                return null;
+            } finally {
+                setIsModelLoading(false);
+                modelLoadPromiseRef.current = null;
             }
-        };
-        loadModel();
-    }, []);
+        })();
+
+        modelLoadPromiseRef.current = loadPromise;
+        return loadPromise;
+    };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !model) {
-            if (!model) alert("AI 모델을 로딩 중입니다. 잠시만 기다려 주세요.");
+        if (!file) return;
+
+        const activeModel = modelRef.current || model;
+        if (!activeModel) {
+            alert('AI 모델이 아직 준비되지 않았습니다. 다시 시도해주세요.');
             return;
         }
 
         setIsAnalyzing(true);
+        let imageUrl: string | null = null;
 
         try {
             // 1. Create HTMLImageElement from file
             const img = document.createElement('img');
-            img.src = URL.createObjectURL(file);
+            imageUrl = URL.createObjectURL(file);
+            img.src = imageUrl;
             await new Promise((resolve) => (img.onload = resolve));
 
             // 2. Classify Image
-            const predictions = await model.classify(img);
+            const predictions = await activeModel.classify(img);
             console.log("AI Predictions:", predictions);
 
             if (predictions.length > 0) {
@@ -57,9 +78,20 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
             console.error("Visual Search Failed", error);
             alert("이미지 분석에 실패했습니다.");
         } finally {
+            if (imageUrl) {
+                URL.revokeObjectURL(imageUrl);
+            }
             setIsAnalyzing(false);
         }
     };
+
+    useEffect(() => {
+        return () => {
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        };
+    }, []);
 
     return (
         <div className="relative">
@@ -72,11 +104,18 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
             />
             <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={async () => {
+                    const loaded = await loadModelIfNeeded();
+                    if (!loaded) {
+                        alert('AI 모델 로딩에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                        return;
+                    }
+                    fileInputRef.current?.click();
+                }}
                 className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${isAnalyzing ? 'animate-pulse bg-blue-50' : ''}`}
-                title={model ? "Search by Image (AI Ready)" : "Loading AI..."}
+                title={model ? 'Search by Image (AI Ready)' : 'Load AI Model'}
             >
-                {isAnalyzing ? (
+                {isAnalyzing || isModelLoading ? (
                     <span className="text-xl animate-spin">⏳</span>
                 ) : (
                     <div className="relative">

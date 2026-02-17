@@ -27,20 +27,6 @@ import PWAInstallPrompt from "@/components/mobile/PWAInstallPrompt";
 import StyleChat from "@/components/ai/StyleChat";
 import NotificationSystem from "@/components/shared/NotificationSystem";
 
-import { Playfair_Display, DM_Sans } from "next/font/google";
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  display: "swap",
-});
-
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-dm-sans",
-  display: "swap",
-});
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -48,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body className={`${playfair.variable} ${dmSans.variable} antialiased`} suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
         <UserProvider>
           <LanguageProvider>
             {children}

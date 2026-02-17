@@ -10,6 +10,7 @@ import Navbar from '@/components/layout/Navbar';
 import { MoodEngine } from '@/lib/ai/moodEngine';
 import TrendDiscovery from '@/components/home/TrendDiscovery';
 import { SearchSort } from '@/types/searchSort';
+import { addRecentSearch } from '@/utils/recentSearches';
 
 export default function Home() {
   const router = useRouter();
@@ -19,7 +20,11 @@ export default function Home() {
   const [searchSort, setSearchSort] = useState<SearchSort>('sim');
 
   const onSearch = (query: string, sort: SearchSort = 'sim') => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+
     const expandedQuery = MoodEngine.analyze(query);
+    addRecentSearch(trimmed);
 
     setSearchQuery(expandedQuery);
     setSearchSort(sort);

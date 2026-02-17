@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useUser } from '@/contexts/UserContext';
-import { Product } from '@/types/product';
 
 interface SocialCounterProps {
     productId: string;
@@ -16,7 +15,7 @@ export default function SocialCounter({ productId }: SocialCounterProps) {
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {
-        if (!appId) return;
+        if (!db || !appId) return;
 
         const path = `artifacts/${appId}/products/${productId}`;
         const docRef = doc(db, path);

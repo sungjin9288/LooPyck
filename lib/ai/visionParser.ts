@@ -56,7 +56,7 @@ export async function parseProductImage(
     }
 
     // API 키 확인
-    const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
         console.error('[VisionParser] GEMINI_API_KEY not configured');
         return null;

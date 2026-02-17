@@ -39,7 +39,8 @@ async function fetchHtml(url: string): Promise<string> {
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                 'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
             },
-            next: { revalidate: 60 } // Server-side caching 60s
+            next: { revalidate: 60 }, // Server-side caching 60s
+            signal: AbortSignal.timeout(8000)
         });
         if (!response.ok) throw new Error(`Status ${response.status}`);
         return await response.text();
@@ -72,7 +73,8 @@ async function fetchNaverRealtime(
             headers: {
                 'X-Naver-Client-Id': clientId,
                 'X-Naver-Client-Secret': clientSecret
-            }
+            },
+            signal: AbortSignal.timeout(8000),
         });
         if (!res.ok) return [];
         const data = await res.json();
@@ -142,7 +144,9 @@ async function scrape29CM(query: string, page: number = 1): Promise<UnifiedProdu
     const offset = (page - 1) * 10;
     try {
         const url = `https://search-api.29cm.co.kr/api/v4/products/search?keyword=${encodeURIComponent(query)}&limit=10&offset=${offset}`;
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            signal: AbortSignal.timeout(8000),
+        });
         const data = await res.json();
 
         if (!data.data || !data.data.products) return [];
@@ -178,10 +182,12 @@ export async function aggregateRealtimeSearch(
     ]);
 
     let aggregated: UnifiedProduct[] = [];
+    const sourceBuckets: UnifiedProduct[][] = [];
 
     results.forEach(result => {
         if (result.status === 'fulfilled') {
             aggregated = [...aggregated, ...result.value];
+            sourceBuckets.push(result.value);
         }
     });
 
@@ -191,6 +197,22 @@ export async function aggregateRealtimeSearch(
     if (sort === 'dsc') {
         return aggregated.sort((a, b) => b.price - a.price);
     }
+    if (sort === 'date') {
+        return interleaveBySourceRank(sourceBuckets);
+    }
     return aggregated;
 }
 
+function interleaveBySourceRank(sourceBuckets: UnifiedProduct[][]): UnifiedProduct[] {
+    const maxLen = sourceBuckets.reduce((max, bucket) => Math.max(max, bucket.length), 0);
+    const merged: UnifiedProduct[] = [];
+
+    for (let i = 0; i < maxLen; i += 1) {
+        for (const bucket of sourceBuckets) {
+            const item = bucket[i];
+            if (item) merged.push(item);
+        }
+    }
+
+    return merged;
+}

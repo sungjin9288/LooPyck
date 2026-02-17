@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocs, writeBatch, runTransaction } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, getDocs, writeBatch, runTransaction } from 'firebase/firestore';
 import { Product } from '@/types/product';
 
 const STORAGE_KEY = 'fashion-favorites';
 
 export function useCloudStorage() {
-    const { user, userId, appId, isAuthenticated } = useUser();
+    const { userId, appId, isAuthenticated } = useUser();
     const [favorites, setFavorites] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -114,17 +114,20 @@ export function useCloudStorage() {
                 // READ FIRST: Global Watch Count
                 const globalDocRef = doc(db, globalPath);
                 const globalDoc = await transaction.get(globalDocRef);
-
-                // THEN WRITE: User Favorite
                 const userDocRef = doc(db, userPath, product.productId);
+                const userDoc = await transaction.get(userDocRef);
+
+                // THEN WRITE: User Favorite (upsert)
                 transaction.set(userDocRef, product);
 
-                // THEN WRITE: Increment Global Watch Count
-                if (!globalDoc.exists()) {
-                    transaction.set(globalDocRef, { watchCount: 1 });
-                } else {
-                    const newCount = (globalDoc.data().watchCount || 0) + 1;
-                    transaction.update(globalDocRef, { watchCount: newCount });
+                // Increment only when user favorites this product for the first time.
+                if (!userDoc.exists()) {
+                    if (!globalDoc.exists()) {
+                        transaction.set(globalDocRef, { watchCount: 1 });
+                    } else {
+                        const newCount = (globalDoc.data().watchCount || 0) + 1;
+                        transaction.update(globalDocRef, { watchCount: newCount });
+                    }
                 }
             });
         } catch (e) {
@@ -144,9 +147,14 @@ export function useCloudStorage() {
                 // READ FIRST
                 const globalDocRef = doc(db, globalPath);
                 const globalDoc = await transaction.get(globalDocRef);
+                const userDocRef = doc(db, userPath, productId);
+                const userDoc = await transaction.get(userDocRef);
+
+                if (!userDoc.exists()) {
+                    return;
+                }
 
                 // THEN WRITE
-                const userDocRef = doc(db, userPath, productId);
                 transaction.delete(userDocRef);
 
                 // THEN WRITE

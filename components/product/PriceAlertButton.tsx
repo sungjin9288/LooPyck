@@ -5,15 +5,6 @@ import { Product } from '@/types/product';
 import { useCloudStorage } from '@/hooks/useCloudStorage';
 import { parsePrice } from '@/lib/api';
 
-interface PriceAlert {
-    productId: string;
-    productTitle: string;
-    productImage: string;
-    targetPrice: number;
-    currentPrice: number;
-    createdAt: string;
-}
-
 interface PriceAlertButtonProps {
     product: Product;
 }
@@ -36,7 +27,11 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
         // Prevent interaction if loading (though maybe disable button instead)
         if (loading) return;
 
-        const target = parseInt(targetPrice);
+        const target = parseInt(targetPrice, 10);
+        if (!Number.isFinite(target) || target <= 0) {
+            alert('올바른 목표 가격을 입력해주세요.');
+            return;
+        }
 
         // Update favorites in cloud
         // Construct updated product object - merging with existing or raw product
@@ -83,6 +78,7 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                 onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    setTargetPrice(existingTargetPrice ? String(existingTargetPrice) : '');
                     setShowModal(true);
                 }}
                 className={`absolute top-16 right-3 w-10 h-10 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all flex items-center justify-center z-10 hover:scale-110 active:scale-95 ${hasAlert
@@ -149,7 +145,7 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                         ) : (
                             <>
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-                                    가격 하락 알림 설정
+                                    {hasAlert ? '가격 알림 수정' : '가격 하락 알림 설정'}
                                 </h3>
                                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border border-gray-100 dark:border-gray-600">
                                     현재 가격: <span className="font-bold text-accent">{currentPrice.toLocaleString()}원</span>
@@ -176,7 +172,7 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                                             type="submit"
                                             className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-blue-600 transition-colors font-medium shadow-md hover:shadow-lg"
                                         >
-                                            알림 설정
+                                            {hasAlert ? '알림 수정' : '알림 설정'}
                                         </button>
                                         <button
                                             type="button"
