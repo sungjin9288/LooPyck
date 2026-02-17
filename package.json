@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit --incremental false",
-    "lint": "npm run typecheck"
+    "lint": "npm run typecheck",
+    "test:trends": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/monthlyTrendAnalyzer.test.mjs"
   },
   "dependencies": {
     "@tensorflow-models/mobilenet": "^2.1.1",
