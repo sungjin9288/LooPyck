@@ -62,7 +62,22 @@ Zero-Cost AI Agent
 | 🤖 **Self-Healing Agent** | 팝업, 지연로딩 등 자동 복구 |
 | 💬 **FashionBot** | 자연어 스타일 상담 ("올드머니룩 추천해줘") |
 | 📊 **RAG Trends** | 팬톤 컬러, 트렌드 기반 추천 |
+| 📅 **Monthly Trend Discovery** | KST 월초 기준으로 `Trending Now` 키워드/카드 자동 갱신 |
 | 📈 **Analytics** | Funnel 추적, ROI 계산 |
+
+### ✨ 최근 개발 업데이트 (2026.02)
+
+- `Trending Now` 리팩토링: 중복/겹침 렌더링 제거, 월간 스냅샷 기반 표시
+- 월간 트렌드 분석기 추가: `lib/trends/monthlyTrendAnalyzer.ts`
+- 월초 자동 갱신 스케줄 적용: `Asia/Seoul` 기준 다음 달 00:00에 정확히 업데이트
+- 검색 API 하드닝:
+  - IP 기반 rate limit
+  - 쿼리 길이/페이지 입력 검증
+  - 외부 쇼핑 API timeout 보호
+- 정렬 개선: `sort=date`가 멀티소스 통합 최신순으로 동작
+- 데이터 정합성 개선: 가격 알림 수정 시 `watchCount` 중복 증가 버그 수정
+- 성능 개선: Visual Search 모델(MobileNet) on-demand lazy loading
+- 검증 강화: 월간 트렌드 분석기 테스트(`npm run test:trends`) 추가
 
 ### 지원 쇼핑몰
 
@@ -92,6 +107,74 @@ CI/CD:      GitHub Actions
 
 ---
 
+## 🧭 Project Structure
+
+```text
+LooPyck/
+├─ app/                         # Next.js App Router
+│  ├─ api/
+│  │  ├─ search/route.ts
+│  │  └─ realtime-search/route.ts
+│  ├─ product/[id]/page.tsx
+│  ├─ layout.tsx
+│  ├─ page.tsx
+│  ├─ globals.css
+│  ├─ manifest.ts
+│  ├─ robots.ts
+│  └─ sitemap.ts
+│
+├─ components/                  # UI components
+│  ├─ home/TrendDiscovery.tsx
+│  ├─ search/                   # SearchBar, VisualSearch, RecentSearches
+│  ├─ product/                  # ProductCard, Grid, Detail, Alerts
+│  ├─ layout/                   # Navbar, BrandTicker, MobileNavigation
+│  ├─ shared/                   # Marquee, NotificationSystem, ErrorBoundary
+│  ├─ auth/                     # LoginModal, StyleDashboard
+│  ├─ ai/                       # StyleChat
+│  ├─ favorites/
+│  ├─ social/
+│  ├─ mobile/
+│  └─ admin/
+│
+├─ contexts/
+│  └─ UserContext.tsx
+│
+├─ hooks/
+│  ├─ useCloudStorage.ts
+│  └─ useMultiSourceSearch.ts
+│
+├─ lib/                         # Domain / service logic
+│  ├─ api/                      # realtimeAggregator, productSnapshot
+│  ├─ ai/                       # visionParser, geminiProvider, ragAdvisor
+│  ├─ trends/                   # monthlyTrendAnalyzer.ts
+│  ├─ security/                 # requestGuards, finalAudit
+│  ├─ core/                     # domainGuard, dataNormalizer, observability
+│  ├─ analytics/
+│  ├─ agent/
+│  ├─ auth/
+│  ├─ i18n/
+│  ├─ seo/
+│  ├─ ux/
+│  └─ firebase.ts
+│
+├─ styles/                      # tokens, theme, animation
+├─ types/                       # shared TS types
+├─ utils/                       # recentSearches, priceAnalysis
+├─ tests/                       # monthly trend + load tests
+├─ scripts/                     # deploy/test scripts
+├─ docs/                        # architecture/strategy docs
+├─ public/                      # static assets
+│
+├─ package.json
+├─ next.config.js
+├─ tailwind.config.ts
+├─ tsconfig.json
+├─ firestore.rules
+└─ Dockerfile
+```
+
+---
+
 ## 📦 Quick Start
 
 ```bash
@@ -108,6 +191,11 @@ cp .env.local.example .env.local
 
 # 4. Run
 npm run dev
+
+# 5. Quality Checks (optional but recommended)
+npm run lint
+npm run test:trends
+npm run build
 ```
 
 ### 환경 변수
@@ -122,6 +210,7 @@ npm run dev
 | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | ✅ | Firebase Storage Bucket |
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | ✅ | Firebase Messaging Sender ID |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | ✅ | Firebase App ID |
+| `GEMINI_API_KEY` | 선택 | AI 분석 기능용 Gemini API Key (서버 전용 사용) |
 | `NEXT_PUBLIC_ADMIN_UIDS` | 선택 | Admin 대시보드 접근 UID 목록(쉼표 구분) |
 
 ---
@@ -165,8 +254,10 @@ npm run dev
 
 - Firebase Auth (Anonymous + Email)
 - Ownership-based Firestore Rules
-- Rate Limiting (10 RPM, 500 RPD)
-- XSS & Prompt Injection Prevention
+- Per-IP Rate Limiting (`/api/search`: 30 req/min, `/api/realtime-search`: 60 req/min)
+- Query Validation (length/page bounds) + upstream timeout guard
+- Server-only Gemini key path (`GEMINI_API_KEY`, no public fallback)
+- XSS & Prompt Injection pattern checks (security utility)
 
 ---
 
