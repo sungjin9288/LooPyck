@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { db } from '@/lib/firebase';
 import { collection, doc, onSnapshot, query, getDocs, writeBatch, runTransaction } from 'firebase/firestore';
@@ -13,11 +13,15 @@ export function useCloudStorage() {
     const [favorites, setFavorites] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Path Helper
-    const getCollectionPath = () => {
+    // Path Helpers — useCallback으로 메모이제이션하여 리렌더 시 안정성 보장
+    const getCollectionPath = useCallback(() => {
         if (!userId) return null;
         return `artifacts/${appId}/users/${userId}/favorites`;
-    };
+    }, [userId, appId]);
+
+    const getProductStatsPath = useCallback((productId: string) => {
+        return `artifacts/${appId}/products/${productId}`;
+    }, [appId]);
 
     // 1. Initial Load & Realtime Sync
     useEffect(() => {
@@ -38,21 +42,21 @@ export function useCloudStorage() {
             });
             setFavorites(cloudData);
             setLoading(false);
-
-            // Sync BACK to local storage for offline reading if needed, 
-            // but for now we rely on cloud state as truth.
         }, (error) => {
             console.error("Firestore Sync Error:", error);
             setLoading(false);
         });
 
         return () => unsubscribe();
-    }, [isAuthenticated, userId, appId]);
+    }, [isAuthenticated, userId, getCollectionPath]);
 
     // 2. Migration Logic (Local -> Cloud)
     useEffect(() => {
         const migrate = async () => {
             if (!db || !isAuthenticated || !userId || loading) return;
+
+            // 이미 마이그레이션이 완료된 경우 스킵
+            if (localStorage.getItem(STORAGE_KEY + '_migrated') === 'true') return;
 
             const path = getCollectionPath();
             if (!path) return;
@@ -64,8 +68,6 @@ export function useCloudStorage() {
                 const localData: Product[] = JSON.parse(localDataStr);
                 if (localData.length === 0) return;
 
-                // Check if cloud is empty (only migrate if cloud is empty to avoid overwriting/dups logic complexity for now)
-                // Or we can just merge. "Pseudocode: if local > 0 and cloud == 0"
                 const cloudSnap = await getDocs(collection(db, path));
 
                 if (cloudSnap.empty) {
@@ -74,18 +76,14 @@ export function useCloudStorage() {
 
                     localData.forEach(item => {
                         const docRef = doc(db, path, item.productId);
-                        // Sanitize: ensure no undefined fields if possible, or Firestore ignores them
-                        // However, we must ensure item matches Product type
                         batch.set(docRef, item);
                     });
 
                     await batch.commit();
                     console.log("Migration Complete.");
 
-                    // Clear local storage to avoid re-migration or conflict
-                    // localStorage.removeItem(STORAGE_KEY); 
-                    // Optional: Keep it as backup or clear it. Request didn't specify clearing, 
-                    // but "Migration" usually implies moving. flagging as done using a separate key might be safer.
+                    // 마이그레이션 완료 후 로컬 데이터 정리
+                    localStorage.removeItem(STORAGE_KEY);
                     localStorage.setItem(STORAGE_KEY + '_migrated', 'true');
                 }
             } catch (e) {
@@ -94,14 +92,9 @@ export function useCloudStorage() {
         };
 
         migrate();
-    }, [isAuthenticated, userId, appId, loading]);
+    }, [isAuthenticated, userId, loading, getCollectionPath]);
 
     // 3. Actions
-    // Helper for global product stats path
-    const getProductStatsPath = (productId: string) => {
-        return `artifacts/${appId}/products/${productId}`;
-    };
-
     const addFavorite = async (product: Product) => {
         if (!db || !userId) return;
         const userPath = getCollectionPath();
@@ -157,7 +150,6 @@ export function useCloudStorage() {
                 // THEN WRITE
                 transaction.delete(userDocRef);
 
-                // THEN WRITE
                 if (globalDoc.exists()) {
                     const current = globalDoc.data().watchCount || 0;
                     if (current > 0) {

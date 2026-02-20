@@ -5,14 +5,21 @@
  * 프로젝트 최종 대시보드 + PoC 결과 시각화
  */
 
-import { LOOPYCK_GOLD_STANDARD, getSnapshotSummary } from '@/lib/core/final_snapshot';
 import { calculateReplicationMetrics } from '@/lib/industries/pocAgent';
 import ThinkingProcess from '@/components/agent/ThinkingProcess';
 import ROIChart from '@/components/admin/ROIChart';
 
+// 프로젝트 스냅샷 데이터 (Inlined after lib/core/final_snapshot.ts removal)
+const summary = {
+    version: '1.0.0',
+    phases: 13,
+    costReduction: '99.8%',
+    successRate: '94.2%',
+    annualSavings: '₩3.0억',
+    infrastructure: '₩0/월',
+};
+
 export default function AdminFinalDashboard() {
-    const snapshot = LOOPYCK_GOLD_STANDARD;
-    const summary = getSnapshotSummary();
     const pocMetrics = calculateReplicationMetrics();
 
     // Badge Component (Inline for simplicity)

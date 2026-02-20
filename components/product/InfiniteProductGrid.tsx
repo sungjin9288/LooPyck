@@ -8,6 +8,7 @@ import { analyzeMood, applyTheme } from '@/lib/ux/themeAdapter';
 import { SourceBadge } from '@/components/search/SourceBadges';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import FashionBattle from '@/components/social/FashionBattle';
+import RecommendedSection from '@/components/product/RecommendedSection';
 import { SearchSort } from '@/types/searchSort';
 
 interface InfiniteProductGridProps {
@@ -15,7 +16,6 @@ interface InfiniteProductGridProps {
     sort?: SearchSort;
 }
 
-import RecommendedSection from '@/components/product/RecommendedSection';
 
 export default function InfiniteProductGrid({ query, sort = 'sim' }: InfiniteProductGridProps) {
     const {

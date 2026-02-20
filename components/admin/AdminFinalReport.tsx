@@ -5,11 +5,36 @@
  * Professional 수준 최종 대시보드
  */
 
-import { LOOPYCK_GOLD_STANDARD, getSnapshotSummary } from '@/lib/core/final_snapshot';
+
+// 프로젝트 스냅샷 데이터 (Inlined after lib/core/final_snapshot.ts removal)
+const snapshot = {
+    malls: [
+        { name: 'Musinsa', successRate: 100 },
+        { name: '29cm', successRate: 100 },
+        { name: 'W-Concept', successRate: 100 },
+        { name: 'Ably', successRate: 100 },
+        { name: 'Zigzag', successRate: 86 },
+        { name: 'SSF Shop', successRate: 71 },
+        { name: 'Handsome', successRate: 43 },
+    ],
+    architecture: {
+        frontend: 'Next.js 16 + React 19 + TypeScript',
+        runtime: 'Vercel Edge Functions',
+        aiModel: 'gemini-2.5-flash',
+        database: 'Firebase Firestore (Spark)',
+    },
+    infrastructure: { aiModel: 'gemini-2.5-flash', database: 'Firebase Firestore (Spark)' },
+};
+const summary = {
+    version: '1.0.0',
+    phases: 13,
+    costReduction: '99.8%',
+    successRate: '94.2%',
+    annualSavings: '₩3.0억',
+    infrastructure: '₩0/월',
+};
 
 export default function AdminFinalReport() {
-    const snapshot = LOOPYCK_GOLD_STANDARD;
-    const summary = getSnapshotSummary();
 
     // Phase 타임라인 데이터
     const phases = [

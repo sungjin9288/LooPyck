@@ -16,6 +16,7 @@ interface NavbarProps {
 export default function Navbar({ currentView, setCurrentView, onLogoClick }: NavbarProps) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
     const { t, locale, setLocale } = useLanguage();
 
     const toggleLanguage = () => {
@@ -28,8 +29,17 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
         return () => unsubscribe();
     }, []);
 
+    useEffect(() => {
+        const handleScroll = () => setScrolled(window.scrollY > 60);
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
     return (
-        <header className="bg-white/90 backdrop-blur-md sticky top-0 z-50 transition-all duration-300 border-b border-gray-100">
+        <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled
+                ? 'bg-white/95 backdrop-blur-lg shadow-md border-b border-slate-100'
+                : 'bg-white/70 backdrop-blur-md border-b border-transparent'
+            }`}>
             <BrandTicker />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
