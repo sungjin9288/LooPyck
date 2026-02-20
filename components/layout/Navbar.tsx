@@ -46,12 +46,12 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <nav className="flex gap-2 sm:gap-4 p-1 bg-gray-100/50 rounded-xl">
+                        <nav className="hidden sm:flex gap-2 sm:gap-4 p-1 bg-slate-100/50 rounded-xl">
                             <button
                                 onClick={() => setCurrentView('search')}
                                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'search'
-                                    ? 'bg-white text-black shadow-sm'
-                                    : 'text-gray-500 hover:text-black hover:bg-gray-200/50'
+                                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50'
+                                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
                                     }`}
                             >
                                 {t('nav.search')}
@@ -59,8 +59,8 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
                             <button
                                 onClick={() => setCurrentView('favorites')}
                                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'favorites'
-                                    ? 'bg-white text-red-500 shadow-sm'
-                                    : 'text-gray-500 hover:text-black hover:bg-gray-200/50'
+                                    ? 'bg-white text-rose-500 shadow-sm border border-slate-200/50'
+                                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
                                     }`}
                             >
                                 {t('nav.favorites')}
