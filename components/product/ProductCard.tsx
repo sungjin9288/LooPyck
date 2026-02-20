@@ -8,6 +8,7 @@ import FavoriteButton from './FavoriteButton';
 import PriceAlertButton from './PriceAlertButton';
 import PriceInsight from './PriceInsight';
 import SocialCounter from './SocialCounter';
+import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 
 interface ProductCardProps {
     product: Product;
@@ -17,12 +18,18 @@ interface ProductCardProps {
 const ProductCard = memo(function ProductCard({ product, relatedProducts }: ProductCardProps) {
     const title = stripHtmlTags(product.title);
     const price = formatPrice(product.lprice);
+    const safeLink = sanitizeExternalUrl(product.link);
 
     return (
         <a
-            href={product.link}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={safeLink || '#'}
+            target={safeLink ? '_blank' : undefined}
+            rel={safeLink ? 'noopener noreferrer' : undefined}
+            onClick={(event) => {
+                if (!safeLink) {
+                    event.preventDefault();
+                }
+            }}
             className="block bg-white dark:bg-gray-800 rounded-lg shadow-md dark:border dark:border-gray-700 hover:shadow-xl dark:hover:border-gray-500 transition-all duration-300 hover:-translate-y-1 overflow-hidden group h-full"
         >
             <div className="relative h-64 bg-gray-100 overflow-hidden">

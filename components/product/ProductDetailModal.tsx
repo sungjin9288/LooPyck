@@ -7,6 +7,7 @@ import { buildProductDetailHref } from '@/lib/api/productSnapshot';
 import FutureValueInsight from './FutureValueInsight';
 import ProductReviews from './ProductReviews'; // Phase 38 Component
 import RichShare from '@/components/shared/RichShare'; // Phase 39 Component
+import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 
 interface ProductDetailModalProps {
     product: UnifiedProduct | null;
@@ -15,6 +16,7 @@ interface ProductDetailModalProps {
 
 export default function ProductDetailModal({ product, onClose }: ProductDetailModalProps) {
     if (!product) return null;
+    const safeStoreUrl = sanitizeExternalUrl(product.link);
 
     return (
         <AnimatePresence>
@@ -63,14 +65,20 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
                                 {product.price.toLocaleString()}원
                             </div>
 
-                            <a
-                                href={product.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block w-full py-4 bg-black text-white text-center font-bold rounded-xl hover:bg-gray-800 transition-all mb-4"
-                            >
-                                Buy Now
-                            </a>
+                            {safeStoreUrl ? (
+                                <a
+                                    href={safeStoreUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block w-full py-4 bg-black text-white text-center font-bold rounded-xl hover:bg-gray-800 transition-all mb-4"
+                                >
+                                    Buy Now
+                                </a>
+                            ) : (
+                                <div className="block w-full py-4 bg-gray-200 text-gray-600 text-center font-bold rounded-xl cursor-not-allowed mb-4">
+                                    Store Link Unavailable
+                                </div>
+                            )}
 
                             <a
                                 href={buildProductDetailHref(product)}

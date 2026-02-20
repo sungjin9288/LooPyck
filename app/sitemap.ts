@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-    const baseUrl = 'https://loopyck.vercel.app';
+    const baseUrl = 'https://loo-pyck.vercel.app';
 
     const routes = ['/'].map((route) => ({
         url: `${baseUrl}${route === '/' ? '' : route}`,

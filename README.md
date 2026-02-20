@@ -212,6 +212,9 @@ npm run build
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | ✅ | Firebase App ID |
 | `GEMINI_API_KEY` | 선택 | AI 분석 기능용 Gemini API Key (서버 전용 사용) |
 | `NEXT_PUBLIC_ADMIN_UIDS` | 선택 | Admin 대시보드 접근 UID 목록(쉼표 구분) |
+| `UPSTASH_REDIS_REST_URL` | 선택 | 분산 Rate Limit용 Upstash Redis REST URL |
+| `UPSTASH_REDIS_REST_TOKEN` | 선택 | 분산 Rate Limit용 Upstash Redis REST Token |
+| `RATE_LIMIT_PREFIX` | 선택 | Redis 키 prefix (기본값: `loopyck:rl`) |
 
 ---
 
@@ -254,7 +257,7 @@ npm run build
 
 - Firebase Auth (Anonymous + Email)
 - Ownership-based Firestore Rules
-- Per-IP Rate Limiting (`/api/search`: 30 req/min, `/api/realtime-search`: 60 req/min)
+- Distributed Per-IP Rate Limiting (Upstash Redis, 미설정 시 in-memory fallback)
 - Query Validation (length/page bounds) + upstream timeout guard
 - Server-only Gemini key path (`GEMINI_API_KEY`, no public fallback)
 - XSS & Prompt Injection pattern checks (security utility)
@@ -271,6 +274,6 @@ MIT © 2026 LooPyck. All rights reserved.
 
 **Built with ❤️ and AI**
 
-[Demo](https://loopyck.vercel.app) • [Docs](./docs/) • [Issues](https://github.com/sungjin9288/LooPyck/issues)
+[Demo](https://loo-pyck.vercel.app) • [Docs](./docs/) • [Issues](https://github.com/sungjin9288/LooPyck/issues)
 
 </div>

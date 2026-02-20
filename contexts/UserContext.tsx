@@ -40,13 +40,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
 
     const linkAccount = async () => {
-        if (!auth || !auth.currentUser) return;
+        if (!auth || !auth.currentUser) {
+            throw new Error('Authentication is not initialized.');
+        }
+
+        if (!auth.currentUser.isAnonymous) {
+            return;
+        }
+
         const provider = new GoogleAuthProvider();
         try {
             await linkWithPopup(auth.currentUser, provider);
-            console.log("Account Linked Successfully");
+            console.log('Account linked successfully');
         } catch (error) {
-            console.error("Link Account Error:", error);
+            console.error('Link account error:', error);
+            throw error;
         }
     };
 

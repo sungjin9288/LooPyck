@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkRateLimit, getClientIp, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
+import { checkRateLimit, getRateLimitKey, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
 
 /**
  * 네이버 쇼핑 API 검색 엔드포인트
@@ -7,8 +7,7 @@ import { checkRateLimit, getClientIp, isQueryLengthValid, normalizeQuery } from 
  */
 export async function GET(request: NextRequest) {
   try {
-    const clientIp = getClientIp(request);
-    const rateLimit = checkRateLimit(`search:${clientIp}`, 30, 60_000);
+    const rateLimit = await checkRateLimit(getRateLimitKey(request, 'search'), 30, 60_000);
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },

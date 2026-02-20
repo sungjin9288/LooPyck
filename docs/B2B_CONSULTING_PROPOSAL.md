@@ -99,6 +99,6 @@ Our framework is industry-agnostic. We have replication blueprints for:
 **Contact**
 LooPyck AI Solutions
 Email: dev@loopyck.kr
-Web: loopyck.vercel.app
+Web: loo-pyck.vercel.app
 
 _© 2026 LooPyck. All rights reserved._

@@ -2,6 +2,7 @@ import type { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
 import { decodeProductSnapshot } from '@/lib/api/productSnapshot';
 import type { UnifiedProduct } from '@/lib/api/types';
+import { escapeJsonForHtml, sanitizeExternalUrl } from '@/lib/security/urlSafety';
 
 type Props = {
     params: { id: string };
@@ -58,6 +59,8 @@ export default async function ProductPage({ params, searchParams }: Props) {
         notFound();
     }
 
+    const safeStoreUrl = sanitizeExternalUrl(product.link);
+
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Product',
@@ -82,12 +85,13 @@ export default async function ProductPage({ params, searchParams }: Props) {
             },
         },
     };
+    const escapedJsonLd = escapeJsonForHtml(JSON.stringify(jsonLd));
 
     return (
         <div className="min-h-screen bg-white">
             <script
                 type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+                dangerouslySetInnerHTML={{ __html: escapedJsonLd }}
             />
 
             <div className="max-w-7xl mx-auto px-4 py-12">
@@ -117,14 +121,20 @@ export default async function ProductPage({ params, searchParams }: Props) {
                             </span>
                         </div>
 
-                        <a
-                            href={product.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full py-6 bg-black text-white text-xl font-bold rounded-2xl hover:bg-gray-900 transition-colors text-center"
-                        >
-                            View on Store
-                        </a>
+                        {safeStoreUrl ? (
+                            <a
+                                href={safeStoreUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full py-6 bg-black text-white text-xl font-bold rounded-2xl hover:bg-gray-900 transition-colors text-center"
+                            >
+                                View on Store
+                            </a>
+                        ) : (
+                            <div className="w-full py-6 bg-gray-200 text-gray-600 text-xl font-bold rounded-2xl text-center cursor-not-allowed">
+                                Store Link Unavailable
+                            </div>
+                        )}
 
                         <div className="mt-8 p-6 bg-gray-50 rounded-2xl border border-gray-100">
                             <h3 className="font-bold mb-2">LooPyck Intelligence</h3>

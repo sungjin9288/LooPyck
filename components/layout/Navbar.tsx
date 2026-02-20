@@ -84,7 +84,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
                         </button>
 
                         {/* Auth Section */}
-                        {user ? (
+                        {user && !user.isAnonymous ? (
                             <UserProfile user={user} />
                         ) : (
                             <button

@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio';
 import { UnifiedProduct } from './types';
 import { normalizeBrand, normalizePrice, normalizeTitle } from '@/lib/core/dataNormalizer';
 import { SearchSort } from '@/types/searchSort';
+import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
@@ -80,17 +81,28 @@ async function fetchNaverRealtime(
         const data = await res.json();
         if (!data.items) return [];
 
-        return data.items.map((item: NaverShopItem) => ({
-            id: `naver_${item.productId}`,
-            title: normalizeTitle(item.title).replace(/<[^>]*>?/gm, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
-            price: parseInt(item.lprice, 10),
-            image: item.image, // Naver images usually work fine
-            link: item.link,
-            mallName: item.mallName,
-            brand: item.brand,
-            category1: item.category1,
-            source: 'NAVER' as const
-        }));
+        return data.items.reduce((products: UnifiedProduct[], item: NaverShopItem) => {
+            const image = sanitizeExternalUrl(item.image);
+            const link = sanitizeExternalUrl(item.link);
+            const price = parseInt(item.lprice, 10);
+
+            if (!image || !link || !Number.isFinite(price)) {
+                return products;
+            }
+
+            products.push({
+                id: `naver_${item.productId}`,
+                title: normalizeTitle(item.title).replace(/<[^>]*>?/gm, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
+                price,
+                image,
+                link,
+                mallName: item.mallName,
+                brand: item.brand,
+                category1: item.category1,
+                source: 'NAVER' as const
+            });
+            return products;
+        }, []);
     } catch (e) {
         console.error('Naver API Error:', e);
         return [];
@@ -115,8 +127,13 @@ async function scrapeMusinsa(query: string, page: number = 1): Promise<UnifiedPr
             const link = $el.find('.list_info a').attr('href');
             const brand = $el.find('.item_brand').text();
 
-            if (title && priceStr && imgUrl) {
+            if (title && priceStr && imgUrl && link) {
                 if (imgUrl.startsWith('//')) imgUrl = 'https:' + imgUrl;
+                const image = sanitizeExternalUrl(proxyImage(imgUrl));
+                const productLink = sanitizeExternalUrl(`https://www.musinsa.com${link}`);
+                if (!image || !productLink) {
+                    return;
+                }
 
                 products.push({
                     id: link?.split('/').pop()
@@ -124,8 +141,8 @@ async function scrapeMusinsa(query: string, page: number = 1): Promise<UnifiedPr
                         : `musinsa_${normalizeTitle(String(title)).slice(0, 24)}_${products.length}`,
                     title: normalizeTitle(title as string),
                     price: normalizePrice(priceStr),
-                    image: proxyImage(imgUrl), // Proxy applied
-                    link: link ? `https://www.musinsa.com${link}` : '#',
+                    image,
+                    link: productLink,
                     mallName: 'Musinsa',
                     brand: normalizeBrand(brand),
                     source: 'MUSINSA' as const
@@ -151,16 +168,29 @@ async function scrape29CM(query: string, page: number = 1): Promise<UnifiedProdu
 
         if (!data.data || !data.data.products) return [];
 
-        return data.data.products.map((item: TwentyNineCMItem) => ({
-            id: `29cm_${item.itemNo}`,
-            title: normalizeTitle(item.itemName),
-            price: item.salePrice || item.consumerPrice,
-            image: proxyImage(`https://img.29cm.co.kr${item.imageUrl}`.replace('https://img.29cm.co.krhttps', 'https')), // Fix double protocol if API returns full URL
-            link: `https://product.29cm.co.kr/catalog/${item.itemNo}`,
-            mallName: '29CM',
-            brand: normalizeBrand(item.brandName),
-            source: '29CM' as const
-        }));
+        return data.data.products.reduce((products: UnifiedProduct[], item: TwentyNineCMItem) => {
+            const image = sanitizeExternalUrl(
+                proxyImage(`https://img.29cm.co.kr${item.imageUrl}`.replace('https://img.29cm.co.krhttps', 'https'))
+            );
+            const link = sanitizeExternalUrl(`https://product.29cm.co.kr/catalog/${item.itemNo}`);
+            const price = item.salePrice || item.consumerPrice;
+
+            if (!image || !link || !Number.isFinite(price)) {
+                return products;
+            }
+
+            products.push({
+                id: `29cm_${item.itemNo}`,
+                title: normalizeTitle(item.itemName),
+                price,
+                image,
+                link,
+                mallName: '29CM',
+                brand: normalizeBrand(item.brandName),
+                source: '29CM' as const
+            });
+            return products;
+        }, []);
     } catch (e) {
         console.error('29CM API Error:', e);
         return [];

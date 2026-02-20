@@ -135,7 +135,7 @@ export function getOpenGraphMetadata() {
         title: 'LooPyck - AI 패션 가격 비교 플랫폼',
         description: '99.8% 비용 절감, 7개 쇼핑몰 AI 자동 분석. Zero-Cost로 상용 수준의 AI 에이전트 구축.',
         image: '/og-image.png',
-        url: 'https://loopyck.vercel.app',
+        url: 'https://loo-pyck.vercel.app',
         type: 'website',
         locale: 'ko_KR',
     };

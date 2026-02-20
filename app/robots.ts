@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
-    const baseUrl = 'https://loopyck.vercel.app'; // Production URL
+    const baseUrl = 'https://loo-pyck.vercel.app'; // Production URL
 
     return {
         rules: {

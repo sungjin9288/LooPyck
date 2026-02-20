@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { signInWithGoogle, signOut, auth } from '@/lib/auth/firebase';
+import { signInWithGoogle, signOut } from '@/lib/auth/firebase';
 import { User } from 'firebase/auth';
 import StyleDashboard from '@/components/auth/StyleDashboard';
 import MyAsset from '@/components/profile/MyAsset'; // Portfolio Component
+import { useUser } from '@/contexts/UserContext';
 
 interface LoginModalProps {
     isOpen: boolean;
@@ -12,6 +13,8 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ isOpen, onClose }: LoginModalProps) {
+    const { user, linkAccount } = useUser();
+
     if (!isOpen) return null;
 
     return (
@@ -49,11 +52,16 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 <button
                     onClick={async () => {
                         try {
-                            await signInWithGoogle();
+                            if (user?.isAnonymous) {
+                                await linkAccount();
+                            } else {
+                                await signInWithGoogle();
+                            }
                             onClose();
-                        } catch (e: any) {
-                            console.error("Login Error:", e);
-                            alert(`Login failed: ${e.message || 'Unknown error'}. Please check your connection.`);
+                        } catch (e: unknown) {
+                            console.error('Login error:', e);
+                            const message = e instanceof Error ? e.message : 'Unknown error';
+                            alert(`Login failed: ${message}. Please check your connection.`);
                         }
                     }}
                     className="w-full relative z-10 flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-black font-bold py-4 px-6 rounded-2xl transition-all transform hover:scale-[1.02] shadow-lg group"

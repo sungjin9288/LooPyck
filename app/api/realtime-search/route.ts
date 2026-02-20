@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { aggregateRealtimeSearch } from '@/lib/api/realtimeAggregator';
 import { isFashionRelated } from '@/lib/core/domainGuard';
 import { SearchSort, ALLOWED_SORTS } from '@/types/searchSort';
-import { checkRateLimit, getClientIp, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
+import { checkRateLimit, getRateLimitKey, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
 
 export async function GET(request: NextRequest) {
-    const clientIp = getClientIp(request);
-    const rateLimit = checkRateLimit(`realtime-search:${clientIp}`, 60, 60_000);
+    const rateLimit = await checkRateLimit(getRateLimitKey(request, 'realtime-search'), 60, 60_000);
     if (!rateLimit.allowed) {
         return NextResponse.json(
             { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },

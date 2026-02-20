@@ -54,9 +54,10 @@ export function useCloudStorage() {
     useEffect(() => {
         const migrate = async () => {
             if (!db || !isAuthenticated || !userId || loading) return;
+            const migratedKey = `${STORAGE_KEY}_migrated_${userId}`;
 
             // 이미 마이그레이션이 완료된 경우 스킵
-            if (localStorage.getItem(STORAGE_KEY + '_migrated') === 'true') return;
+            if (localStorage.getItem(migratedKey) === 'true') return;
 
             const path = getCollectionPath();
             if (!path) return;
@@ -84,7 +85,7 @@ export function useCloudStorage() {
 
                     // 마이그레이션 완료 후 로컬 데이터 정리
                     localStorage.removeItem(STORAGE_KEY);
-                    localStorage.setItem(STORAGE_KEY + '_migrated', 'true');
+                    localStorage.setItem(migratedKey, 'true');
                 }
             } catch (e) {
                 console.error("Migration Failed:", e);

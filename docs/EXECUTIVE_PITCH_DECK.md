@@ -198,7 +198,7 @@ Payback Period:    < 2 weeks
 ```
 Email:    dev@loopyck.kr
 GitHub:   github.com/sungjin9288/LooPyck
-Demo:     loopyck.vercel.app
+Demo:     loo-pyck.vercel.app
 ```
 
 ---

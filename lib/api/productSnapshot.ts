@@ -1,4 +1,27 @@
 import type { UnifiedProduct } from '@/lib/api/types';
+import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
+
+const MAX_SNAPSHOT_CHARS = 12_000;
+const ALLOWED_SOURCES = new Set<UnifiedProduct['source']>([
+    'NAVER',
+    'MUSINSA',
+    '29CM',
+    'W_CONCEPT',
+    'ZIGZAG',
+    'FARFETCH',
+    'COUPANG',
+    'SSENSE',
+]);
+
+function normalizeText(value: string, maxLength: number): string {
+    return value.replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, maxLength);
+}
+
+function normalizeOptionalText(value: unknown, maxLength: number): string | undefined {
+    if (typeof value !== 'string') return undefined;
+    const normalized = normalizeText(value, maxLength);
+    return normalized.length > 0 ? normalized : undefined;
+}
 
 function toBase64(input: string): string {
     if (typeof window !== 'undefined') {
@@ -21,17 +44,41 @@ export function encodeProductSnapshot(product: UnifiedProduct): string {
 }
 
 export function decodeProductSnapshot(snapshot: string): UnifiedProduct | null {
+    if (snapshot.length > MAX_SNAPSHOT_CHARS) {
+        return null;
+    }
+
     try {
         const parsed = JSON.parse(fromBase64(snapshot));
         if (!parsed || typeof parsed !== 'object') return null;
-        if (typeof parsed.id !== 'string') return null;
-        if (typeof parsed.title !== 'string') return null;
-        if (typeof parsed.price !== 'number') return null;
-        if (typeof parsed.image !== 'string') return null;
-        if (typeof parsed.link !== 'string') return null;
-        if (typeof parsed.mallName !== 'string') return null;
-        if (typeof parsed.source !== 'string') return null;
-        return parsed as UnifiedProduct;
+
+        const id = typeof parsed.id === 'string' ? normalizeText(parsed.id, 120) : '';
+        const title = typeof parsed.title === 'string' ? normalizeText(parsed.title, 300) : '';
+        const price = typeof parsed.price === 'number' && Number.isFinite(parsed.price)
+            ? Math.max(0, Math.floor(parsed.price))
+            : NaN;
+        const image = typeof parsed.image === 'string' ? sanitizeExternalUrl(parsed.image) : null;
+        const link = typeof parsed.link === 'string' ? sanitizeExternalUrl(parsed.link) : null;
+        const mallName = typeof parsed.mallName === 'string' ? normalizeText(parsed.mallName, 120) : '';
+        const source = typeof parsed.source === 'string' ? parsed.source : '';
+
+        if (!id || !title || !mallName) return null;
+        if (!Number.isFinite(price)) return null;
+        if (!image || !link) return null;
+        if (!ALLOWED_SOURCES.has(source as UnifiedProduct['source'])) return null;
+
+        return {
+            id,
+            title,
+            price,
+            image,
+            link,
+            mallName,
+            source: source as UnifiedProduct['source'],
+            brand: normalizeOptionalText(parsed.brand, 120),
+            category1: normalizeOptionalText(parsed.category1, 80),
+            category2: normalizeOptionalText(parsed.category2, 80),
+        };
     } catch {
         return null;
     }
