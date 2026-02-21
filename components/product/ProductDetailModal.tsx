@@ -5,17 +5,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import { buildProductDetailHref } from '@/lib/api/productSnapshot';
 import FutureValueInsight from './FutureValueInsight';
-import ProductReviews from './ProductReviews'; // Phase 38 Component
+import ProductReviews from './ProductReviews';
 import RichShare from '@/components/shared/RichShare'; // Phase 39 Component
+import PriceHistoryChart from './PriceHistoryChart'; // Phase 39 Component
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 
 interface ProductDetailModalProps {
     product: UnifiedProduct | null;
     onClose: () => void;
+    variants?: UnifiedProduct[]; // 동일 상품의 다른 쇼핑몰 목록
 }
 
-export default function ProductDetailModal({ product, onClose }: ProductDetailModalProps) {
+export default function ProductDetailModal({ product, onClose, variants = [] }: ProductDetailModalProps) {
     if (!product) return null;
+    // variants가 없으면 현재 상품만 비교 대상으로
+    const allVariants = variants.length > 0 ? variants : [product];
+    const lowestPrice = Math.min(...allVariants.map(v => v.price));
     const safeStoreUrl = sanitizeExternalUrl(product.link);
 
     return (
@@ -98,12 +103,61 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
                         </div>
                     </div>
 
-                    {/* AI Insights - Graph & Report */}
+                    {/* 쇼핑몰별 가격 비교 테이블 */}
+                    {allVariants.length > 1 && (
+                        <div className="border-t border-slate-100 pt-6 mb-6">
+                            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
+                                🏷️ 쇼핑몰별 가격 비교
+                            </h3>
+                            <div className="space-y-2">
+                                {allVariants.map((v, i) => (
+                                    <div key={v.id} className={`flex items-center justify-between p-3 rounded-xl border ${v.price === lowestPrice
+                                            ? 'border-accent-light bg-accent/5'
+                                            : 'border-slate-100 bg-slate-50'
+                                        }`}>
+                                        <div className="flex items-center gap-2">
+                                            {v.price === lowestPrice && (
+                                                <span className="text-[10px] font-bold bg-accent text-white px-1.5 py-0.5 rounded-full">최저가</span>
+                                            )}
+                                            <span className="text-sm font-medium text-slate-700">{v.mallName}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className={`text-sm font-bold ${v.price === lowestPrice ? 'text-accent-dark' : 'text-slate-700'}`}>
+                                                {v.price.toLocaleString()}원
+                                            </span>
+                                            <a
+                                                href={v.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={e => e.stopPropagation()}
+                                                className="text-xs px-2 py-1 bg-slate-900 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                                            >
+                                                이동
+                                            </a>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Price History Chart */}
+                    <div className="border-t border-slate-100 pt-6 mb-6">
+                        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
+                            📈 가격 추이
+                        </h3>
+                        <PriceHistoryChart currentPrice={product.price} />
+                        <p className="text-xs text-slate-400 text-center mt-2">
+                            💡 가격은 시기마다 변동됩니다. 목표 가격 도달 시 알림 설정을 추천합니다.
+                        </p>
+                    </div>
+
+                    {/* AI Insights */}
                     <div className="border-t border-gray-100 pt-6">
                         <FutureValueInsight product={product} />
                     </div>
 
-                    {/* Community Reviews (Phase 38) */}
+                    {/* Community Reviews */}
                     <ProductReviews />
                 </motion.div>
             </div>
