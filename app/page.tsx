@@ -10,6 +10,7 @@ import InfiniteProductGrid from '@/components/product/InfiniteProductGrid';
 import Navbar from '@/components/layout/Navbar';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import RecentlyViewedSection from '@/components/product/RecentlyViewedSection';
+import StyleRecommender from '@/components/recommend/StyleRecommender';
 import { MoodEngine } from '@/lib/ai/moodEngine';
 import TrendDiscovery from '@/components/home/TrendDiscovery';
 import { SearchSort } from '@/types/searchSort';
@@ -17,8 +18,11 @@ import { addRecentSearch } from '@/utils/recentSearches';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import { UnifiedProduct } from '@/lib/api/types';
+import dynamic from 'next/dynamic';
 
-// 주간 트렌드 키워드 (실제로는 TrendDiscovery 데이터 or API와 연결 가능)
+// StyleChat은 클라이언트 전용으로 동적 임포트 (chatbot + AI)
+const StyleChat = dynamic(() => import('@/components/ai/StyleChat'), { ssr: false });
+
 const TREND_KEYWORDS = [
   { emoji: '🧥', label: '봄 아우터' },
   { emoji: '👖', label: '와이드 팬츠' },
@@ -28,9 +32,11 @@ const TREND_KEYWORDS = [
   { emoji: '🕶️', label: '오버사이즈 선글라스' },
 ];
 
+type CurrentView = 'search' | 'favorites' | 'recommend';
+
 export default function Home() {
   const router = useRouter();
-  const [currentView, setCurrentView] = useState<'search' | 'favorites'>('search');
+  const [currentView, setCurrentView] = useState<CurrentView>('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchSort, setSearchSort] = useState<SearchSort>('sim');
   const { recentlyViewed, addToRecentlyViewed, clearRecentlyViewed } = useRecentlyViewed();
@@ -42,6 +48,7 @@ export default function Home() {
     addRecentSearch(trimmed);
     setSearchQuery(expandedQuery);
     setSearchSort(sort);
+    setCurrentView('search'); // AI 스타일 추천 / 찜 화면에서도 검색으로 전환
   };
 
   const handleLogoClick = () => {
@@ -51,7 +58,6 @@ export default function Home() {
   };
 
   const handleRecentProductClick = (product: UnifiedProduct) => {
-    // 최근 본 상품 클릭 시 해당 상품 검색어로 검색
     onSearch(product.title.slice(0, 20));
   };
 
@@ -59,8 +65,8 @@ export default function Home() {
     <div className="min-h-screen mesh-bg text-slate-900 pb-16 sm:pb-0">
       {/* 헤더 */}
       <Navbar
-        currentView={currentView}
-        setCurrentView={setCurrentView}
+        currentView={currentView === 'recommend' ? 'search' : currentView}
+        setCurrentView={(v) => setCurrentView(v)}
         onLogoClick={handleLogoClick}
       />
 
@@ -72,22 +78,17 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
           >
-            {currentView === 'search' ? (
+            {/* 🔍 검색 뷰 */}
+            {currentView === 'search' && (
               <div className="space-y-8 md:space-y-12">
                 <SearchBar onSearch={onSearch} />
 
-                {/* 트렌드 키워드 칩 (검색 전 홈 화면) */}
+                {/* 트렌드 키워드 칩 */}
                 {!searchQuery && (
-                  <motion.section
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
-                      이번 주 트렌드
-                    </h2>
+                  <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">이번 주 트렌드</h2>
                     <div className="flex flex-wrap gap-2">
                       {TREND_KEYWORDS.map(kw => (
                         <button
@@ -95,17 +96,24 @@ export default function Home() {
                           onClick={() => onSearch(kw.label)}
                           className="flex items-center gap-1.5 px-4 py-2 glass-panel rounded-2xl text-sm font-medium text-slate-700 hover:shadow-md hover:text-accent-dark transition-all"
                         >
-                          <span>{kw.emoji}</span>
-                          <span>{kw.label}</span>
+                          <span>{kw.emoji}</span><span>{kw.label}</span>
                         </button>
                       ))}
                     </div>
+
+                    {/* 스타일 추천 CTA */}
+                    <button
+                      onClick={() => setCurrentView('recommend')}
+                      className="mt-3 flex items-center gap-2 text-sm text-violet-600 hover:text-violet-800 font-medium transition-colors"
+                    >
+                      <span>🪞</span>
+                      <span>체형에 맞는 스타일 추천받기 →</span>
+                    </button>
                   </motion.section>
                 )}
 
                 {!searchQuery && <RecentSearches onSearch={onSearch} />}
 
-                {/* 최근 본 상품 섹션 (검색 전 홈 화면) */}
                 {!searchQuery && recentlyViewed.length > 0 && (
                   <RecentlyViewedSection
                     products={recentlyViewed}
@@ -120,17 +128,29 @@ export default function Home() {
                   <TrendDiscovery onSearch={onSearch} />
                 )}
               </div>
-            ) : (
-              <FavoritesPage />
             )}
+
+            {/* 💜 스타일 추천 뷰 */}
+            {currentView === 'recommend' && (
+              <StyleRecommender
+                onSearch={onSearch}
+                onSwitchToSearch={() => setCurrentView('search')}
+              />
+            )}
+
+            {/* ❤️ 찜 뷰 */}
+            {currentView === 'favorites' && <FavoritesPage />}
           </motion.div>
         </AnimatePresence>
       </main>
 
+      {/* AI 스타일리스트 FloatingBot - 항상 표시, 검색 연동 */}
+      <StyleChat onSearch={onSearch} />
+
       {/* 모바일 하단 네비게이션 */}
       <MobileBottomNav
-        currentView={currentView}
-        setCurrentView={setCurrentView}
+        currentView={currentView === 'recommend' ? 'search' : currentView}
+        setCurrentView={(v) => setCurrentView(v)}
       />
 
       {/* 푸터 */}
