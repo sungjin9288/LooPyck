@@ -6,8 +6,9 @@ import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import { buildProductDetailHref } from '@/lib/api/productSnapshot';
 import FutureValueInsight from './FutureValueInsight';
 import ProductReviews from './ProductReviews';
-import RichShare from '@/components/shared/RichShare'; // Phase 39 Component
-import PriceHistoryChart from './PriceHistoryChart'; // Phase 39 Component
+import RichShare from '@/components/shared/RichShare';
+import PriceHistoryChart from './PriceHistoryChart';
+import CouponBadge from './CouponBadge';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 
 interface ProductDetailModalProps {
@@ -112,14 +113,15 @@ export default function ProductDetailModal({ product, onClose, variants = [] }: 
                             <div className="space-y-2">
                                 {allVariants.map((v, i) => (
                                     <div key={v.id} className={`flex items-center justify-between p-3 rounded-xl border ${v.price === lowestPrice
-                                            ? 'border-accent-light bg-accent/5'
-                                            : 'border-slate-100 bg-slate-50'
+                                        ? 'border-accent-light bg-accent/5'
+                                        : 'border-slate-100 bg-slate-50'
                                         }`}>
                                         <div className="flex items-center gap-2">
                                             {v.price === lowestPrice && (
                                                 <span className="text-[10px] font-bold bg-accent text-white px-1.5 py-0.5 rounded-full">최저가</span>
                                             )}
                                             <span className="text-sm font-medium text-slate-700">{v.mallName}</span>
+                                            <CouponBadge mallName={v.mallName} source={v.source} />
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <span className={`text-sm font-bold ${v.price === lowestPrice ? 'text-accent-dark' : 'text-slate-700'}`}>
@@ -158,7 +160,7 @@ export default function ProductDetailModal({ product, onClose, variants = [] }: 
                     </div>
 
                     {/* Community Reviews */}
-                    <ProductReviews />
+                    <ProductReviews productId={product.id} />
                 </motion.div>
             </div>
         </AnimatePresence>
