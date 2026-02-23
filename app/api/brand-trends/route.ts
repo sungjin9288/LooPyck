@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 
 // revalidate every 1 hour (Vercel ISR)
 export const revalidate = 3600;
@@ -8,7 +9,9 @@ const BRANDS_TO_TRACK = [
     'NIKE', 'ADIDAS', 'NEW BALANCE', 'STUSSY', 'SUPREME',
     'ARC TERYX', 'SALOMON', 'HUMAN MADE', 'KITH', 'PALACE',
     'MUSINSA STANDARD', 'ADER ERROR'
-];
+] as const;
+
+const BRAND_FETCH_CONCURRENCY = 4;
 
 export interface BrandTrendItem {
     name: string;
@@ -30,60 +33,112 @@ async function fetchBrandProductCount(brandName: string): Promise<number> {
                 'X-Naver-Client-Secret': clientSecret,
             },
             signal: AbortSignal.timeout(5000),
-            // Next.js ISR cache tag
-            next: { tags: ['brand-trends'], revalidate: 3600 }
+            next: { tags: ['brand-trends'], revalidate: 3600 },
         });
         if (!res.ok) return 0;
         const data = await res.json();
-        return data.total || 0;
+        return Number(data.total) || 0;
     } catch {
         return 0;
     }
 }
 
-export async function GET() {
+async function mapWithConcurrency<T, R>(
+    items: readonly T[],
+    concurrency: number,
+    mapper: (item: T) => Promise<R>
+): Promise<R[]> {
+    const results: R[] = new Array(items.length);
+    let nextIndex = 0;
+
+    async function worker(): Promise<void> {
+        while (true) {
+            const currentIndex = nextIndex;
+            nextIndex += 1;
+            if (currentIndex >= items.length) {
+                return;
+            }
+            results[currentIndex] = await mapper(items[currentIndex]);
+        }
+    }
+
+    const workerCount = Math.min(concurrency, items.length);
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+    return results;
+}
+
+export async function GET(request: NextRequest) {
+    const rateLimit = await checkRateLimit(getRateLimitKey(request, 'brand-trends'), 20, 60_000);
+    if (!rateLimit.allowed) {
+        return NextResponse.json(
+            { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+            {
+                status: 429,
+                headers: {
+                    'Retry-After': String(rateLimit.retryAfterSec),
+                    'X-RateLimit-Remaining': '0',
+                },
+            }
+        );
+    }
+
     try {
-        // Fetch all brands in parallel (with concurrency limit)
-        const results = await Promise.allSettled(
-            BRANDS_TO_TRACK.map(brand => fetchBrandProductCount(brand))
+        const countsByBrand = await mapWithConcurrency(
+            BRANDS_TO_TRACK,
+            BRAND_FETCH_CONCURRENCY,
+            fetchBrandProductCount
         );
 
-        const counts = results.map((r, i) => ({
-            name: BRANDS_TO_TRACK[i],
-            count: r.status === 'fulfilled' ? r.value : 0,
+        const counts = BRANDS_TO_TRACK.map((name, index) => ({
+            name,
+            count: countsByBrand[index] || 0,
         }));
 
-        // Normalize to "trend score" relative to median
-        const validCounts = counts.filter(c => c.count > 0);
+        const validCounts = counts.filter((entry) => entry.count > 0);
         if (validCounts.length === 0) {
-            // Fallback if no API keys
-            return NextResponse.json({ brands: getFallbackData() });
+            return NextResponse.json(
+                { brands: getFallbackData() },
+                {
+                    headers: {
+                        'X-RateLimit-Remaining': String(rateLimit.remaining),
+                    },
+                }
+            );
         }
 
-        const max = Math.max(...validCounts.map(c => c.count));
-        const median = validCounts.sort((a, b) => a.count - b.count)[Math.floor(validCounts.length / 2)]?.count || 1;
+        const sortedValidCounts = [...validCounts].sort((a, b) => a.count - b.count);
+        const median = sortedValidCounts[Math.floor(sortedValidCounts.length / 2)]?.count || 1;
 
-        const brands: BrandTrendItem[] = counts.map(c => {
-            // Simulate change: deviation from median as a percentage
-            const ratio = c.count / (median || 1);
-            const changeRaw = ((ratio - 1) * 20);
+        const brands: BrandTrendItem[] = counts.map((entry) => {
+            const ratio = entry.count / (median || 1);
+            const changeRaw = (ratio - 1) * 20;
             const change = Math.min(Math.abs(Number(changeRaw.toFixed(1))), 30);
             const isUp = changeRaw >= 0;
-            return { name: c.name, productCount: c.count, change, isUp };
+            return { name: entry.name, productCount: entry.count, change, isUp };
         });
 
-        return NextResponse.json({ brands, updatedAt: new Date().toISOString() }, {
-            headers: {
-                'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600',
+        return NextResponse.json(
+            { brands, updatedAt: new Date().toISOString() },
+            {
+                headers: {
+                    'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600',
+                    'X-RateLimit-Remaining': String(rateLimit.remaining),
+                },
             }
-        });
+        );
     } catch (error) {
         console.error('[brand-trends] Error:', error);
-        return NextResponse.json({ brands: getFallbackData(), fallback: true });
+        return NextResponse.json(
+            { brands: getFallbackData(), fallback: true },
+            {
+                headers: {
+                    'X-RateLimit-Remaining': String(rateLimit.remaining),
+                },
+            }
+        );
     }
 }
 
-// Hardcoded fallback for when API is unavailable
 function getFallbackData(): BrandTrendItem[] {
     return [
         { name: 'NIKE', productCount: 0, change: 2.4, isUp: true },

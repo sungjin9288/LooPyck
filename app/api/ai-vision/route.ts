@@ -1,23 +1,86 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { normalizeKeywordList, parseGeminiJson } from '@/lib/ai/geminiJson';
+import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 
 export const runtime = 'edge';
 
-export async function POST(req: Request) {
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const REQUEST_TIMEOUT_MS = 12_000;
+
+const VisionRequestSchema = z.object({
+    imageBase64: z
+        .string()
+        .min(100, '이미지 데이터가 너무 짧습니다.')
+        .max(6_000_000, '이미지 데이터가 너무 큽니다.'),
+    mimeType: z.string().trim().regex(/^image\/[a-z0-9.+-]+$/i, '지원되지 않는 이미지 포맷입니다.'),
+});
+
+const VisionResponseSchema = z.object({
+    description: z.string().trim().min(1).max(220),
+    searchKeywords: z.array(z.string().trim().min(1).max(40)).max(8).optional().default([]),
+});
+
+function estimateDecodedBytes(base64: string): number {
+    const normalized = base64.replace(/\s+/g, '');
+    const paddingMatch = normalized.match(/=+$/);
+    const padding = paddingMatch ? paddingMatch[0].length : 0;
+    return Math.floor((normalized.length * 3) / 4) - padding;
+}
+
+export async function POST(request: NextRequest) {
+    const rateLimit = await checkRateLimit(getRateLimitKey(request, 'ai-vision'), 8, 60_000);
+    if (!rateLimit.allowed) {
+        return NextResponse.json(
+            { error: '요청이 너무 많습니다.' },
+            {
+                status: 429,
+                headers: {
+                    'Retry-After': String(rateLimit.retryAfterSec),
+                    'X-RateLimit-Remaining': '0',
+                },
+            }
+        );
+    }
+
+    let payload: unknown;
     try {
-        const { imageBase64, mimeType } = await req.json();
+        payload = await request.json();
+    } catch {
+        return NextResponse.json(
+            { error: '요청 본문(JSON)을 확인해주세요.' },
+            { status: 400, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
+    }
 
-        if (!imageBase64 || !mimeType) {
-            return NextResponse.json({ error: '이미지와 MIME 타입이 필요합니다.' }, { status: 400 });
-        }
+    const parsedRequest = VisionRequestSchema.safeParse(payload);
+    if (!parsedRequest.success) {
+        return NextResponse.json(
+            { error: parsedRequest.error.issues[0]?.message || '요청 형식이 올바르지 않습니다.' },
+            { status: 400, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
+    }
 
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) {
-            return NextResponse.json({ error: 'API 키가 설정되지 않았습니다.' }, { status: 500 });
-        }
+    const normalizedImageBase64 = parsedRequest.data.imageBase64.replace(/\s+/g, '');
+    const decodedBytes = estimateDecodedBytes(normalizedImageBase64);
+    if (decodedBytes > MAX_IMAGE_BYTES) {
+        return NextResponse.json(
+            { error: '이미지는 4MB 이하여야 합니다.' },
+            { status: 413, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
+    }
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        return NextResponse.json(
+            { error: 'API 키가 설정되지 않았습니다.' },
+            { status: 503, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
+    }
 
-        const prompt = `
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+    const prompt = `
 당신은 한국 최고의 패션 플랫폼의 AI 스타일리스트입니다.
 주어진 이미지를 꼼꼼하게 분석하여 사용자가 이와 "가장 시각적으로 유사한" 옷을 쇼핑몰에서 검색할 수 있도록
 정확하고 구체적인 검색 키워드 모음을 만들어주세요.
@@ -34,61 +97,72 @@ export async function POST(req: Request) {
   "description": "이미지에 대한 패션전문가 느낌의 친절한 설명 1~2줄 (한국어)",
   "searchKeywords": ["키워드1", "키워드2", "키워드3"]
 }
-        `;
+    `;
 
-        const requestBody = {
-            contents: [
-                {
-                    parts: [
-                        { text: prompt },
-                        {
-                            inline_data: {
-                                mime_type: mimeType,
-                                data: imageBase64
-                            }
-                        }
-                    ]
-                }
-            ],
-            generationConfig: {
-                temperature: 0.2,
-                response_mime_type: "application/json",
-            }
-        };
+    const requestBody = {
+        contents: [
+            {
+                parts: [
+                    { text: prompt },
+                    {
+                        inline_data: {
+                            mime_type: parsedRequest.data.mimeType,
+                            data: normalizedImageBase64,
+                        },
+                    },
+                ],
+            },
+        ],
+        generationConfig: {
+            temperature: 0.2,
+            responseMimeType: 'application/json',
+        },
+    };
 
+    try {
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(requestBody),
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
 
         if (!response.ok) {
-            const err = await response.text();
-            console.error('Gemini API Error:', err);
-            return NextResponse.json({ error: 'AI 분석 중 오류가 발생했습니다.' }, { status: response.status });
+            const err = (await response.text()).slice(0, 300);
+            console.error('[AI Vision] Gemini API Error:', response.status, err);
+            return NextResponse.json(
+                { error: 'AI 분석 중 오류가 발생했습니다.' },
+                { status: response.status, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            );
         }
 
-        const data = await response.json();
-        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!textResponse) {
-            return NextResponse.json({ error: 'AI 응답이 비어있습니다.' }, { status: 500 });
+        const data = (await response.json()) as unknown;
+        const parsed = parseGeminiJson(data, VisionResponseSchema);
+        if (!parsed.ok) {
+            return NextResponse.json(
+                { error: 'AI 응답 형식이 올바르지 않습니다.' },
+                { status: 502, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            );
         }
 
-        let result;
-        try {
-            // Remove potential markdown code blocks if the model ignores the instruction
-            const cleanedText = textResponse.replace(/^```(json)?|```$/g, '').trim();
-            result = JSON.parse(cleanedText);
-        } catch (e) {
-            console.error('Failed to parse JSON:', textResponse);
-            return NextResponse.json({ error: 'JSON 파싱 실패' }, { status: 500 });
-        }
-
-        return NextResponse.json(result);
-
+        return NextResponse.json(
+            {
+                description: parsed.data.description,
+                searchKeywords: normalizeKeywordList(parsed.data.searchKeywords, 3),
+            },
+            { headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
     } catch (error) {
-        console.error('Vision API Error:', error);
-        return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+        if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+            return NextResponse.json(
+                { error: '이미지 분석 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.' },
+                { status: 504, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            );
+        }
+        console.error('[AI Vision] Server Error:', error);
+        return NextResponse.json(
+            { error: '서버 오류가 발생했습니다.' },
+            { status: 500, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
     }
 }

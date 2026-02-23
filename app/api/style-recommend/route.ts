@@ -1,59 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { normalizeKeywordList, parseGeminiJson } from '@/lib/ai/geminiJson';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const REQUEST_TIMEOUT_MS = 15_000;
 
-export interface StyleRecommendRequest {
-    gender: 'M' | 'F' | 'N';
-    height: number;      // cm
-    weight: number;      // kg
-    preferredStyles: string[]; // ['캐주얼', '미니멀', '스포티', '포멀', '빈티지']
-    budget?: 'low' | 'mid' | 'high'; // ~3만 / 3~10만 / 10만+
-}
+const StyleRecommendRequestSchema = z.object({
+    gender: z.enum(['M', 'F', 'N']),
+    height: z.coerce.number().int().min(100, '키는 100~230cm 사이여야 합니다.').max(230, '키는 100~230cm 사이여야 합니다.'),
+    weight: z.coerce.number().int().min(30, '몸무게는 30~200kg 사이여야 합니다.').max(200, '몸무게는 30~200kg 사이여야 합니다.'),
+    preferredStyles: z
+        .array(z.string().trim().min(1).max(30))
+        .min(1, '선호 스타일을 1개 이상 선택해주세요.')
+        .max(3, '선호 스타일은 최대 3개까지 선택할 수 있습니다.'),
+    budget: z.enum(['low', 'mid', 'high']).optional().default('mid'),
+});
 
-export interface LookRecommendation {
-    lookName: string;       // 예: "모던 캐주얼 룩"
-    description: string;   // 스타일 설명
-    keyItems: string[];     // 검색 키워드 ["와이드 팬츠", "크루넥 니트"]
-    reason: string;         // 체형에 맞는 이유
-}
+const LookRecommendationSchema = z.object({
+    lookName: z.string().trim().min(1).max(40),
+    description: z.string().trim().min(1).max(220),
+    keyItems: z.array(z.string().trim().min(1).max(40)).max(8).optional().default([]),
+    reason: z.string().trim().min(1).max(160),
+});
 
-export interface StyleRecommendResponse {
-    looks: LookRecommendation[];
-    bodyNote: string;  // 체형 특성 설명
-}
+const StyleRecommendResponseSchema = z.object({
+    looks: z.array(LookRecommendationSchema).min(2).max(3),
+    bodyNote: z.string().trim().min(1).max(140),
+});
+
+export type StyleRecommendRequest = z.infer<typeof StyleRecommendRequestSchema>;
+export type LookRecommendation = z.infer<typeof LookRecommendationSchema>;
+export type StyleRecommendResponse = {
+    looks: Array<LookRecommendation & { keyItems: string[] }>;
+    bodyNote: string;
+};
 
 export async function POST(request: NextRequest) {
     const rateLimit = await checkRateLimit(getRateLimitKey(request, 'style-recommend'), 10, 60_000);
     if (!rateLimit.allowed) {
-        return NextResponse.json({ error: '요청이 너무 많습니다.' }, { status: 429 });
+        return NextResponse.json(
+            { error: '요청이 너무 많습니다.' },
+            {
+                status: 429,
+                headers: {
+                    'Retry-After': String(rateLimit.retryAfterSec),
+                    'X-RateLimit-Remaining': '0',
+                },
+            }
+        );
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        return NextResponse.json({ error: 'AI 서비스가 설정되지 않았습니다.' }, { status: 503 });
+        return NextResponse.json(
+            { error: 'AI 서비스가 설정되지 않았습니다.' },
+            { status: 503, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
     }
 
-    let body: StyleRecommendRequest;
+    let payload: unknown;
     try {
-        body = await request.json();
+        payload = await request.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+        return NextResponse.json(
+            { error: 'Invalid request body' },
+            { status: 400, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
     }
 
-    // Validation
-    const { gender, height, weight, preferredStyles, budget = 'mid' } = body;
-    if (!gender || !['M', 'F', 'N'].includes(gender)) {
-        return NextResponse.json({ error: '성별 값이 올바르지 않습니다.' }, { status: 400 });
-    }
-    if (!height || height < 100 || height > 230) {
-        return NextResponse.json({ error: '키는 100~230cm 사이여야 합니다.' }, { status: 400 });
-    }
-    if (!weight || weight < 30 || weight > 200) {
-        return NextResponse.json({ error: '몸무게는 30~200kg 사이여야 합니다.' }, { status: 400 });
+    const parsedRequest = StyleRecommendRequestSchema.safeParse(payload);
+    if (!parsedRequest.success) {
+        return NextResponse.json(
+            { error: parsedRequest.error.issues[0]?.message || '요청 형식이 올바르지 않습니다.' },
+            { status: 400, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
     }
 
-    const bmi = weight / ((height / 100) ** 2);
+    const { gender, height, weight, preferredStyles, budget } = parsedRequest.data;
+
+    const bmi = weight / (height / 100) ** 2;
     const genderLabel = gender === 'M' ? '남성' : gender === 'F' ? '여성' : '논바이너리';
     const budgetLabel = budget === 'low' ? '3만원 이하' : budget === 'mid' ? '3~10만원' : '10만원 이상';
 
@@ -94,26 +120,52 @@ keyItems는 반드시 무신사, 29cm 같은 쇼핑몰에서 실제 검색 가�
                     temperature: 0.8,
                     maxOutputTokens: 1024,
                     responseMimeType: 'application/json',
-                }
+                },
             }),
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
 
-        if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
-
-        const data = await res.json();
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        let parsed: StyleRecommendResponse;
-        try {
-            parsed = JSON.parse(rawText);
-        } catch {
-            return NextResponse.json({ error: 'AI 응답을 파싱하는 데 실패했습니다.' }, { status: 500 });
+        if (!res.ok) {
+            throw new Error(`Gemini API error: ${res.status}`);
         }
 
-        return NextResponse.json(parsed);
+        const data = (await res.json()) as unknown;
+        const parsed = parseGeminiJson(data, StyleRecommendResponseSchema);
+
+        if (!parsed.ok) {
+            return NextResponse.json(
+                { error: 'AI 응답을 파싱하는 데 실패했습니다.' },
+                { status: 502, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            );
+        }
+
+        const looks = parsed.data.looks.map((look) => ({
+            ...look,
+            keyItems: normalizeKeywordList(look.keyItems, 3),
+        }));
+
+        return NextResponse.json(
+            {
+                bodyNote: parsed.data.bodyNote,
+                looks,
+            } satisfies StyleRecommendResponse,
+            {
+                headers: {
+                    'X-RateLimit-Remaining': String(rateLimit.remaining),
+                },
+            }
+        );
     } catch (error) {
+        if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+            return NextResponse.json(
+                { error: 'AI 추천 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.' },
+                { status: 504, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            );
+        }
         console.error('[Style Recommend API Error]', error);
-        return NextResponse.json({ error: 'AI 추천 오류가 발생했습니다.' }, { status: 500 });
+        return NextResponse.json(
+            { error: 'AI 추천 오류가 발생했습니다.' },
+            { status: 500, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
     }
 }

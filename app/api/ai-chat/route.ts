@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { extractGeminiText, normalizeKeywordList, parseGeminiJson } from '@/lib/ai/geminiJson';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
-const SYSTEM_PROMPT = `당신은 LooPyck의 전문 AI 패션 스타일리스트입니다.
+const SYSTEM_PROMPT_KO = `당신은 LooPyck의 전문 AI 패션 스타일리스트입니다.
 사용자의 패션 질문에 친근하고 전문적으로 답변하세요.
 
 규칙:
@@ -19,42 +21,102 @@ const SYSTEM_PROMPT = `당신은 LooPyck의 전문 AI 패션 스타일리스트�
 searchKeywords에는 실제 쇼핑몰에서 검색할 수 있는 구체적인 아이템명을 넣으세요.
 예: "와이드 데님 팬츠", "오버사이즈 크루넥 니트", "로우탑 캔버스 스니커즈"`;
 
+const SYSTEM_PROMPT_EN = `You are LooPyck's expert AI fashion stylist.
+Answer the user's fashion question in a friendly but practical tone.
+
+Rules:
+1. Keep the answer concise in 3-4 sentences.
+2. Recommend 1 to 3 concrete fashion item keywords.
+3. Return only valid JSON in this exact shape (no extra text):
+
+{
+  "text": "style advice",
+  "searchKeywords": ["keyword1", "keyword2"]
+}
+
+searchKeywords must be realistic shopping terms users can directly search for.`;
+
+const ChatHistorySchema = z.object({
+    role: z.enum(['user', 'model']),
+    text: z.string().trim().min(1).max(800),
+});
+
+const ChatRequestSchema = z.object({
+    message: z.string().trim().min(1, '메시지를 입력해주세요.').max(500, '메시지가 너무 깁니다.'),
+    history: z.array(ChatHistorySchema).max(12).optional().default([]),
+    locale: z.enum(['ko', 'en']).optional().default('ko'),
+});
+
+const ChatResponseSchema = z.object({
+    text: z.string().trim().min(1).max(800),
+    searchKeywords: z.array(z.string().trim().min(1).max(40)).max(5).optional().default([]),
+});
+
+function getSystemPrompt(locale: 'ko' | 'en'): string {
+    return locale === 'en' ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_KO;
+}
+
+function getStarterResponse(locale: 'ko' | 'en'): string {
+    return locale === 'en'
+        ? '{"text":"Hi! I am your AI fashion stylist.", "searchKeywords":[]}'
+        : '{"text":"안녕하세요! AI 패션 스타일리스트입니다.", "searchKeywords":[]}';
+}
+
+const HISTORY_CONTEXT_LIMIT = 6;
+const REQUEST_TIMEOUT_MS = 10_000;
+const FALLBACK_TEXT_MAX_LEN = 320;
+
 export async function POST(request: NextRequest) {
-    // Rate limit: 20 requests/min
     const rateLimit = await checkRateLimit(getRateLimitKey(request, 'ai-chat'), 20, 60_000);
     if (!rateLimit.allowed) {
-        return NextResponse.json({ error: '요청이 너무 많습니다.' }, { status: 429 });
+        return NextResponse.json(
+            { error: '요청이 너무 많습니다.' },
+            {
+                status: 429,
+                headers: {
+                    'Retry-After': String(rateLimit.retryAfterSec),
+                    'X-RateLimit-Remaining': '0',
+                },
+            }
+        );
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        return NextResponse.json({ error: 'AI 서비스가 설정되지 않았습니다.' }, { status: 503 });
+        return NextResponse.json(
+            { error: 'AI 서비스가 설정되지 않았습니다.' },
+            { status: 503, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
     }
 
-    let body: { message: string; history?: { role: string; text: string }[] };
+    let payload: unknown;
     try {
-        body = await request.json();
+        payload = await request.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+        return NextResponse.json(
+            { error: 'Invalid request body' },
+            { status: 400, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
     }
 
-    const { message, history = [] } = body;
-    if (!message || message.trim().length === 0) {
-        return NextResponse.json({ error: '메시지를 입력해주세요.' }, { status: 400 });
-    }
-    if (message.length > 500) {
-        return NextResponse.json({ error: '메시지가 너무 깁니다.' }, { status: 400 });
+    const parsedBody = ChatRequestSchema.safeParse(payload);
+    if (!parsedBody.success) {
+        return NextResponse.json(
+            { error: parsedBody.error.issues[0]?.message || '요청 형식이 올바르지 않습니다.' },
+            { status: 400, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
     }
 
-    // Build conversation history for Gemini
+    const { message, history, locale } = parsedBody.data;
+
     const geminiContents = [
-        { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
-        { role: 'model', parts: [{ text: '{"text": "안녕하세요! AI 패션 스타일리스트입니다.", "searchKeywords": []}' }] },
-        ...history.slice(-6).map(h => ({
-            role: h.role === 'user' ? 'user' : 'model',
-            parts: [{ text: h.text }]
+        { role: 'user', parts: [{ text: getSystemPrompt(locale) }] },
+        { role: 'model', parts: [{ text: getStarterResponse(locale) }] },
+        ...history.slice(-HISTORY_CONTEXT_LIMIT).map((item) => ({
+            role: item.role,
+            parts: [{ text: item.text }],
         })),
-        { role: 'user', parts: [{ text: message }] }
+        { role: 'user', parts: [{ text: message }] },
     ];
 
     try {
@@ -69,30 +131,56 @@ export async function POST(request: NextRequest) {
                     responseMimeType: 'application/json',
                 }
             }),
-            signal: AbortSignal.timeout(10000),
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
 
         if (!res.ok) {
             throw new Error(`Gemini API error: ${res.status}`);
         }
 
-        const data = await res.json();
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const data = await res.json() as unknown;
+        const parsed = parseGeminiJson(data, ChatResponseSchema);
 
-        let parsed: { text: string; searchKeywords: string[] };
-        try {
-            parsed = JSON.parse(rawText);
-        } catch {
-            // JSON 파싱 실패 시 원문을 텍스트로 반환
-            parsed = { text: rawText || '죄송합니다. 다시 시도해주세요.', searchKeywords: [] };
+        if (!parsed.ok) {
+            const fallbackText = extractGeminiText(data);
+            if (!fallbackText) {
+                return NextResponse.json(
+                    { error: 'AI 응답 형식을 처리하지 못했습니다.' },
+                    { status: 502, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+                );
+            }
+
+            return NextResponse.json(
+                {
+                    text: fallbackText.slice(0, FALLBACK_TEXT_MAX_LEN),
+                    searchKeywords: [],
+                },
+                { headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            );
         }
 
-        return NextResponse.json({
-            text: parsed.text,
-            searchKeywords: Array.isArray(parsed.searchKeywords) ? parsed.searchKeywords.slice(0, 3) : [],
-        });
+        return NextResponse.json(
+            {
+                text: parsed.data.text,
+                searchKeywords: normalizeKeywordList(parsed.data.searchKeywords, 3),
+            },
+            {
+                headers: {
+                    'X-RateLimit-Remaining': String(rateLimit.remaining),
+                },
+            }
+        );
     } catch (error) {
+        if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+            return NextResponse.json(
+                { error: 'AI 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.' },
+                { status: 504, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            );
+        }
         console.error('[AI Chat API Error]', error);
-        return NextResponse.json({ error: 'AI 응답 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
+        return NextResponse.json(
+            { error: 'AI 응답 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
+            { status: 500, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
     }
 }

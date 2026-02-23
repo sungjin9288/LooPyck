@@ -1,23 +1,79 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { normalizeKeywordList, parseGeminiJson } from '@/lib/ai/geminiJson';
+import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 
 export const runtime = 'edge';
 
-export async function POST(req: Request) {
+const REQUEST_TIMEOUT_MS = 12_000;
+
+const InsightRequestSchema = z.object({
+    title: z.string().trim().min(1, '상품명이 필요합니다.').max(180),
+    price: z.coerce.number().int().positive('가격 정보가 올바르지 않습니다.').max(1_000_000_000),
+    brand: z.string().trim().max(80).optional().default(''),
+    category: z.string().trim().max(80).optional().default(''),
+});
+
+const InsightResponseSchema = z.object({
+    insight: z.object({
+        score: z.coerce.number().finite().transform((value) => Math.max(0, Math.min(100, Math.round(value)))),
+        ratingEN: z.enum(['STRONG BUY', 'BUY', 'HOLD', 'WAIT']),
+        advice: z.string().trim().min(1).max(40),
+        reason: z.string().trim().min(1).max(240),
+    }),
+    trend: z.object({
+        score: z.coerce.number().finite().transform((value) => Math.max(0, Math.min(100, Math.round(value)))),
+        label: z.string().trim().min(1).max(40),
+        keywords: z.array(z.string().trim().min(1).max(30)).max(8).optional().default([]),
+    }),
+});
+
+export async function POST(request: NextRequest) {
+    const rateLimit = await checkRateLimit(getRateLimitKey(request, 'ai-insight'), 12, 60_000);
+    if (!rateLimit.allowed) {
+        return NextResponse.json(
+            { error: '요청이 너무 많습니다.' },
+            {
+                status: 429,
+                headers: {
+                    'Retry-After': String(rateLimit.retryAfterSec),
+                    'X-RateLimit-Remaining': '0',
+                },
+            }
+        );
+    }
+
+    let payload: unknown;
     try {
-        const { title, price, brand, category } = await req.json();
+        payload = await request.json();
+    } catch {
+        return NextResponse.json(
+            { error: '요청 본문(JSON)을 확인해주세요.' },
+            { status: 400, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
+    }
 
-        if (!title || !price) {
-            return NextResponse.json({ error: '상품명과 가격 정보가 필요합니다.' }, { status: 400 });
-        }
+    const parsedRequest = InsightRequestSchema.safeParse(payload);
+    if (!parsedRequest.success) {
+        return NextResponse.json(
+            { error: parsedRequest.error.issues[0]?.message || '요청 형식이 올바르지 않습니다.' },
+            { status: 400, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
+    }
 
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) {
-            return NextResponse.json({ error: 'API 키가 설정되지 않았습니다.' }, { status: 500 });
-        }
+    const { title, price, brand, category } = parsedRequest.data;
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        return NextResponse.json(
+            { error: 'API 키가 설정되지 않았습니다.' },
+            { status: 503, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
+    }
 
-        const prompt = `
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+    const prompt = `
 당신은 한국 패션 트렌드와 가격 방어율(리셀 가치)을 전문적으로 분석하는 AI 애널리스트입니다.
 아래 상품 정보를 바탕으로 구매 가치(Investment Insight)와 트렌드 지수(Trend Score)를 분석해주세요.
 
@@ -36,51 +92,72 @@ export async function POST(req: Request) {
 반드시 아래 JSON 형식으로만 응답하세요 (백틱 묶음 없이 순수 JSON만 반환):
 {
   "insight": {
-    "score": 85,           // 0 ~ 100 사이의 구매 가치 점수
-    "ratingEN": "BUY",     // "STRONG BUY", "BUY", "HOLD", "WAIT" 중 택 1
-    "advice": "트렌디한 아이템이며 가격 방어가 잘 되는 브랜드입니다. 당장 구매를 추천합니다.", // 메인 헤더용 (20자 이내)
-    "reason": "고프코어 트렌드에 정확히 부합하며, 현재 ${price}원의 가격은 해당 브랜드의 평균 리테일가 대비 합리적입니다. 품절 전 구매를 권장합니다." // 상세 설명 (150자 내외)
+    "score": 85,
+    "ratingEN": "BUY",
+    "advice": "트렌디한 아이템이며 가격 방어가 잘 됩니다.",
+    "reason": "고프코어 트렌드에 부합하고 현재 가격은 브랜드 평균 대비 합리적이라 구매 매력이 높습니다."
   },
   "trend": {
-    "score": 90,           // 0 ~ 100 사이의 트렌드 핫 지수
-    "label": "🔥 Super Hot", // "🔥 Super Hot", "📈 Rising Star", "Steady Seller" 등
-    "keywords": ["고프코어", "나일론", "오버핏"] // 연관 검색어 3개
+    "score": 90,
+    "label": "🔥 Super Hot",
+    "keywords": ["고프코어", "나일론", "오버핏"]
   }
 }
 `;
 
-        const requestBody = {
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-                temperature: 0.3,
-                response_mime_type: "application/json",
-            }
-        };
+    const requestBody = {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+            temperature: 0.3,
+            responseMimeType: 'application/json',
+        },
+    };
 
+    try {
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(requestBody),
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
 
         if (!response.ok) {
-            return NextResponse.json({ error: 'AI 분석 중 오류가 발생했습니다.' }, { status: response.status });
+            return NextResponse.json(
+                { error: 'AI 분석 중 오류가 발생했습니다.' },
+                { status: response.status, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            );
         }
 
-        const data = await response.json();
-        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!textResponse) {
-            return NextResponse.json({ error: 'AI 응답이 비어있습니다.' }, { status: 500 });
+        const data = (await response.json()) as unknown;
+        const parsed = parseGeminiJson(data, InsightResponseSchema);
+        if (!parsed.ok) {
+            return NextResponse.json(
+                { error: 'AI 응답 형식이 올바르지 않습니다.' },
+                { status: 502, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            );
         }
 
-        const cleanedText = textResponse.replace(/^```(json)?|```$/g, '').trim();
-        const result = JSON.parse(cleanedText);
-
-        return NextResponse.json(result);
-
+        return NextResponse.json(
+            {
+                insight: parsed.data.insight,
+                trend: {
+                    ...parsed.data.trend,
+                    keywords: normalizeKeywordList(parsed.data.trend.keywords, 3),
+                },
+            },
+            { headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
     } catch (error) {
-        console.error('Insight API Error:', error);
-        return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+        if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+            return NextResponse.json(
+                { error: 'AI 분석 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.' },
+                { status: 504, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            );
+        }
+        console.error('[AI Insight] Server Error:', error);
+        return NextResponse.json(
+            { error: '서버 오류가 발생했습니다.' },
+            { status: 500, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+        );
     }
 }
