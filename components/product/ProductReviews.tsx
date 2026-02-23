@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useUser } from '@/contexts/UserContext';
+import AIReviewSummary from './AIReviewSummary';
 
 interface Review {
     id: string;
@@ -92,6 +93,9 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
                 )}
             </div>
 
+            {/* AI Review Summary (Beta) */}
+            <AIReviewSummary reviews={reviews} />
+
             {/* Existing Reviews */}
             {reviews.length > 0 && (
                 <div className="space-y-3 mb-8">
@@ -171,8 +175,8 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
                                 type="button"
                                 onClick={() => setFit(val)}
                                 className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-all ${fit === val
-                                        ? 'bg-slate-900 text-white border-slate-900'
-                                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                                    ? 'bg-slate-900 text-white border-slate-900'
+                                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
                                     }`}
                             >
                                 {label}

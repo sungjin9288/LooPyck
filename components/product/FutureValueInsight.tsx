@@ -1,22 +1,81 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { forecastPrice } from '@/lib/ai/priceForecaster';
-import { analyzeTrend } from '@/lib/ai/trendScoring';
-import { designTokens } from '@/styles/designTokens';
+import React, { useState, useEffect } from 'react';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import InvestmentReport from './InvestmentReport';
+import { designTokens } from '@/styles/designTokens';
 
 interface FutureValueInsightProps {
     product: UnifiedProduct;
 }
 
-export default function FutureValueInsight({ product }: FutureValueInsightProps) {
-    const forecast = useMemo(() => forecastPrice(product.price), [product.price]);
-    const trend = useMemo(() => analyzeTrend(product.title), [product.title]);
+interface AIAnalysisResult {
+    insight: {
+        score: number;
+        ratingEN: string;
+        advice: string;
+        reason: string;
+    };
+    trend: {
+        score: number;
+        label: string;
+        keywords: string[];
+    };
+}
 
-    const trendColor = forecast.trend === 'DOWN' ? designTokens.colors.success :
-        forecast.trend === 'UP' ? designTokens.colors.error :
+export default function FutureValueInsight({ product }: FutureValueInsightProps) {
+    const [result, setResult] = useState<AIAnalysisResult | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        const fetchAnalysis = async () => {
+            setLoading(true);
+            setError(false);
+            try {
+                const res = await fetch('/api/ai-insight', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: product.title,
+                        price: product.price,
+                        brand: product.brand,
+                        category: product.category1 || '패션',
+                    })
+                });
+
+                if (!res.ok) throw new Error('API Error');
+                const data = await res.json();
+                setResult(data);
+            } catch (err) {
+                console.error(err);
+                setError(true);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAnalysis();
+    }, [product.title, product.price, product.brand, product.category1]);
+
+    if (loading) {
+        return (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 max-w-2xl w-full mx-auto my-6 animate-pulse">
+                <div className="h-4 bg-slate-200 rounded w-1/4 mb-4"></div>
+                <div className="h-6 bg-slate-200 rounded w-3/4 mb-6"></div>
+                <div className="h-32 bg-slate-100 rounded-xl w-full"></div>
+            </div>
+        );
+    }
+
+    if (error || !result) {
+        return null; // 분석 실패 시 조용히 숨김 (결제 핵심 흐름 방해 방지)
+    }
+
+    const { insight, trend } = result;
+
+    const trendColor = insight.ratingEN.includes('BUY') ? designTokens.colors.success :
+        insight.ratingEN === 'WAIT' ? designTokens.colors.error :
             designTokens.colors.textSecondary;
 
     return (
@@ -33,24 +92,37 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
                             {trend.label} ({trend.score}pt)
                         </span>
                     </h2>
+                    {trend.keywords.length > 0 && (
+                        <div className="flex gap-1.5 mt-2">
+                            {trend.keywords.map(kw => (
+                                <span key={kw} className="text-[10px] text-slate-400 font-medium px-1.5 py-0.5 border border-slate-100 rounded-md">
+                                    #{kw}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 <div className="text-right flex-shrink-0">
-                    <div className="text-xs text-slate-500">AI 권장 액션</div>
-                    <div className="text-lg font-bold" style={{ color: trendColor }}>
-                        {forecast.advice}
+                    <div className="text-xs text-slate-500">AI 한줄 평</div>
+                    <div className="text-sm font-bold mt-1" style={{ color: trendColor }}>
+                        {insight.advice}
                     </div>
                 </div>
             </div>
 
-            {/* Report */}
+            {/* Report Component uses updated props if we modify InvestmentReport to pass score directly, 
+                let's assume InvestmentReport already calculates rating based on score, but we can override it if needed.
+                Currently InvestmentReport recalculates rating string from score internally. 
+                That's fine, we pass score and reason.
+            */}
             <InvestmentReport
-                score={Math.round(forecast.confidence * 100)}
-                reason={forecast.reason}
+                score={insight.score}
+                reason={insight.reason}
             />
 
             {/* Footer */}
             <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400">
-                <span>Powered by AI Engine</span>
+                <span>Powered by Gemini 2.5 Flash</span>
                 <span>Region: {process.env.NEXT_PUBLIC_VERCEL_REGION || 'icn1'}</span>
             </div>
         </div>

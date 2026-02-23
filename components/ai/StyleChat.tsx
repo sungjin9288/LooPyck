@@ -39,8 +39,10 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [isComposing, setIsComposing] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [history, setHistory] = useState<{ role: string; text: string }[]>([]);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const sendLockRef = useRef(false);
 
     // Auto-scroll
@@ -94,6 +96,61 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
             sendLockRef.current = false;
         }
     }, [input, history, isTyping]);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 4 * 1024 * 1024) {
+            alert('이미지는 4MB 이하여야 합니다.');
+            return;
+        }
+
+        setIsUploading(true);
+        // 사용자 메시지 임시 표시 (이미지 아이콘 등으로 대체 가능)
+        setMessages(prev => [...prev, { text: '📷 이미지 전송 완료. 분석 중...', isBot: false }]);
+
+        try {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64 = reader.result as string;
+                const parts = base64.split(',');
+                const imageBase64 = parts[1];
+                const mimeType = file.type;
+
+                const res = await fetch('/api/ai-vision', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageBase64, mimeType })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    setMessages(prev => [...prev.slice(0, -1), { text: data.error || '이미지 분석에 실패했습니다.', isBot: true }]);
+                } else {
+                    setMessages(prev => [...prev.slice(0, -1), {
+                        text: data.description || '이미지를 분석했습니다. 아래 키워드로 검색해보세요!',
+                        isBot: true,
+                        searchKeywords: data.searchKeywords || []
+                    }]);
+
+                    setHistory(prev => [
+                        ...prev,
+                        { role: 'user', text: '[이미지 분석 요청]' },
+                        { role: 'model', text: JSON.stringify({ description: data.description, searchKeywords: data.searchKeywords }) }
+                    ]);
+                }
+                setIsUploading(false);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            setMessages(prev => [...prev.slice(0, -1), { text: '오류가 발생했습니다.', isBot: true }]);
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
 
     const handleSearchKeyword = (keyword: string) => {
         if (onSearch) {
@@ -171,8 +228,8 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                                 <div key={idx} className={`flex ${msg.isBot ? 'justify-start' : 'justify-end'}`}>
                                     <div className="max-w-[85%] space-y-2">
                                         <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.isBot
-                                                ? 'bg-slate-100 text-slate-800 rounded-tl-none'
-                                                : 'bg-gradient-to-br from-violet-600 to-indigo-700 text-white rounded-tr-none'
+                                            ? 'bg-slate-100 text-slate-800 rounded-tl-none'
+                                            : 'bg-gradient-to-br from-violet-600 to-indigo-700 text-white rounded-tr-none'
                                             }`}>
                                             {msg.text}
                                         </div>
@@ -215,7 +272,23 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                         </div>
 
                         {/* Input */}
-                        <form onSubmit={handleSubmit} className="p-3 border-t border-slate-100 flex gap-2 flex-shrink-0">
+                        <form onSubmit={handleSubmit} className="p-3 border-t border-slate-100 flex gap-2 flex-shrink-0 items-center">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                ref={fileInputRef}
+                                onChange={handleImageUpload}
+                                className="hidden"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isTyping || isUploading}
+                                className="w-10 h-10 flex-shrink-0 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors disabled:opacity-50"
+                                title="이미지로 검색하기"
+                            >
+                                📷
+                            </button>
                             <input
                                 type="text"
                                 value={input}
@@ -225,14 +298,14 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                                 onKeyDown={e => {
                                     if (e.key === 'Enter' && isComposing) e.preventDefault();
                                 }}
-                                placeholder={COPY[locale].placeholder}
-                                disabled={isTyping}
-                                className="flex-1 px-4 py-2.5 bg-slate-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/50 disabled:opacity-60"
+                                placeholder={isUploading ? '이미지 분석 중...' : COPY[locale].placeholder}
+                                disabled={isTyping || isUploading}
+                                className="flex-1 px-4 py-2 bg-slate-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/50 disabled:opacity-60"
                             />
                             <button
                                 type="submit"
-                                disabled={!input.trim() || isTyping}
-                                className="w-10 h-10 bg-gradient-to-br from-violet-600 to-indigo-700 text-white rounded-full flex items-center justify-center hover:opacity-90 disabled:opacity-40 transition-all"
+                                disabled={!input.trim() || isTyping || isUploading}
+                                className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-violet-600 to-indigo-700 text-white rounded-full flex items-center justify-center hover:opacity-90 disabled:opacity-40 transition-all"
                             >
                                 ↑
                             </button>
