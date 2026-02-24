@@ -2,6 +2,7 @@
 
 import { Product } from '@/types/product';
 import { useCloudStorage } from '@/hooks/useCloudStorage';
+import { triggerHaptic } from '@/lib/native/bridge';
 
 interface FavoriteButtonProps {
     product: Product;
@@ -21,8 +22,10 @@ export default function FavoriteButton({ product }: FavoriteButtonProps) {
         if (loading) return; // Prevent interaction during load
 
         if (favorite) {
+            triggerHaptic('medium');
             await removeFavorite(product.productId);
         } else {
+            triggerHaptic('success');
             await addFavorite(product);
         }
     };

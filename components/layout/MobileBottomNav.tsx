@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { triggerHaptic } from '@/lib/native/bridge';
 
 interface MobileBottomNavProps {
     currentView: 'search' | 'favorites';
@@ -14,10 +15,13 @@ export default function MobileBottomNav({ currentView, setCurrentView }: MobileB
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden">
             {/* Safe area padding for mobile devices & Backdrop blur */}
-            <div className="glass-panel border-t border-white/20 pb-safe">
+            <div className="glass-panel border-t border-white/20 pb-[var(--sab)]">
                 <nav className="flex items-center justify-around h-16 px-4">
                     <button
-                        onClick={() => setCurrentView('search')}
+                        onClick={() => {
+                            triggerHaptic('light');
+                            setCurrentView('search');
+                        }}
                         className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'search' ? 'text-accent-dark' : 'text-slate-400 hover:text-slate-600'
                             }`}
                     >
@@ -26,7 +30,10 @@ export default function MobileBottomNav({ currentView, setCurrentView }: MobileB
                     </button>
 
                     <button
-                        onClick={() => setCurrentView('favorites')}
+                        onClick={() => {
+                            triggerHaptic('light');
+                            setCurrentView('favorites');
+                        }}
                         className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'favorites' ? 'text-rose-500' : 'text-slate-400 hover:text-slate-600'
                             }`}
                     >
@@ -35,6 +42,7 @@ export default function MobileBottomNav({ currentView, setCurrentView }: MobileB
                     </button>
 
                     <button
+                        onClick={() => triggerHaptic('light')}
                         className="flex flex-col items-center justify-center w-full h-full space-y-1 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                         <UserIcon />
