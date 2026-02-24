@@ -3,6 +3,9 @@ import { aggregateRealtimeSearch } from '@/lib/api/realtimeAggregator';
 import { isFashionRelated } from '@/lib/core/domainGuard';
 import { SearchSort, ALLOWED_SORTS } from '@/types/searchSort';
 import { checkRateLimit, getRateLimitKey, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
+import { persistPriceHistorySnapshot } from '@/lib/server/priceHistoryStore';
+
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
     const rateLimit = await checkRateLimit(getRateLimitKey(request, 'realtime-search'), 60, 60_000);
@@ -42,6 +45,11 @@ export async function GET(request: NextRequest) {
 
     try {
         const products = await aggregateRealtimeSearch(query, page, sort);
+        try {
+            await persistPriceHistorySnapshot(products, query);
+        } catch (ingestError) {
+            console.warn('[PriceHistory] ingest failed:', ingestError);
+        }
 
         // Cache Control: Public, s-maxage=60 (CDN cache), stale-while-revalidate=30
         return NextResponse.json({ products }, {

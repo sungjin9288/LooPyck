@@ -3,6 +3,10 @@
         {
             "path": "/api/brand-trends",
             "schedule": "0 0 * * *"
+        },
+        {
+            "path": "/api/jobs/scan-price-alerts",
+            "schedule": "*/30 * * * *"
         }
     ]
 }

@@ -28,6 +28,7 @@ export const dictionary = {
         pwa: {
             installTitle: '앱으로 더 편하게 보세요',
             installDesc: '홈 화면에 추가하고 알림을 받아보세요.',
+            iosGuide: 'Safari 공유 버튼 → 홈 화면에 추가를 선택하세요.',
             installBtn: '앱 설치하기',
             later: '나중에'
         }
@@ -59,6 +60,7 @@ export const dictionary = {
         pwa: {
             installTitle: 'Install App',
             installDesc: 'Add to home screen for better experience.',
+            iosGuide: 'Tap Share in Safari, then choose Add to Home Screen.',
             installBtn: 'Install',
             later: 'Later'
         }

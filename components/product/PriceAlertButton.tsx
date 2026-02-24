@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Product } from '@/types/product';
 import { useCloudStorage } from '@/hooks/useCloudStorage';
 import { parsePrice } from '@/lib/api';
+import { triggerHaptic } from '@/lib/native/bridge';
+import { pushAppNotification } from '@/lib/core/notifications';
 
 interface PriceAlertButtonProps {
     product: Product;
@@ -42,6 +44,12 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
 
         await addFavorite(updatedProduct);
 
+        triggerHaptic('success');
+        pushAppNotification({
+            title: '가격 알림 설정 완료',
+            message: `${target.toLocaleString()}원 이하 도달 시 확인할 수 있도록 저장되었습니다.`,
+            type: 'success',
+        });
         setSuccess(true);
 
         // Reset after delay
@@ -78,6 +86,7 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                 onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    triggerHaptic('light');
                     setTargetPrice(existingTargetPrice ? String(existingTargetPrice) : '');
                     setShowModal(true);
                 }}

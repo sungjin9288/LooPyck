@@ -4,6 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "LooPyck - Smart Fashion Price Comparison",
   description: "Compare prices across multiple stores and pick the best option. LooPyck uses smart search to help you shop efficiently.",
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/icons/icon-192x192.svg',
+    apple: '/icons/icon-192x192.svg',
+  },
   openGraph: {
     title: "LooPyck - Smart Fashion Price Comparison",
     description: "Compare prices across multiple stores and pick the best option.",

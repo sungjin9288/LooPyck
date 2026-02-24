@@ -9,6 +9,8 @@ import ProductReviews from './ProductReviews';
 import RichShare from '@/components/shared/RichShare';
 import PriceHistoryChart from './PriceHistoryChart';
 import CouponBadge from './CouponBadge';
+import SizeFitGuide from './SizeFitGuide';
+import AffordableAlternatives from './AffordableAlternatives';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 
 interface ProductDetailModalProps {
@@ -111,46 +113,69 @@ export default function ProductDetailModal({ product, onClose, variants = [] }: 
                                 🏷️ 쇼핑몰별 가격 비교
                             </h3>
                             <div className="space-y-2">
-                                {allVariants.map((v, i) => (
-                                    <div key={v.id} className={`flex items-center justify-between p-3 rounded-xl border ${v.price === lowestPrice
-                                        ? 'border-accent-light bg-accent/5'
-                                        : 'border-slate-100 bg-slate-50'
-                                        }`}>
-                                        <div className="flex items-center gap-2">
-                                            {v.price === lowestPrice && (
-                                                <span className="text-[10px] font-bold bg-accent text-white px-1.5 py-0.5 rounded-full">최저가</span>
-                                            )}
-                                            <span className="text-sm font-medium text-slate-700">{v.mallName}</span>
-                                            <CouponBadge mallName={v.mallName} source={v.source} />
+                                {allVariants.map((v) => {
+                                    const safeVariantLink = sanitizeExternalUrl(v.link);
+                                    return (
+                                        <div key={v.id} className={`flex items-center justify-between p-3 rounded-xl border ${v.price === lowestPrice
+                                            ? 'border-accent-light bg-accent/5'
+                                            : 'border-slate-100 bg-slate-50'
+                                            }`}>
+                                            <div className="flex items-center gap-2">
+                                                {v.price === lowestPrice && (
+                                                    <span className="text-[10px] font-bold bg-accent text-white px-1.5 py-0.5 rounded-full">최저가</span>
+                                                )}
+                                                <span className="text-sm font-medium text-slate-700">{v.mallName}</span>
+                                                <CouponBadge mallName={v.mallName} source={v.source} />
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className={`text-sm font-bold ${v.price === lowestPrice ? 'text-accent-dark' : 'text-slate-700'}`}>
+                                                    {v.price.toLocaleString()}원
+                                                </span>
+                                                {safeVariantLink ? (
+                                                    <a
+                                                        href={safeVariantLink}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={e => e.stopPropagation()}
+                                                        className="text-xs px-2 py-1 bg-slate-900 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                                                    >
+                                                        이동
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-xs px-2 py-1 bg-slate-200 text-slate-500 rounded-lg">
+                                                        링크 없음
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className={`text-sm font-bold ${v.price === lowestPrice ? 'text-accent-dark' : 'text-slate-700'}`}>
-                                                {v.price.toLocaleString()}원
-                                            </span>
-                                            <a
-                                                href={v.link}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                onClick={e => e.stopPropagation()}
-                                                className="text-xs px-2 py-1 bg-slate-900 text-white rounded-lg hover:bg-slate-700 transition-colors"
-                                            >
-                                                이동
-                                            </a>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
 
+                    {/* Size and Fit Guide (Phase 40) */}
+                    <div className="border-t border-slate-100 pt-6 mb-6">
+                        <SizeFitGuide productName={product.title} />
+                    </div>
+
+                    {/* Affordable Alternatives (Phase 40) */}
+                    <div className="border-t border-slate-100 pt-6 mb-6">
+                        <AffordableAlternatives baseProduct={product} />
+                    </div>
+
                     {/* Price History Chart */}
                     <div className="border-t border-slate-100 pt-6 mb-6">
                         <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
-                            📈 가격 추이
+                            📈 가격 변동 추정
                         </h3>
-                        <PriceHistoryChart currentPrice={product.price} />
+                        <PriceHistoryChart
+                            source={product.source}
+                            productId={product.id}
+                            currentPrice={product.price}
+                        />
                         <p className="text-xs text-slate-400 text-center mt-2">
-                            💡 가격은 시기마다 변동됩니다. 목표 가격 도달 시 알림 설정을 추천합니다.
+                            💡 현재는 실시간 가격 이력 DB가 아닌 추정 그래프입니다. 목표가 알림을 함께 설정해두세요.
                         </p>
                     </div>
 

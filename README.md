@@ -21,9 +21,9 @@
 
 ## 🎯 Overview
 
-> **"Look & Pick"** — AI로 7개 쇼핑몰 가격을 한눈에 비교하세요.
+> **"Look & Pick"** — AI로 주요 쇼핑몰 가격을 한눈에 비교하세요.
 
-LooPyck은 Zero-Cost AI 기술로 무신사, 29CM, W컨셉 등 주요 쇼핑몰의 상품 정보를 실시간 수집하고,  
+LooPyck은 Zero-Cost AI 기술로 네이버 쇼핑 API, 무신사, 29CM 상품 정보를 실시간 수집하고,  
 **쇼핑몰 간 가격 비교 + AI 스타일 추천**을 제공하는 패션 가격 비교 플랫폼입니다.
 
 ---
@@ -63,15 +63,11 @@ LooPyck은 Zero-Cost AI 기술로 무신사, 29CM, W컨셉 등 주요 쇼핑몰�
 
 ### 지원 쇼핑몰
 
-| 쇼핑몰 | 성공률 | 상태 |
-|--------|--------|------|
-| 무신사 | 100% | ✅ |
-| 29CM | 100% | ✅ |
-| W컨셉 | 100% | ✅ |
-| 에이블리 | 100% | ✅ |
-| 지그재그 | 86% | ✅ |
-| SSF샵 | 71% | ✅ |
-| 한섬 | 43% | ⚠️ |
+| 쇼핑몰 | 연동 방식 | 상태 |
+|--------|-----------|------|
+| 네이버 쇼핑 API | Open API | ✅ |
+| 무신사 | 실시간 스크래핑 | ✅ |
+| 29CM | 검색 API | ✅ |
 
 ---
 
@@ -169,6 +165,10 @@ npm run typecheck
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | ✅ | Firebase Messaging Sender ID |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | ✅ | Firebase App ID |
 | `GEMINI_API_KEY` | 선택 | AI 분석 기능용 Gemini API Key (서버 전용) |
+| `FIREBASE_ADMIN_PROJECT_ID` | ✅(운영 권장) | Firebase Admin SDK Project ID (가격 이력/알림 배치) |
+| `FIREBASE_ADMIN_CLIENT_EMAIL` | ✅(운영 권장) | Firebase Admin SDK Client Email |
+| `FIREBASE_ADMIN_PRIVATE_KEY` | ✅(운영 권장) | Firebase Admin SDK Private Key (`\n` 이스케이프 필요) |
+| `CRON_SECRET` | ✅(운영 권장) | `/api/jobs/scan-price-alerts` 보호용 시크릿 |
 | `NEXT_PUBLIC_ADMIN_UIDS` | 선택 | Admin 대시보드 접근 UID 목록(쉼표 구분) |
 | `UPSTASH_REDIS_REST_URL` | 선택 | 분산 Rate Limit용 Upstash Redis |
 | `UPSTASH_REDIS_REST_TOKEN` | 선택 | 분산 Rate Limit용 Upstash Redis Token |
@@ -209,8 +209,9 @@ npm run typecheck
 - [x] 카테고리/브랜드 SEO 랜딩 페이지
 - [x] 모바일 스와이프-다운 모달
 - [x] Error Boundary
+- [x] 실제 가격 이력 DB 저장 (`/api/realtime-search` 인입 시 누적)
+- [x] 목표가 감지 배치 + 알림 발송 (`/api/jobs/scan-price-alerts`, 30분 크론)
 - [ ] AR Try-On Integration
-- [ ] 실제 가격 이력 DB 저장 및 알림 발송
 - [ ] Cross-Border 해외 쇼핑몰 확장
 
 ---

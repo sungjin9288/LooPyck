@@ -2,7 +2,14 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
-import { signInAnonymously, onAuthStateChanged, User, GoogleAuthProvider, linkWithPopup } from 'firebase/auth';
+import {
+    signInAnonymously,
+    onAuthStateChanged,
+    User,
+    GoogleAuthProvider,
+    linkWithPopup,
+    linkWithRedirect,
+} from 'firebase/auth';
 
 declare global {
     interface Window {
@@ -17,6 +24,17 @@ interface UserContextType {
     loading: boolean;
     isAuthenticated: boolean;
     linkAccount: () => Promise<void>;
+}
+
+function isPopupFlowError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const code = (error as { code?: unknown }).code;
+    if (typeof code !== 'string') return false;
+    return [
+        'auth/popup-blocked',
+        'auth/popup-closed-by-user',
+        'auth/operation-not-supported-in-this-environment',
+    ].includes(code);
 }
 
 const UserContext = createContext<UserContextType>({
@@ -50,9 +68,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         const provider = new GoogleAuthProvider();
         try {
+            if (typeof window !== 'undefined' && /iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
+                await linkWithRedirect(auth.currentUser, provider);
+                return;
+            }
             await linkWithPopup(auth.currentUser, provider);
             console.log('Account linked successfully');
         } catch (error) {
+            if (isPopupFlowError(error)) {
+                await linkWithRedirect(auth.currentUser, provider);
+                return;
+            }
             console.error('Link account error:', error);
             throw error;
         }
