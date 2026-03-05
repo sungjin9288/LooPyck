@@ -164,11 +164,15 @@ npm run typecheck
 | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | ✅ | Firebase Storage Bucket |
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | ✅ | Firebase Messaging Sender ID |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | ✅ | Firebase App ID |
+| `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | ✅(푸시 사용 시) | Web Push VAPID 공개 키 |
 | `GEMINI_API_KEY` | 선택 | AI 분석 기능용 Gemini API Key (서버 전용) |
-| `FIREBASE_ADMIN_PROJECT_ID` | ✅(운영 권장) | Firebase Admin SDK Project ID (가격 이력/알림 배치) |
-| `FIREBASE_ADMIN_CLIENT_EMAIL` | ✅(운영 권장) | Firebase Admin SDK Client Email |
-| `FIREBASE_ADMIN_PRIVATE_KEY` | ✅(운영 권장) | Firebase Admin SDK Private Key (`\n` 이스케이프 필요) |
-| `CRON_SECRET` | ✅(운영 권장) | `/api/jobs/scan-price-alerts` 보호용 시크릿 |
+| `FIREBASE_ADMIN_PROJECT_ID` | ✅(운영) | Firebase Admin SDK Project ID (가격 이력/알림 배치) |
+| `FIREBASE_ADMIN_CLIENT_EMAIL` | ✅(운영) | Firebase Admin SDK Client Email |
+| `FIREBASE_ADMIN_PRIVATE_KEY` | ✅(운영) | Firebase Admin SDK Private Key (`\n` 이스케이프 필요) |
+| `CRON_SECRET` | ✅(운영) | `/api/jobs/scan-price-alerts` 보호용 시크릿 |
+| `IOS_TEAM_ID` | ✅(iOS 배포 시) | Apple Team ID (`ABCDE12345`) |
+| `IOS_BUNDLE_ID` | ✅(iOS 배포 시) | 앱 Bundle ID (`com.company.app`) |
+| `IOS_APPCLIP_BUNDLE_ID` | 선택 | App Clip Bundle ID |
 | `NEXT_PUBLIC_ADMIN_UIDS` | 선택 | Admin 대시보드 접근 UID 목록(쉼표 구분) |
 | `UPSTASH_REDIS_REST_URL` | 선택 | 분산 Rate Limit용 Upstash Redis |
 | `UPSTASH_REDIS_REST_TOKEN` | 선택 | 분산 Rate Limit용 Upstash Redis Token |

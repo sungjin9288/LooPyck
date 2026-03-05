@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react';
 import VisualSearch from './VisualSearch';
 import { isFashionRelated } from '@/lib/core/domainGuard';
+import { pushAppNotification } from '@/lib/core/notifications';
 
 interface SearchBarProps {
     onSearch: (query: string, sort: 'sim' | 'date' | 'asc' | 'dsc') => void;
@@ -24,7 +25,7 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
         if (query.trim()) {
             const check = isFashionRelated(query);
             if (!check.allowed) {
-                alert(check.reason); // Simple alert for now, could be a toast later
+                pushAppNotification({ title: '검색 제한', message: check.reason, type: 'alert' });
                 return;
             }
             onSearch(query, sort);

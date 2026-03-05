@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useCloudStorage } from '@/hooks/useCloudStorage';
 import { Product } from '@/types/product';
 import ProductCard from '../product/ProductCard';
+import { Spinner } from '@/components/shared/Spinner';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { StyleProfileCard } from '@/components/shared/StyleProfileCard';
 
 const LOOKBOOK_STORAGE_KEY = 'loopyck-lookbooks';
 
@@ -75,7 +78,7 @@ export default function FavoritesPage() {
     if (loading && favorites.length === 0) {
         return (
             <div className="flex justify-center py-20">
-                <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin" />
+                <Spinner size="md" />
             </div>
         );
     }
@@ -91,6 +94,9 @@ export default function FavoritesPage() {
                     찜한 상품들을 컬렉션으로 정리하고 가격을 비교해보세요
                 </p>
             </div>
+
+            {/* Style Profile */}
+            <StyleProfileCard favorites={favorites} />
 
             {/* Lookbook Tabs */}
             <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
@@ -143,19 +149,15 @@ export default function FavoritesPage() {
 
             {/* Empty State */}
             {displayedFavorites.length === 0 && (
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.97 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-center py-20"
-                >
-                    <div className="inline-block p-6 bg-white rounded-full shadow-lg mb-6">
+                <EmptyState
+                    icon={
                         <svg className="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">찜한 상품이 없습니다</h3>
-                    <p className="text-slate-500 text-sm">마음에 드는 상품의 하트 버튼을 눌러보세요</p>
-                </motion.div>
+                    }
+                    title="찜한 상품이 없습니다"
+                    message="마음에 드는 상품의 하트 버튼을 눌러보세요"
+                />
             )}
 
             {/* Product Grid */}

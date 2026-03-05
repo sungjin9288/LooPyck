@@ -6,6 +6,16 @@ import { db } from '@/lib/firebase';
 import { collection, doc, onSnapshot, query, getDocs, writeBatch, runTransaction } from 'firebase/firestore';
 import { Product } from '@/types/product';
 
+function isProduct(data: unknown): data is Product {
+    if (!data || typeof data !== 'object') return false;
+    const d = data as Record<string, unknown>;
+    return (
+        typeof d.productId === 'string' &&
+        typeof d.title === 'string' &&
+        typeof d.lprice === 'string'
+    );
+}
+
 const STORAGE_KEY = 'fashion-favorites';
 
 export function useCloudStorage() {
@@ -38,7 +48,8 @@ export function useCloudStorage() {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const cloudData: Product[] = [];
             snapshot.forEach((doc) => {
-                cloudData.push(doc.data() as Product);
+                const data = doc.data();
+                if (isProduct(data)) cloudData.push(data);
             });
             setFavorites(cloudData);
             setLoading(false);
@@ -72,7 +83,6 @@ export function useCloudStorage() {
                 const cloudSnap = await getDocs(collection(db, path));
 
                 if (cloudSnap.empty) {
-                    console.log("Migrating Local Data to Cloud...");
                     const batch = writeBatch(db);
 
                     localData.forEach(item => {
@@ -81,7 +91,6 @@ export function useCloudStorage() {
                     });
 
                     await batch.commit();
-                    console.log("Migration Complete.");
 
                     // 마이그레이션 완료 후 로컬 데이터 정리
                     localStorage.removeItem(STORAGE_KEY);

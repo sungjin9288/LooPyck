@@ -6,8 +6,8 @@ export const metadata: Metadata = {
   description: "Compare prices across multiple stores and pick the best option. LooPyck uses smart search to help you shop efficiently.",
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/icons/icon-192x192.svg',
-    apple: '/icons/icon-192x192.svg',
+    icon: '/icons/icon-192x192.png',
+    apple: '/icons/icon-192x192.png',
   },
   openGraph: {
     title: "LooPyck - Smart Fashion Price Comparison",
@@ -25,6 +25,7 @@ export const viewport = {
 
 
 import ScrollToTop from "@/components/shared/ScrollToTop";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 import { UserProvider } from "@/contexts/UserContext";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
@@ -39,14 +40,16 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className="antialiased" suppressHydrationWarning>
-        <UserProvider>
-          <LanguageProvider>
-            {children}
-            <PWAInstallPrompt />
-            <NotificationSystem />
-            <ScrollToTop />
-          </LanguageProvider>
-        </UserProvider>
+        <ErrorBoundary>
+          <UserProvider>
+            <LanguageProvider>
+              {children}
+              <PWAInstallPrompt />
+              <NotificationSystem />
+              <ScrollToTop />
+            </LanguageProvider>
+          </UserProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

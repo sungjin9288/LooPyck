@@ -1,23 +1,40 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import type { BrandTrendItem } from '@/app/api/brand-trends/route';
 
-// Mock data for the ticker - in real app, these could come from a Trend API
-const TICKER_ITEMS = [
-    { label: 'Stussy', change: 2.4, state: 'up' },
-    { label: 'Arc\'teryx', change: 5.7, state: 'up' },
-    { label: 'Nike', change: -0.8, state: 'down' },
-    { label: 'New Balance', change: 1.2, state: 'up' },
-    { label: 'Supreme', change: -3.1, state: 'down' },
-    { label: 'Diesel', change: 4.5, state: 'up' },
-    { label: 'Carhartt WIP', change: 0.0, state: 'neutral' },
-    { label: 'Salomon', change: 8.2, state: 'up' },
-    { label: 'Adidas', change: -1.5, state: 'down' },
-    { label: 'Human Made', change: 3.3, state: 'up' },
+const FALLBACK_ITEMS: BrandTrendItem[] = [
+    { name: 'STUSSY', change: 2.4, isUp: true, productCount: 0 },
+    { name: "ARC'TERYX", change: 5.7, isUp: true, productCount: 0 },
+    { name: 'NIKE', change: 0.8, isUp: false, productCount: 0 },
+    { name: 'NEW BALANCE', change: 1.2, isUp: true, productCount: 0 },
+    { name: 'SUPREME', change: 3.1, isUp: true, productCount: 0 },
+    { name: 'SALOMON', change: 4.5, isUp: true, productCount: 0 },
+    { name: 'ADIDAS', change: 0.0, isUp: true, productCount: 0 },
+    { name: 'HUMAN MADE', change: 3.3, isUp: true, productCount: 0 },
+    { name: 'ADER ERROR', change: 1.5, isUp: false, productCount: 0 },
+    { name: 'KITH', change: 2.1, isUp: true, productCount: 0 },
 ];
 
 export default function MarketTicker() {
+    const [items, setItems] = useState<BrandTrendItem[]>(FALLBACK_ITEMS);
+
+    useEffect(() => {
+        let active = true;
+        fetch('/api/brand-trends')
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (active && Array.isArray(data?.brands) && data.brands.length > 0) {
+                    setItems(data.brands);
+                }
+            })
+            .catch(() => { /* 폴백 유지 */ });
+        return () => { active = false; };
+    }, []);
+
+    const displayItems = [...items, ...items, ...items];
+
     return (
         <div className="w-full bg-black text-white overflow-hidden py-2 border-b border-gray-800 z-40 relative">
             <div className="flex whitespace-nowrap">
@@ -26,19 +43,16 @@ export default function MarketTicker() {
                     animate={{ x: [0, -1000] }}
                     transition={{
                         repeat: Infinity,
-                        ease: "linear",
-                        duration: 30, // Adjust speed here
+                        ease: 'linear',
+                        duration: 30,
                     }}
                 >
-                    {/* Duplicate list to ensure seamless looping */}
-                    {[...TICKER_ITEMS, ...TICKER_ITEMS, ...TICKER_ITEMS].map((item, idx) => (
-                        <div key={`${item.label}-${idx}`} className="flex items-center gap-2 text-xs font-mono tracking-wider">
-                            <span className="font-bold text-gray-300">{item.label.toUpperCase()}</span>
-                            <span className={`flex items-center ${item.state === 'up' ? 'text-green-500' : item.state === 'down' ? 'text-red-500' : 'text-gray-500'}`}>
-                                {item.state === 'up' && '▲'}
-                                {item.state === 'down' && '▼'}
-                                {item.state === 'neutral' && '-'}
-                                <span className="ml-1">{Math.abs(item.change)}%</span>
+                    {displayItems.map((item, idx) => (
+                        <div key={`${item.name}-${idx}`} className="flex items-center gap-2 text-xs font-mono tracking-wider">
+                            <span className="font-bold text-gray-300">{item.name}</span>
+                            <span className={`flex items-center ${item.isUp ? 'text-green-500' : item.change === 0 ? 'text-gray-500' : 'text-red-500'}`}>
+                                {item.isUp ? '▲' : item.change === 0 ? '-' : '▼'}
+                                <span className="ml-1">{item.change.toFixed(1)}%</span>
                             </span>
                         </div>
                     ))}

@@ -45,8 +45,10 @@ export async function GET(request: NextRequest) {
 
     try {
         const products = await aggregateRealtimeSearch(query, page, sort);
+        let historyEnabled = false;
         try {
-            await persistPriceHistorySnapshot(products, query);
+            const historyResult = await persistPriceHistorySnapshot(products, query);
+            historyEnabled = historyResult.enabled;
         } catch (ingestError) {
             console.warn('[PriceHistory] ingest failed:', ingestError);
         }
@@ -56,6 +58,7 @@ export async function GET(request: NextRequest) {
             headers: {
                 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30',
                 'X-RateLimit-Remaining': String(rateLimit.remaining),
+                'X-PriceHistory-Enabled': String(historyEnabled),
             }
         });
     } catch (error) {

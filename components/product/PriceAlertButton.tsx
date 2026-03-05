@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Product } from '@/types/product';
 import { useCloudStorage } from '@/hooks/useCloudStorage';
 import { parsePrice } from '@/lib/api';
 import { triggerHaptic } from '@/lib/native/bridge';
 import { pushAppNotification } from '@/lib/core/notifications';
+import { registerPushToken } from '@/lib/native/pushRegistration';
+import { useUser } from '@/contexts/UserContext';
 
 interface PriceAlertButtonProps {
     product: Product;
@@ -15,33 +17,54 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
     const [showModal, setShowModal] = useState(false);
     const [targetPrice, setTargetPrice] = useState('');
     const [success, setSuccess] = useState(false);
+    const modalRef = useRef<HTMLDivElement>(null);
 
     // Use cloud storage hook
     const { favorites, addFavorite, loading } = useCloudStorage();
+    const { userId, appId } = useUser();
 
     const currentPrice = parsePrice(product.lprice);
     const favoriteItem = favorites.find(f => f.productId === product.productId);
     const existingTargetPrice = favoriteItem?.targetPrice;
 
+    // Focus trap + Escape to close
+    useEffect(() => {
+        if (!showModal) return;
+        const modal = modalRef.current;
+        if (!modal) return;
+
+        const focusable = modal.querySelectorAll<HTMLElement>(
+            'button, input, [href], select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        first?.focus();
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') { setShowModal(false); return; }
+            if (e.key !== 'Tab') return;
+            if (e.shiftKey) {
+                if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+            } else {
+                if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [showModal]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Prevent interaction if loading (though maybe disable button instead)
         if (loading) return;
 
         const target = parseInt(targetPrice, 10);
         if (!Number.isFinite(target) || target <= 0) {
-            alert('올바른 목표 가격을 입력해주세요.');
+            pushAppNotification({ title: '입력 오류', message: '올바른 목표 가격을 입력해주세요.', type: 'alert' });
             return;
         }
 
-        // Update favorites in cloud
-        // Construct updated product object - merging with existing or raw product
-        const updatedProduct = {
-            ...product,
-            targetPrice: target
-        };
-
+        const updatedProduct = { ...product, targetPrice: target };
         await addFavorite(updatedProduct);
 
         triggerHaptic('success');
@@ -50,9 +73,19 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
             message: `${target.toLocaleString()}원 이하 도달 시 확인할 수 있도록 저장되었습니다.`,
             type: 'success',
         });
+
+        if (userId) {
+            const pushStatus = await registerPushToken(appId, userId);
+            if (pushStatus === 'registered') {
+                pushAppNotification({
+                    title: '푸시 알림 활성화',
+                    message: '가격 하락 시 iOS/브라우저 알림으로도 알려드릴게요.',
+                    type: 'info',
+                });
+            }
+        }
         setSuccess(true);
 
-        // Reset after delay
         setTimeout(() => {
             setShowModal(false);
             setSuccess(false);
@@ -63,7 +96,6 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
     const hasAlert = favoriteItem && favoriteItem.targetPrice !== undefined;
     const isInactiveAlert = hasAlert && (favoriteItem.targetPrice || 0) >= parsePrice(product.lprice);
 
-    // If loading, show nothing or skeleton, avoiding rendering empty state that implies no alert
     if (loading) return null;
 
     return (
@@ -113,6 +145,9 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
 
             {showModal && (
                 <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="price-alert-title"
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200"
                     onClick={(e) => {
                         e.preventDefault();
@@ -121,6 +156,7 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                     }}
                 >
                     <div
+                        ref={modalRef}
                         className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 transform transition-all scale-100"
                         onClick={(e) => {
                             e.preventDefault();
@@ -130,18 +166,8 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                         {success ? (
                             <div className="text-center py-4 animate-in zoom-in duration-300">
                                 <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                                    <svg
-                                        className="w-8 h-8 text-green-600"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M5 13l4 4L19 7"
-                                        />
+                                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
                                 </div>
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
@@ -153,7 +179,7 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                             </div>
                         ) : (
                             <>
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                                <h3 id="price-alert-title" className="text-lg font-bold text-gray-900 dark:text-white mb-4">
                                     {hasAlert ? '가격 알림 수정' : '가격 하락 알림 설정'}
                                 </h3>
                                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border border-gray-100 dark:border-gray-600">
@@ -161,10 +187,11 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                                 </p>
                                 <form onSubmit={handleSubmit} className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        <label htmlFor="target-price-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                             목표 가격 (원)
                                         </label>
                                         <input
+                                            id="target-price-input"
                                             type="number"
                                             value={targetPrice}
                                             onChange={(e) => setTargetPrice(e.target.value)}

@@ -1,23 +1,65 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { motion } from 'framer-motion';
+import { useCloudStorage } from '@/hooks/useCloudStorage';
+import { Product } from '@/types/product';
 
-// Mock Data for "My Assets"
-const ASSET_DATA = [
-    { name: 'Outer', value: 450000, color: '#000000' },
-    { name: 'Top', value: 230000, color: '#333333' },
-    { name: 'Bottom', value: 180000, color: '#666666' },
-    { name: 'Shoes', value: 320000, color: '#999999' },
-    { name: 'Acc', value: 120000, color: '#cccccc' },
+const CATEGORY_CONFIG: { label: string; color: string; keywords: string[] }[] = [
+    { label: 'Outer',  color: '#000000', keywords: ['아우터', '코트', '자켓', '점퍼', '패딩', 'coat', 'jacket'] },
+    { label: 'Top',    color: '#333333', keywords: ['상의', '티셔츠', '맨투맨', '후드', '니트', '셔츠', 'top', 'shirt', 'knit'] },
+    { label: 'Bottom', color: '#666666', keywords: ['하의', '바지', '팬츠', '스커트', '청바지', 'pants', 'skirt', 'denim'] },
+    { label: 'Shoes',  color: '#999999', keywords: ['신발', '스니커즈', '부츠', '샌들', '로퍼', 'shoes', 'sneakers', 'boots'] },
+    { label: 'Acc',    color: '#cccccc', keywords: ['악세서리', '가방', '백', '모자', '벨트', 'bag', 'cap', 'acc'] },
 ];
 
-const TOTAL_VALUE = ASSET_DATA.reduce((acc, cur) => acc + cur.value, 0);
-const INITIAL_INVESTMENT = 1100000; // Mock initial buy price
-const ROI = ((TOTAL_VALUE - INITIAL_INVESTMENT) / INITIAL_INVESTMENT) * 100;
+function classifyProduct(product: Product): string {
+    const haystack = [product.category1, product.category2, product.title].join(' ').toLowerCase();
+    for (const cat of CATEGORY_CONFIG) {
+        if (cat.keywords.some(kw => haystack.includes(kw))) return cat.label;
+    }
+    return 'Etc';
+}
 
 export default function MyAsset() {
+    const { favorites, loading } = useCloudStorage();
+
+    const assetData = useMemo(() => {
+        if (favorites.length === 0) return [];
+        const grouped: Record<string, number> = {};
+        for (const fav of favorites) {
+            const cat = classifyProduct(fav);
+            const price = parseInt(fav.lprice, 10) || 0;
+            grouped[cat] = (grouped[cat] ?? 0) + price;
+        }
+        return CATEGORY_CONFIG
+            .map(c => ({ name: c.label, value: grouped[c.label] ?? 0, color: c.color }))
+            .concat(grouped['Etc'] ? [{ name: 'Etc', value: grouped['Etc'], color: '#e5e5e5' }] : [])
+            .filter(d => d.value > 0);
+    }, [favorites]);
+
+    const totalValue = useMemo(() => assetData.reduce((a, d) => a + d.value, 0), [assetData]);
+
+    if (loading) {
+        return (
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm animate-pulse">
+                <div className="h-4 bg-slate-200 rounded w-1/3 mb-4" />
+                <div className="h-8 bg-slate-200 rounded w-1/2 mb-6" />
+                <div className="h-48 bg-slate-100 rounded-xl" />
+            </div>
+        );
+    }
+
+    if (favorites.length === 0 || assetData.length === 0) {
+        return (
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm text-center">
+                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">My Wardrobe Value</p>
+                <p className="text-xs text-gray-400">찜한 상품을 추가하면<br />워드로브 포트폴리오가 표시됩니다.</p>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
             <div className="flex justify-between items-start mb-6">
@@ -27,10 +69,10 @@ export default function MyAsset() {
                     </h2>
                     <div className="flex items-baseline gap-2">
                         <span className="text-3xl font-black text-black">
-                            ₩{TOTAL_VALUE.toLocaleString()}
+                            ₩{totalValue.toLocaleString()}
                         </span>
-                        <span className={`text-sm font-bold ${ROI >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {ROI >= 0 ? '+' : ''}{ROI.toFixed(1)}%
+                        <span className="text-xs text-gray-400 font-medium">
+                            찜 {favorites.length}개
                         </span>
                     </div>
                 </div>
@@ -40,18 +82,18 @@ export default function MyAsset() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
-                {/* Chart */}
+                {/* Pie Chart */}
                 <div className="h-[200px] w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
-                                data={ASSET_DATA}
+                                data={assetData}
                                 innerRadius={60}
                                 outerRadius={80}
                                 paddingAngle={5}
                                 dataKey="value"
                             >
-                                {ASSET_DATA.map((entry, index) => (
+                                {assetData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                                 ))}
                             </Pie>
@@ -61,7 +103,6 @@ export default function MyAsset() {
                             />
                         </PieChart>
                     </ResponsiveContainer>
-                    {/* Center Text */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <span className="text-xs font-bold text-gray-400">ALLOCATION</span>
                     </div>
@@ -69,12 +110,12 @@ export default function MyAsset() {
 
                 {/* Breakdown List */}
                 <div className="space-y-3">
-                    {ASSET_DATA.map((item, index) => (
+                    {assetData.map((item, index) => (
                         <motion.div
                             key={item.name}
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.1 }}
+                            transition={{ delay: index * 0.08 }}
                             className="flex justify-between items-center"
                         >
                             <div className="flex items-center gap-2">
@@ -82,7 +123,7 @@ export default function MyAsset() {
                                 <span className="text-sm font-medium text-gray-600">{item.name}</span>
                             </div>
                             <span className="text-sm font-bold text-black">
-                                {((item.value / TOTAL_VALUE) * 100).toFixed(0)}%
+                                {totalValue > 0 ? ((item.value / totalValue) * 100).toFixed(0) : 0}%
                             </span>
                         </motion.div>
                     ))}
@@ -90,12 +131,7 @@ export default function MyAsset() {
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-                <p className="text-xs text-gray-400 mb-2">
-                    Your collection outperforms the market by <span className="text-black font-bold">12.5%</span> this season.
-                </p>
-                <button className="w-full py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-bold transition-colors">
-                    View Comprehensive Report
-                </button>
+                <p className="text-xs text-gray-400">찜한 상품의 최저가 기준 포트폴리오입니다.</p>
             </div>
         </div>
     );

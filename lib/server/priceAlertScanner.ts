@@ -1,4 +1,4 @@
-import { FieldValue } from 'firebase-admin/firestore';
+import { DocumentData, FieldValue, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { aggregateRealtimeSearch } from '@/lib/api/realtimeAggregator';
 import { normalizeTitle } from '@/lib/core/dataNormalizer';
 import { getAdminDb, getAdminMessaging } from '@/lib/server/firebaseAdmin';
@@ -15,10 +15,23 @@ type FavoriteDoc = {
 };
 
 function parseCurrentPrice(raw: unknown): number {
-    if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
-    if (typeof raw !== 'string') return Number.POSITIVE_INFINITY;
+    if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return raw;
+    if (typeof raw !== 'string') return 0;
     const parsed = Number.parseInt(raw.replace(/[^0-9]/g, ''), 10);
-    return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+type CheapestResult = { price: number; mallName: string; link: string } | null;
+
+function findCheapestCrossMall(
+    results: Awaited<ReturnType<typeof aggregateRealtimeSearch>>
+): CheapestResult {
+    if (results.length === 0) return null;
+    const sorted = [...results].filter(r => r.price > 0).sort((a, b) => a.price - b.price);
+    if (sorted.length === 0) return null;
+    const cheapest = sorted[0];
+    const mallName = cheapest.source === 'MUSINSA' ? '무신사' : cheapest.source === '29CM' ? '29CM' : '네이버쇼핑';
+    return { price: cheapest.price, mallName, link: cheapest.link || '' };
 }
 
 function sanitizeQuery(title: string): string {
@@ -66,7 +79,8 @@ async function sendFcmIfAvailable(
     appId: string,
     userId: string,
     title: string,
-    body: string
+    body: string,
+    link: string
 ): Promise<number> {
     const db = getAdminDb();
     const messaging = getAdminMessaging();
@@ -88,6 +102,9 @@ async function sendFcmIfAvailable(
         notification: { title, body },
         data: {
             type: 'price_alert',
+            link,
+            title,
+            body,
         },
     });
     return result.successCount;
@@ -104,81 +121,114 @@ export async function scanAndDispatchPriceAlerts(): Promise<{
     if (!db) {
         return { checked: 0, triggered: 0, alertsCreated: 0, fcmSent: 0, enabled: false };
     }
-
-    const favorites = await db
-        .collectionGroup('favorites')
-        .where('targetPrice', '>', 0)
-        .limit(120)
-        .get();
+    const pageSize = Math.max(20, Math.min(Number(process.env.PRICE_ALERT_SCAN_PAGE_SIZE || 200), 1000));
+    const maxChecked = Math.max(pageSize, Math.min(Number(process.env.PRICE_ALERT_SCAN_MAX_CHECKED || 2000), 10000));
 
     const queryCache = new Map<string, Awaited<ReturnType<typeof aggregateRealtimeSearch>>>();
     let checked = 0;
     let triggered = 0;
     let alertsCreated = 0;
     let fcmSent = 0;
+    let cursor: QueryDocumentSnapshot<DocumentData> | null = null;
 
-    for (const doc of favorites.docs) {
-        const favorite = doc.data() as FavoriteDoc;
-        const targetPrice = Number(favorite.targetPrice);
-        if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
-            continue;
+    while (checked < maxChecked) {
+        let favoritesQuery = db
+            .collectionGroup('favorites')
+            .where('targetPrice', '>', 0)
+            .orderBy('targetPrice')
+            .limit(pageSize);
+        if (cursor) {
+            favoritesQuery = favoritesQuery.startAfter(cursor);
         }
 
-        checked += 1;
-        const query = sanitizeQuery(favorite.title || '');
-        if (!query) {
-            await markAlertDelivery(doc.ref.path, parseCurrentPrice(favorite.lprice));
-            continue;
+        const favorites = await favoritesQuery.get();
+        if (favorites.empty) {
+            break;
         }
 
-        let results = queryCache.get(query);
-        if (!results) {
-            try {
-                results = await aggregateRealtimeSearch(query, 1, 'sim');
-            } catch {
-                results = [];
+        for (const doc of favorites.docs) {
+            if (checked >= maxChecked) break;
+
+            const favorite = doc.data() as FavoriteDoc;
+            const targetPrice = Number(favorite.targetPrice);
+            if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
+                continue;
             }
-            queryCache.set(query, results);
+
+            checked += 1;
+            const query = sanitizeQuery(favorite.title || '');
+            if (!query) {
+                await markAlertDelivery(doc.ref.path, parseCurrentPrice(favorite.lprice));
+                continue;
+            }
+
+            let results = queryCache.get(query);
+            if (!results) {
+                try {
+                    results = await aggregateRealtimeSearch(query, 1, 'sim');
+                } catch {
+                    results = [];
+                }
+                queryCache.set(query, results);
+            }
+
+            const currentPrice = pickCurrentPrice(results, favorite);
+            const shouldTrigger = currentPrice <= targetPrice && currentPrice !== favorite.lastAlertedPrice;
+
+            if (!shouldTrigger) {
+                await markAlertDelivery(doc.ref.path, currentPrice);
+                continue;
+            }
+
+            const segments = doc.ref.path.split('/');
+            const appId = segments[1];
+            const userId = segments[3];
+            if (!appId || !userId || segments.length < 4) {
+                await markAlertDelivery(doc.ref.path, currentPrice);
+                continue;
+            }
+
+            // 크로스몰 최저가 탐색
+            const cheapest = findCheapestCrossMall(results ?? []);
+            const cheapestIsOtherMall = cheapest && cheapest.price < currentPrice;
+
+            const deepLink = (cheapestIsOtherMall ? cheapest.link : favorite.link) || '/';
+            const alertTitle = '목표가 도달 🎉';
+            const priceText = currentPrice.toLocaleString();
+            const crossMallNote = cheapestIsOtherMall
+                ? ` 💡 ${cheapest.mallName}에서 ${cheapest.price.toLocaleString()}원으로 더 저렴!`
+                : '';
+            const alertMessage = `${favorite.title || '관심 상품'}이(가) ${priceText}원으로 내려왔습니다.${crossMallNote}`;
+
+            const alertRef = db.collection(`artifacts/${appId}/users/${userId}/alerts`).doc();
+            await alertRef.set({
+                type: 'alert',
+                title: alertTitle,
+                message: alertMessage,
+                productId: favorite.productId || '',
+                mallName: favorite.mallName || '',
+                link: favorite.link || '',
+                deepLink,
+                currentPrice,
+                targetPrice,
+                cheapestMall: cheapest?.mallName ?? null,
+                cheapestPrice: cheapest?.price ?? null,
+                cheapestLink: cheapest?.link ?? null,
+                read: false,
+                createdAt: FieldValue.serverTimestamp(),
+            });
+
+            await markAlertDelivery(doc.ref.path, currentPrice, currentPrice);
+            const sent = await sendFcmIfAvailable(appId, userId, alertTitle, alertMessage, deepLink);
+            fcmSent += sent;
+            alertsCreated += 1;
+            triggered += 1;
         }
 
-        const currentPrice = pickCurrentPrice(results, favorite);
-        const shouldTrigger = currentPrice <= targetPrice && currentPrice !== favorite.lastAlertedPrice;
-
-        if (!shouldTrigger) {
-            await markAlertDelivery(doc.ref.path, currentPrice);
-            continue;
+        cursor = favorites.docs[favorites.docs.length - 1] || null;
+        if (favorites.size < pageSize) {
+            break;
         }
-
-        const segments = doc.ref.path.split('/');
-        const appId = segments[1];
-        const userId = segments[3];
-        if (!appId || !userId) {
-            await markAlertDelivery(doc.ref.path, currentPrice);
-            continue;
-        }
-
-        const alertTitle = '목표가 도달';
-        const alertMessage = `${favorite.title || '관심 상품'} 가격이 ${currentPrice.toLocaleString()}원으로 내려왔습니다.`;
-
-        const alertRef = db.collection(`artifacts/${appId}/users/${userId}/alerts`).doc();
-        await alertRef.set({
-            type: 'alert',
-            title: alertTitle,
-            message: alertMessage,
-            productId: favorite.productId || '',
-            mallName: favorite.mallName || '',
-            link: favorite.link || '',
-            currentPrice,
-            targetPrice,
-            read: false,
-            createdAt: FieldValue.serverTimestamp(),
-        });
-
-        await markAlertDelivery(doc.ref.path, currentPrice, currentPrice);
-        const sent = await sendFcmIfAvailable(appId, userId, alertTitle, alertMessage);
-        fcmSent += sent;
-        alertsCreated += 1;
-        triggered += 1;
     }
 
     return { checked, triggered, alertsCreated, fcmSent, enabled: true };

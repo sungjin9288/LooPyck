@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
+import { BRANDS_TO_TRACK } from '@/lib/config/brands';
 
 // revalidate every 1 hour (Vercel ISR)
 export const revalidate = 3600;
 export const dynamic = 'force-dynamic';
-
-const BRANDS_TO_TRACK = [
-    'NIKE', 'ADIDAS', 'NEW BALANCE', 'STUSSY', 'SUPREME',
-    'ARC TERYX', 'SALOMON', 'HUMAN MADE', 'KITH', 'PALACE',
-    'MUSINSA STANDARD', 'ADER ERROR'
-] as const;
 
 const BRAND_FETCH_CONCURRENCY = 4;
 

@@ -11,6 +11,7 @@ type CachedAdmin = {
 
 const globalAdmin = globalThis as typeof globalThis & {
     __loopyckAdmin?: CachedAdmin;
+    __loopyckAdminMissingLogged?: boolean;
 };
 
 function getPrivateKey(): string | null {
@@ -43,6 +44,12 @@ function initAdmin(): CachedAdmin {
                 projectId,
             });
         } else {
+            if (!globalAdmin.__loopyckAdminMissingLogged) {
+                globalAdmin.__loopyckAdminMissingLogged = true;
+                console.warn(
+                    '[FirebaseAdmin] Missing FIREBASE_ADMIN_* env. Price history and alert scanner are disabled.'
+                );
+            }
             globalAdmin.__loopyckAdmin = {
                 app: null,
                 db: null,
@@ -78,4 +85,12 @@ export function getAdminDb(): Firestore | null {
 
 export function getAdminMessaging(): Messaging | null {
     return initAdmin().messaging;
+}
+
+export function isFirebaseAdminConfigured(): boolean {
+    return Boolean(
+        (process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) &&
+        process.env.FIREBASE_ADMIN_CLIENT_EMAIL &&
+        process.env.FIREBASE_ADMIN_PRIVATE_KEY
+    );
 }

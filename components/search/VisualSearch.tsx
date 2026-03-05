@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { pushAppNotification } from '@/lib/core/notifications';
 
 interface MobileNetModel {
     classify: (img: HTMLImageElement) => Promise<Array<{ className: string }>>;
@@ -46,7 +47,7 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
 
         const activeModel = modelRef.current || model;
         if (!activeModel) {
-            alert('AI 모델이 아직 준비되지 않았습니다. 다시 시도해주세요.');
+            pushAppNotification({ title: 'AI 모델 준비 중', message: 'AI 모델이 아직 준비되지 않았습니다. 다시 시도해주세요.', type: 'alert' });
             return;
         }
 
@@ -62,7 +63,6 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
 
             // 2. Classify Image
             const predictions = await activeModel.classify(img);
-            console.log("AI Predictions:", predictions);
 
             if (predictions.length > 0) {
                 // 3. Use the top prediction as search query
@@ -70,13 +70,13 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
                 // We use the top result directly for search. Use user's "similar clothes" intent.
                 const topResult = predictions[0].className.split(',')[0]; // Take first keyword
                 onSearch(topResult);
-                alert(`AI가 이미지를 분석했습니다!\n감지된 스타일: ${topResult}\n관련 상품을 검색합니다.`);
+                pushAppNotification({ title: 'AI 이미지 분석 완료', message: `감지된 스타일: ${topResult} — 관련 상품을 검색합니다.`, type: 'success' });
             } else {
-                alert("이미지에서 알 수 있는 패션 아이템을 찾을 수 없습니다.");
+                pushAppNotification({ title: '분석 결과 없음', message: '이미지에서 패션 아이템을 찾을 수 없습니다.', type: 'alert' });
             }
         } catch (error) {
             console.error("Visual Search Failed", error);
-            alert("이미지 분석에 실패했습니다.");
+            pushAppNotification({ title: '분석 실패', message: '이미지 분석에 실패했습니다.', type: 'alert' });
         } finally {
             if (imageUrl) {
                 URL.revokeObjectURL(imageUrl);
@@ -107,7 +107,7 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
                 onClick={async () => {
                     const loaded = await loadModelIfNeeded();
                     if (!loaded) {
-                        alert('AI 모델 로딩에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                        pushAppNotification({ title: '모델 로딩 실패', message: 'AI 모델 로딩에 실패했습니다. 잠시 후 다시 시도해주세요.', type: 'alert' });
                         return;
                     }
                     fileInputRef.current?.click();

@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  NODE_VERSION: '22.x'
+  NODE_VERSION: "22.x"
   LOAD_TEST_THRESHOLD: 90
 
 jobs:
@@ -16,22 +16,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Security audit
+        run: npm audit --audit-level=moderate || true
 
       - name: Type check & Build
         run: npm run build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: build-output
           path: .next/
@@ -43,13 +46,13 @@ jobs:
     needs: build
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -59,11 +62,11 @@ jobs:
         run: |
           npx tsx tests/load/agentLoadTest.ts > loadtest_output.txt 2>&1 || true
           cat loadtest_output.txt
-          
+
           # 성공률 추출
           SUCCESS_RATE=$(grep -o 'Success Rate: *[0-9]*' loadtest_output.txt | grep -o '[0-9]*' || echo "0")
           echo "success_rate=$SUCCESS_RATE" >> $GITHUB_OUTPUT
-          
+
           # 임계값 확인
           if [ "$SUCCESS_RATE" -lt "${{ env.LOAD_TEST_THRESHOLD }}" ]; then
             echo "❌ Load test failed: ${SUCCESS_RATE}% < ${LOAD_TEST_THRESHOLD}%"
@@ -73,7 +76,7 @@ jobs:
           fi
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: load-test-results

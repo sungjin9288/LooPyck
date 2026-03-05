@@ -45,6 +45,7 @@ export default function ProductDetailModal({ product, onClose, variants = [] }: 
                 >
                     <button
                         onClick={onClose}
+                        aria-label="모달 닫기"
                         className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors z-10"
                     >
                         ✕

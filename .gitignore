@@ -31,3 +31,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# capacitor native projects (regenerate with: npm run cap:sync)
+/ios
+/android

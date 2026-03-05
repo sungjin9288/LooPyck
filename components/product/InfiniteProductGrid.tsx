@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { InteractionNarrative } from '@/lib/ux/interactionNarrative';
 import { useMultiSourceSearch } from '@/hooks/useMultiSourceSearch';
@@ -82,7 +82,7 @@ export default function InfiniteProductGrid({ query, sort = 'sim' }: InfinitePro
     }, [query]);
 
     // 필터 적용 후 표시할 상품
-    const filteredProducts = applyFilters(sortedProducts, filters);
+    const filteredProducts = useMemo(() => applyFilters(sortedProducts, filters), [sortedProducts, filters]);
     const filteredGroupedProducts = useGroupedProducts(filteredProducts);
 
     // 그리드용 (추천 섹션 제외)

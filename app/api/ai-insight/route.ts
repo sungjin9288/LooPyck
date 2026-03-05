@@ -14,12 +14,19 @@ const InsightRequestSchema = z.object({
     category: z.string().trim().max(80).optional().default(''),
 });
 
+const ReasoningItemSchema = z.object({
+    factor: z.string().trim().min(1).max(30),
+    score: z.coerce.number().finite().transform((v) => Math.max(0, Math.min(100, Math.round(v)))),
+    note: z.string().trim().min(1).max(80),
+});
+
 const InsightResponseSchema = z.object({
     insight: z.object({
         score: z.coerce.number().finite().transform((value) => Math.max(0, Math.min(100, Math.round(value)))),
         ratingEN: z.enum(['STRONG BUY', 'BUY', 'HOLD', 'WAIT']),
         advice: z.string().trim().min(1).max(40),
         reason: z.string().trim().min(1).max(240),
+        reasoning: z.array(ReasoningItemSchema).min(1).max(5).optional().default([]),
     }),
     trend: z.object({
         score: z.coerce.number().finite().transform((value) => Math.max(0, Math.min(100, Math.round(value)))),
@@ -95,7 +102,13 @@ export async function POST(request: NextRequest) {
     "score": 85,
     "ratingEN": "BUY",
     "advice": "트렌디한 아이템이며 가격 방어가 잘 됩니다.",
-    "reason": "고프코어 트렌드에 부합하고 현재 가격은 브랜드 평균 대비 합리적이라 구매 매력이 높습니다."
+    "reason": "고프코어 트렌드에 부합하고 현재 가격은 브랜드 평균 대비 합리적이라 구매 매력이 높습니다.",
+    "reasoning": [
+      { "factor": "트렌드 부합도", "score": 90, "note": "고프코어/아웃도어 트렌드와 강하게 부합" },
+      { "factor": "가격 합리성", "score": 80, "note": "브랜드 평균 대비 5~10% 저렴" },
+      { "factor": "브랜드 파워", "score": 85, "note": "글로벌 1티어 브랜드로 리셀 가치 안정" },
+      { "factor": "계절 적합성", "score": 88, "note": "현 시즌 착용 빈도 높음" }
+    ]
   },
   "trend": {
     "score": 90,
@@ -145,7 +158,7 @@ export async function POST(request: NextRequest) {
                     keywords: normalizeKeywordList(parsed.data.trend.keywords, 3),
                 },
             },
-            { headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            { headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining), 'Cache-Control': 'private, max-age=300' } }
         );
     } catch (error) {
         if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {

@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { pushAppNotification } from '@/lib/core/notifications';
 
 type ChatLocale = 'ko' | 'en';
 
@@ -152,7 +153,7 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
         if (!file) return;
 
         if (file.size > 4 * 1024 * 1024) {
-            alert('이미지는 4MB 이하여야 합니다.');
+            pushAppNotification({ title: '파일 크기 초과', message: '이미지는 4MB 이하여야 합니다.', type: 'alert' });
             if (fileInputRef.current) fileInputRef.current.value = '';
             return;
         }

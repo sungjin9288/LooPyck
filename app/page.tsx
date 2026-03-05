@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SearchBar from '@/components/search/SearchBar';
@@ -41,6 +41,13 @@ export default function Home() {
   const [searchSort, setSearchSort] = useState<SearchSort>('sim');
   const { recentlyViewed, addToRecentlyViewed, clearRecentlyViewed } = useRecentlyViewed();
 
+  // URL에서 초기 검색어 복원
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (q) onSearch(q);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const onSearch = (query: string, sort: SearchSort = 'sim') => {
     const trimmed = query.trim();
     if (!trimmed) return;
@@ -48,7 +55,8 @@ export default function Home() {
     addRecentSearch(trimmed);
     setSearchQuery(expandedQuery);
     setSearchSort(sort);
-    setCurrentView('search'); // AI 스타일 추천 / 찜 화면에서도 검색으로 전환
+    setCurrentView('search');
+    router.replace(`/?q=${encodeURIComponent(trimmed)}`, { scroll: false });
   };
 
   const handleLogoClick = () => {

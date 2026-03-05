@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ShareEngine } from '../../lib/core/shareEngine';
 import { UserDna } from '../../lib/core/userDna';
 import { ViralTracker } from '../../lib/analytics/viralTracker';
+import { pushAppNotification } from '@/lib/core/notifications';
 
 export const SocialShare = () => {
     const [isGenerating, setIsGenerating] = useState(false);
@@ -31,12 +32,12 @@ export const SocialShare = () => {
                 link.href = imageUrl;
                 link.download = 'loopyck_style_dna.png';
                 link.click();
-                alert('Image saved! You can now share it manually.');
+                pushAppNotification({ title: '이미지 저장 완료', message: '이미지를 직접 SNS에 공유해보세요!', type: 'success' });
             }
 
         } catch (error) {
             console.error('Share failed:', error);
-            alert('Failed to generate share image.');
+            pushAppNotification({ title: '공유 실패', message: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.', type: 'alert' });
         } finally {
             setIsGenerating(false);
         }

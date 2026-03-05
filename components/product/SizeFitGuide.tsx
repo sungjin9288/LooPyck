@@ -7,56 +7,99 @@ interface SizeFitGuideProps {
     category?: string;
 }
 
-export default function SizeFitGuide({ productName, category = '신발' }: SizeFitGuideProps) {
-    // In a real app, this would come from a user profile hook
-    // const { userProfile } = useProfile();
-    const [userSize, setUserSize] = useState<string>('260');
+type FitInfo = {
+    fit: string;
+    recommendation: string;
+    reason: string;
+    icon: string;
+};
 
-    // Simulated AI/Review based sizing intelligence
-    const sizingLogic = (() => {
-        const nameLower = productName.toLowerCase();
-        if (nameLower.includes('조던') || nameLower.includes('jordan') || nameLower.includes('덩크') || nameLower.includes('dunk')) {
-            return {
-                fit: '작게 나옴 (Runs Small)',
-                recommendation: '반업 (+5mm) 추천',
-                reason: '발볼이 좁게 나오는 모델입니다. 평소 발볼이 넓다면 일업(+10mm)도 좋습니다.',
-                icon: '📏'
-            };
-        } else if (nameLower.includes('포스') || nameLower.includes('force') || nameLower.includes('에어맥스')) {
-            return {
-                fit: '정사이즈 (True to Size)',
-                recommendation: '정사이즈 추천',
-                reason: '일반적인 발볼에 맞게 제작되었습니다.',
-                icon: '👟'
-            };
-        } else {
-            return {
-                fit: '보통 (Standard Fit)',
-                recommendation: '정사이즈 혹 반업 추천',
-                reason: '사용자 리뷰 데이터를 분석한 결과 대부분 정사이즈를 구매했습니다.',
-                icon: '✨'
-            };
-        }
+const SHOE_SIZES = ['235', '240', '245', '250', '255', '260', '265', '270', '275', '280', '285', '290'];
+const CLOTHING_SIZES = ['44(XS)', '55(S)', '66(M)', '77(L)', '88(XL)', '100(2XL)', '110(3XL)'];
+
+function getShoeFit(nameLower: string): FitInfo {
+    if (/조던|jordan/.test(nameLower)) {
+        return { fit: '작게 나옴 (Runs Small)', recommendation: '반업(+5mm) 추천', reason: '발볼이 좁게 나오는 모델입니다. 발볼이 넓다면 일업(+10mm)도 고려해보세요.', icon: '📏' };
+    }
+    if (/덩크|dunk/.test(nameLower)) {
+        return { fit: '작게 나옴 (Runs Small)', recommendation: '반업(+5mm) 추천', reason: '발볼이 타이트하게 나옵니다. 반업 착용을 권장합니다.', icon: '📏' };
+    }
+    if (/포스|force|에어맥스|air max/.test(nameLower)) {
+        return { fit: '정사이즈 (True to Size)', recommendation: '정사이즈 추천', reason: '평균적인 발볼에 맞게 제작되었습니다.', icon: '👟' };
+    }
+    if (/뉴발란스|new balance|990|992|993|574/.test(nameLower)) {
+        return { fit: '정사이즈 (True to Size)', recommendation: '정사이즈 추천', reason: '뉴발란스는 발볼이 넉넉하게 제작됩니다.', icon: '👟' };
+    }
+    if (/아디다스|adidas|스탠스미스|stan smith|슈퍼스타|superstar/.test(nameLower)) {
+        return { fit: '크게 나옴 (Runs Large)', recommendation: '반사이즈 다운(-5mm) 추천', reason: '아디다스 오리지널스 라인은 전반적으로 크게 나옵니다.', icon: '📏' };
+    }
+    if (/살로몬|salomon|xt-6|speedcross/.test(nameLower)) {
+        return { fit: '작게 나옴 (Runs Small)', recommendation: '반업(+5mm) 추천', reason: '살로몬 러닝화는 발볼이 좁습니다.', icon: '📏' };
+    }
+    if (/컨버스|converse|척테일러|chuck taylor/.test(nameLower)) {
+        return { fit: '크게 나옴 (Runs Large)', recommendation: '1사이즈 다운 추천', reason: '컨버스 올스타는 발볼이 넓게 나옵니다. 한 사이즈 작게 구매하세요.', icon: '📏' };
+    }
+    return { fit: '정사이즈 (Standard Fit)', recommendation: '정사이즈 또는 반업 추천', reason: '리뷰 분석 결과 대부분의 구매자가 정사이즈를 착용했습니다.', icon: '✨' };
+}
+
+function getClothingFit(nameLower: string): FitInfo {
+    if (/무신사 스탠다드|musinsa standard/.test(nameLower)) {
+        return { fit: '슬림 핏 (Slim Fit)', recommendation: '평소보다 한 사이즈 업 추천', reason: '무신사 스탠다드는 슬림하게 재단됩니다. 여유 있게 입으려면 한 사이즈 업하세요.', icon: '👔' };
+    }
+    if (/유니클로|uniqlo/.test(nameLower)) {
+        return { fit: '정사이즈 (Regular Fit)', recommendation: '정사이즈 추천', reason: '유니클로는 국내 체형 기준으로 정사이즈가 잘 맞습니다.', icon: '👕' };
+    }
+    if (/오버핏|overfit|oversized|오버사이즈/.test(nameLower)) {
+        return { fit: '오버핏 디자인', recommendation: '정사이즈 또는 한 사이즈 다운', reason: '오버핏 디자인 상품입니다. 더 슬림하게 입고 싶다면 한 사이즈 다운하세요.', icon: '🧥' };
+    }
+    if (/크롭|crop/.test(nameLower)) {
+        return { fit: '크롭 핏', recommendation: '정사이즈 추천', reason: '크롭 상품은 기장이 짧게 디자인되었습니다.', icon: '✂️' };
+    }
+    if (/슬랙스|trousers|dress pants/.test(nameLower)) {
+        return { fit: '슬림 핏 (Slim Fit)', recommendation: '허리 + 기장 치수 확인 필수', reason: '슬랙스는 허리 사이즈가 중요합니다. 상세 치수표를 꼭 확인하세요.', icon: '👖' };
+    }
+    return { fit: '정사이즈 (Regular Fit)', recommendation: '정사이즈 추천', reason: '리뷰 분석 결과 대부분 정사이즈를 착용했으며 기장이 평균적입니다.', icon: '👕' };
+}
+
+function isShoeCategory(productName: string, category: string): boolean {
+    const catLower = category.toLowerCase();
+    const nameLower = productName.toLowerCase();
+    if (catLower.includes('신발') || catLower.includes('shoes') || catLower.includes('sneaker')) return true;
+    if (/스니커|나이키|아디다스|뉴발란스|컨버스|살로몬|조던|덩크|포스|에어맥스|슬리퍼|샌들|부츠|운동화/.test(nameLower)) return true;
+    return false;
+}
+
+export default function SizeFitGuide({ productName, category = '' }: SizeFitGuideProps) {
+    const isShoe = isShoeCategory(productName, category);
+    const nameLower = productName.toLowerCase();
+    const fitInfo = isShoe ? getShoeFit(nameLower) : getClothingFit(nameLower);
+
+    const sizeOptions = isShoe ? SHOE_SIZES : CLOTHING_SIZES;
+    const [userSize, setUserSize] = useState(isShoe ? '260' : '66(M)');
+
+    const recommendedShoeSize = (() => {
+        if (!isShoe) return null;
+        const base = parseInt(userSize, 10);
+        if (fitInfo.fit.includes('작게')) return `${base + 5}mm`;
+        if (fitInfo.fit.includes('크게')) return `${base - 5}mm`;
+        return `${base}mm`;
     })();
-
-    const displaySize = Number(userSize);
-    const recommendedSize = sizingLogic.fit.includes('작게') ? displaySize + 5 : displaySize;
 
     return (
         <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    {sizingLogic.icon} 핏 & 사이즈 가이드
+                    {fitInfo.icon} 핏 &amp; 사이즈 가이드
                 </h3>
                 <div className="flex items-center gap-2 text-xs">
-                    <span className="text-slate-500">나의 기준 사이즈:</span>
+                    <span className="text-slate-500">내 사이즈:</span>
                     <select
                         value={userSize}
                         onChange={(e) => setUserSize(e.target.value)}
-                        className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-1 font-medium focus:ring-1 focus:ring-accent outline-none"
+                        className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-1 font-medium focus:ring-1 focus:ring-accent outline-none text-xs"
                     >
-                        {['250', '255', '260', '265', '270', '275', '280'].map(sz => (
-                            <option key={sz} value={sz}>{sz}mm</option>
+                        {sizeOptions.map(sz => (
+                            <option key={sz} value={sz}>{sz}{isShoe ? 'mm' : ''}</option>
                         ))}
                     </select>
                 </div>
@@ -65,24 +108,20 @@ export default function SizeFitGuide({ productName, category = '신발' }: SizeF
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                 <div className="flex-1">
                     <div className="flex items-baseline gap-2 mb-1">
-                        <span className="font-bold text-accent-dark">{sizingLogic.fit}</span>
+                        <span className="font-bold text-accent-dark text-sm">{fitInfo.fit}</span>
                         <span className="text-xs text-slate-500 font-medium bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                            {sizingLogic.recommendation}
+                            {fitInfo.recommendation}
                         </span>
                     </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                        {sizingLogic.reason}
-                    </p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{fitInfo.reason}</p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 min-w-[120px] text-center border-l-[3px] border-l-accent">
-                    <span className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
-                        추천 사이즈
-                    </span>
-                    <span className="block text-xl font-black text-slate-900 dark:text-white">
-                        {recommendedSize} <span className="text-sm font-bold text-slate-500">mm</span>
-                    </span>
-                </div>
+                {isShoe && recommendedShoeSize && (
+                    <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 min-w-[110px] text-center border-l-[3px] border-l-accent">
+                        <span className="block text-[10px] uppercase font-bold text-slate-400 mb-1">추천 사이즈</span>
+                        <span className="block text-xl font-black text-slate-900 dark:text-white">{recommendedShoeSize}</span>
+                    </div>
+                )}
             </div>
         </div>
     );

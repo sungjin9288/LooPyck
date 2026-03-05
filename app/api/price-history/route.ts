@@ -48,7 +48,12 @@ export async function GET(request: NextRequest) {
                 points: result.points,
                 enabled: result.enabled,
             },
-            { headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            {
+                headers: {
+                    'X-RateLimit-Remaining': String(rateLimit.remaining),
+                    'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30',
+                },
+            }
         );
     } catch (error) {
         console.error('[price-history] error:', error);

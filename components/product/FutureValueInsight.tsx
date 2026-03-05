@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import InvestmentReport from './InvestmentReport';
 import { designTokens } from '@/styles/designTokens';
@@ -9,12 +10,19 @@ interface FutureValueInsightProps {
     product: UnifiedProduct;
 }
 
+interface ReasoningItem {
+    factor: string;
+    score: number;
+    note: string;
+}
+
 interface AIAnalysisResult {
     insight: {
         score: number;
         ratingEN: string;
         advice: string;
         reason: string;
+        reasoning?: ReasoningItem[];
     };
     trend: {
         score: number;
@@ -27,6 +35,7 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
     const [result, setResult] = useState<AIAnalysisResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [showReasoning, setShowReasoning] = useState(false);
 
     useEffect(() => {
         const fetchAnalysis = async () => {
@@ -110,15 +119,65 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
                 </div>
             </div>
 
-            {/* Report Component uses updated props if we modify InvestmentReport to pass score directly, 
-                let's assume InvestmentReport already calculates rating based on score, but we can override it if needed.
-                Currently InvestmentReport recalculates rating string from score internally. 
-                That's fine, we pass score and reason.
-            */}
             <InvestmentReport
                 score={insight.score}
                 reason={insight.reason}
             />
+
+            {/* Reasoning Breakdown */}
+            {insight.reasoning && insight.reasoning.length > 0 && (
+                <div className="mt-4">
+                    <button
+                        onClick={() => setShowReasoning(v => !v)}
+                        className="flex items-center gap-1.5 text-xs text-violet-600 font-semibold hover:text-violet-700 transition-colors"
+                    >
+                        <svg
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${showReasoning ? 'rotate-90' : ''}`}
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                        </svg>
+                        {showReasoning ? 'AI 분석 근거 접기' : 'AI 분석 근거 보기'}
+                    </button>
+
+                    <AnimatePresence>
+                        {showReasoning && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="overflow-hidden"
+                            >
+                                <div className="mt-3 space-y-3 pt-3 border-t border-slate-100">
+                                    {insight.reasoning.map((item, i) => (
+                                        <motion.div
+                                            key={item.factor}
+                                            initial={{ opacity: 0, x: -8 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: i * 0.06 }}
+                                        >
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-xs font-semibold text-slate-700">{item.factor}</span>
+                                                <span className="text-xs font-bold text-violet-600">{item.score}pt</span>
+                                            </div>
+                                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1">
+                                                <motion.div
+                                                    className="h-full rounded-full bg-gradient-to-r from-violet-400 to-violet-600"
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${item.score}%` }}
+                                                    transition={{ duration: 0.5, delay: i * 0.06 }}
+                                                />
+                                            </div>
+                                            <p className="text-[10px] text-slate-500">{item.note}</p>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            )}
 
             {/* Footer */}
             <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400">

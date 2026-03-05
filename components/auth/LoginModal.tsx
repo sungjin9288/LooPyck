@@ -6,6 +6,7 @@ import { User } from 'firebase/auth';
 import StyleDashboard from '@/components/auth/StyleDashboard';
 import MyAsset from '@/components/profile/MyAsset'; // Portfolio Component
 import { useUser } from '@/contexts/UserContext';
+import { pushAppNotification } from '@/lib/core/notifications';
 
 interface LoginModalProps {
     isOpen: boolean;
@@ -34,9 +35,10 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
                 <button
                     onClick={onClose}
+                    aria-label="로그인 모달 닫기"
                     className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors z-10"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
@@ -61,7 +63,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                         } catch (e: unknown) {
                             console.error('Login error:', e);
                             const message = e instanceof Error ? e.message : 'Unknown error';
-                            alert(`Login failed: ${message}. Please check your connection.`);
+                            pushAppNotification({ title: '로그인 실패', message: `${message}. 네트워크를 확인해주세요.`, type: 'alert' });
                         }
                     }}
                     className="w-full relative z-10 flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-black font-bold py-4 px-6 rounded-2xl transition-all transform hover:scale-[1.02] shadow-lg group"

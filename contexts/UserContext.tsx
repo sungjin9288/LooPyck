@@ -73,7 +73,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 return;
             }
             await linkWithPopup(auth.currentUser, provider);
-            console.log('Account linked successfully');
         } catch (error) {
             if (isPopupFlowError(error)) {
                 await linkWithRedirect(auth.currentUser, provider);
