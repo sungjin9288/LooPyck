@@ -1,46 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-interface CouponInfo {
-    code: string;
-    description: string;
-    discount: string;
-    mallName: string;
-    expiry: string;
-}
-
-/**
- * 쇼핑몰별 할인/쿠폰 정보 (실제로는 API 또는 크롤링 연동 필요)
- * 현재는 쇼핑몰별 대표 프로모션 하드코딩 → 추후 동적 업데이트
- */
-const MALL_COUPONS: Record<string, CouponInfo[]> = {
-    MUSINSA: [
-        { code: 'MSNEW10', description: '무신사 신규 가입 할인', discount: '10%', mallName: '무신사', expiry: '2026-03-31' },
-        { code: 'MSAPP15', description: '무신사 앱 전용 할인', discount: '15%', mallName: '무신사', expiry: '2026-03-31' },
-    ],
-    '29CM': [
-        { code: '29WELCOME', description: '29CM 첫 구매 혜택', discount: '12%', mallName: '29CM', expiry: '2026-03-31' },
-    ],
-    NAVER: [
-        { code: '', description: '네이버 페이 포인트 적립', discount: '최대 3%', mallName: '네이버쇼핑', expiry: '상시' },
-    ],
-    W_CONCEPT: [
-        { code: 'WCNEW20', description: 'W컨셉 신규 회원 할인', discount: '20%', mallName: 'W컨셉', expiry: '2026-03-31' },
-    ],
-};
+import { getCouponsForSource } from '@/lib/product/commerceRules';
+import type { ProductSource } from '@/lib/api/types';
 
 interface CouponBadgeProps {
     mallName: string;
-    source: string;
+    source: ProductSource;
 }
 
 export default function CouponBadge({ mallName, source }: CouponBadgeProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-    const coupons = MALL_COUPONS[source] || [];
+    const coupons = getCouponsForSource(source);
     if (coupons.length === 0) return null;
 
     const handleCopy = async (code: string) => {
@@ -74,7 +48,7 @@ export default function CouponBadge({ mallName, source }: CouponBadgeProps) {
                             className="absolute top-full mt-1 right-0 z-30 w-64 bg-white rounded-xl shadow-xl border border-slate-100 p-3 space-y-2"
                         >
                             <h4 className="text-xs font-bold text-slate-900 mb-2">
-                                {mallName} 할인 혜택
+                                {mallName} 예상 혜택
                             </h4>
                             {coupons.map(c => (
                                 <div key={c.code || c.description} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
@@ -99,7 +73,7 @@ export default function CouponBadge({ mallName, source }: CouponBadgeProps) {
                                 </div>
                             ))}
                             <p className="text-[9px] text-slate-400 text-center mt-1">
-                                쿠폰은 해당 쇼핑몰에서 직접 적용해주세요
+                                회원등급, 앱 결제, 신규 여부에 따라 실제 적용 가능 혜택은 달라질 수 있습니다.
                             </p>
                         </motion.div>
                     </>

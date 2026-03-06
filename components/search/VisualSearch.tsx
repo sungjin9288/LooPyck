@@ -2,9 +2,46 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { pushAppNotification } from '@/lib/core/notifications';
+import { analyzeFashionQuery } from '@/lib/search/fashionQueryAssistant';
 
 interface MobileNetModel {
     classify: (img: HTMLImageElement) => Promise<Array<{ className: string }>>;
+}
+
+const FASHION_LABEL_MAPPINGS: Array<{ keywords: string[]; query: string }> = [
+    { keywords: ['sneaker', 'running shoe', 'shoe', 'loafer', 'sandal', 'boot'], query: '스니커즈' },
+    { keywords: ['jersey', 'sweatshirt', 'pullover', 'hoodie'], query: '맨투맨' },
+    { keywords: ['coat', 'trench coat', 'overcoat'], query: '트렌치코트' },
+    { keywords: ['jacket', 'bomber', 'blazer', 'windbreaker'], query: '자켓' },
+    { keywords: ['jean', 'denim'], query: '데님 팬츠' },
+    { keywords: ['miniskirt', 'skirt'], query: '스커트' },
+    { keywords: ['backpack', 'handbag', 'purse', 'wallet'], query: '가방' },
+    { keywords: ['kimono', 'cardigan'], query: '가디건' },
+    { keywords: ['shirt', 't-shirt', 'tee'], query: '셔츠' },
+    { keywords: ['dress', 'gown'], query: '원피스' },
+    { keywords: ['hat', 'cap', 'bonnet'], query: '모자' },
+];
+
+function resolveFashionQuery(predictions: Array<{ className: string }>): string | null {
+    for (const prediction of predictions) {
+        const normalized = prediction.className.toLowerCase();
+
+        for (const mapping of FASHION_LABEL_MAPPINGS) {
+            if (mapping.keywords.some((keyword) => normalized.includes(keyword))) {
+                return mapping.query;
+            }
+        }
+
+        const candidate = normalized.split(',')[0]?.trim();
+        if (candidate) {
+            const analysis = analyzeFashionQuery(candidate);
+            if (analysis.allowed) {
+                return analysis.normalizedQuery;
+            }
+        }
+    }
+
+    return null;
 }
 
 export default function VisualSearch({ onSearch }: { onSearch: (term: string) => void }) {
@@ -64,15 +101,21 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
             // 2. Classify Image
             const predictions = await activeModel.classify(img);
 
-            if (predictions.length > 0) {
-                // 3. Use the top prediction as search query
-                // MobileNet returns English classes (e.g., "running shoe", "jersey")
-                // We use the top result directly for search. Use user's "similar clothes" intent.
-                const topResult = predictions[0].className.split(',')[0]; // Take first keyword
-                onSearch(topResult);
-                pushAppNotification({ title: 'AI 이미지 분석 완료', message: `감지된 스타일: ${topResult} — 관련 상품을 검색합니다.`, type: 'success' });
+            const resolvedQuery = resolveFashionQuery(predictions);
+
+            if (resolvedQuery) {
+                onSearch(resolvedQuery);
+                pushAppNotification({
+                    title: 'AI 이미지 분석 완료',
+                    message: `분석 결과를 바탕으로 "${resolvedQuery}" 가격 비교를 시작합니다.`,
+                    type: 'success'
+                });
             } else {
-                pushAppNotification({ title: '분석 결과 없음', message: '이미지에서 패션 아이템을 찾을 수 없습니다.', type: 'alert' });
+                pushAppNotification({
+                    title: '패션 아이템 인식 실패',
+                    message: '의류, 신발, 가방 중심의 이미지를 다시 시도해주세요.',
+                    type: 'alert'
+                });
             }
         } catch (error) {
             console.error("Visual Search Failed", error);

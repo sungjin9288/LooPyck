@@ -31,5 +31,5 @@ export interface SearchParams {
   query: string;           // 검색어
   display?: number;        // 한 번에 표시할 검색 결과 개수 (기본값: 20, 최대: 100)
   start?: number;          // 검색 시작 위치 (기본값: 1, 최대: 1000)
-  sort?: 'sim' | 'date' | 'asc' | 'dsc';  // 정렬 옵션 (sim: 정확도, date: 날짜, asc: 가격오름차순, dsc: 가격내림차순)
+  sort?: 'sim' | 'asc' | 'dsc';  // 정렬 옵션 (sim: 정확도, asc: 가격오름차순, dsc: 가격내림차순)
 }

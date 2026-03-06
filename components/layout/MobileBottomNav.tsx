@@ -5,8 +5,8 @@ import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { triggerHaptic } from '@/lib/native/bridge';
 
 interface MobileBottomNavProps {
-    currentView: 'search' | 'favorites';
-    setCurrentView: (view: 'search' | 'favorites') => void;
+    currentView: 'search' | 'favorites' | 'recommend';
+    setCurrentView: (view: 'search' | 'favorites' | 'recommend') => void;
 }
 
 export default function MobileBottomNav({ currentView, setCurrentView }: MobileBottomNavProps) {
@@ -32,6 +32,18 @@ export default function MobileBottomNav({ currentView, setCurrentView }: MobileB
                     <button
                         onClick={() => {
                             triggerHaptic('light');
+                            setCurrentView('recommend');
+                        }}
+                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'recommend' ? 'text-violet-600' : 'text-slate-400 hover:text-slate-600'
+                            }`}
+                    >
+                        <SparklesIcon active={currentView === 'recommend'} />
+                        <span className="text-[10px] font-medium">{t('nav.recommend') || '추천'}</span>
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            triggerHaptic('light');
                             setCurrentView('favorites');
                         }}
                         className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'favorites' ? 'text-rose-500' : 'text-slate-400 hover:text-slate-600'
@@ -39,14 +51,6 @@ export default function MobileBottomNav({ currentView, setCurrentView }: MobileB
                     >
                         <HeartIcon active={currentView === 'favorites'} />
                         <span className="text-[10px] font-medium">{t('nav.favorites') || '찜'}</span>
-                    </button>
-
-                    <button
-                        onClick={() => triggerHaptic('light')}
-                        className="flex flex-col items-center justify-center w-full h-full space-y-1 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                        <UserIcon />
-                        <span className="text-[10px] font-medium">프로필</span>
                     </button>
                 </nav>
             </div>
@@ -72,6 +76,23 @@ function SearchIcon({ active }: { active: boolean }) {
     );
 }
 
+function SparklesIcon({ active }: { active: boolean }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill={active ? "currentColor" : "none"}
+            stroke="currentColor"
+            strokeWidth={active ? "2.5" : "2"}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`w-6 h-6 ${active ? 'text-violet-600' : ''}`}
+        >
+            <path d="m12 3-1.9 4.7L5 9.6l4.1 3.4L7.8 18 12 15.3 16.2 18l-1.3-5 4.1-3.4-5.1-1.9L12 3Z"></path>
+        </svg>
+    );
+}
+
 function HeartIcon({ active }: { active: boolean }) {
     return (
         <svg
@@ -85,24 +106,6 @@ function HeartIcon({ active }: { active: boolean }) {
             className={`w-6 h-6 ${active ? 'text-rose-500' : ''}`}
         >
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-        </svg>
-    );
-}
-
-function UserIcon() {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-6 h-6"
-        >
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
         </svg>
     );
 }

@@ -11,7 +11,6 @@ import Navbar from '@/components/layout/Navbar';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import RecentlyViewedSection from '@/components/product/RecentlyViewedSection';
 import StyleRecommender from '@/components/recommend/StyleRecommender';
-import { MoodEngine } from '@/lib/ai/moodEngine';
 import TrendDiscovery from '@/components/home/TrendDiscovery';
 import { SearchSort } from '@/types/searchSort';
 import { addRecentSearch } from '@/utils/recentSearches';
@@ -51,9 +50,8 @@ export default function Home() {
   const onSearch = (query: string, sort: SearchSort = 'sim') => {
     const trimmed = query.trim();
     if (!trimmed) return;
-    const expandedQuery = MoodEngine.analyze(query);
     addRecentSearch(trimmed);
-    setSearchQuery(expandedQuery);
+    setSearchQuery(trimmed);
     setSearchSort(sort);
     setCurrentView('search');
     router.replace(`/?q=${encodeURIComponent(trimmed)}`, { scroll: false });
@@ -73,7 +71,7 @@ export default function Home() {
     <div className="min-h-screen mesh-bg text-slate-900 pb-16 sm:pb-0">
       {/* 헤더 */}
       <Navbar
-        currentView={currentView === 'recommend' ? 'search' : currentView}
+        currentView={currentView}
         setCurrentView={(v) => setCurrentView(v)}
         onLogoClick={handleLogoClick}
       />
@@ -91,7 +89,7 @@ export default function Home() {
             {/* 🔍 검색 뷰 */}
             {currentView === 'search' && (
               <div className="space-y-8 md:space-y-12">
-                <SearchBar onSearch={onSearch} />
+                <SearchBar query={searchQuery} onSearch={onSearch} />
 
                 {/* 트렌드 키워드 칩 */}
                 {!searchQuery && (
@@ -131,7 +129,7 @@ export default function Home() {
                 )}
 
                 {searchQuery ? (
-                  <InfiniteProductGrid query={searchQuery} sort={searchSort} />
+                  <InfiniteProductGrid query={searchQuery} sort={searchSort} onSearch={onSearch} />
                 ) : (
                   <TrendDiscovery onSearch={onSearch} />
                 )}
@@ -157,7 +155,7 @@ export default function Home() {
 
       {/* 모바일 하단 네비게이션 */}
       <MobileBottomNav
-        currentView={currentView === 'recommend' ? 'search' : currentView}
+        currentView={currentView}
         setCurrentView={(v) => setCurrentView(v)}
       />
 
@@ -168,12 +166,15 @@ export default function Home() {
             <p className="text-center text-slate-400 text-sm">
               LooPyck — Smart Fashion Price Comparison
             </p>
-            <div className="flex gap-4 text-xs text-slate-400">
+            <div className="flex flex-wrap justify-center gap-4 text-xs text-slate-400">
               <Link href="/category/outer" className="hover:text-accent-dark transition-colors">아우터</Link>
               <Link href="/category/denim" className="hover:text-accent-dark transition-colors">데님</Link>
               <Link href="/category/sneakers" className="hover:text-accent-dark transition-colors">스니커즈</Link>
               <Link href="/brand/musinsa" className="hover:text-accent-dark transition-colors">무신사</Link>
+              <Link href="/brand/29cm" className="hover:text-accent-dark transition-colors">29CM</Link>
+              <Link href="/brand/wconcept" className="hover:text-accent-dark transition-colors">W컨셉</Link>
               <Link href="/brand/ably" className="hover:text-accent-dark transition-colors">에이블리</Link>
+              <Link href="/brand/ssf" className="hover:text-accent-dark transition-colors">SSF샵</Link>
             </div>
           </div>
         </div>

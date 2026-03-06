@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getRateLimitKey, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
+import { analyzeFashionQuery } from '@/lib/search/fashionQueryAssistant';
 
 /**
  * 네이버 쇼핑 API 검색 엔드포인트
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     const displayRaw = Number.parseInt(searchParams.get('display') || '20', 10);
     const startRaw = Number.parseInt(searchParams.get('start') || '1', 10);
     const sortRaw = searchParams.get('sort') || 'sim';
-    const sort = ['sim', 'date', 'asc', 'dsc'].includes(sortRaw) ? sortRaw : 'sim';
+    const sort = ['sim', 'asc', 'dsc'].includes(sortRaw) ? sortRaw : 'sim';
     const display = Number.isFinite(displayRaw) ? Math.min(Math.max(displayRaw, 1), 100) : 20;
     const start = Number.isFinite(startRaw) ? Math.min(Math.max(startRaw, 1), 1000) : 1;
 
@@ -44,6 +45,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const analysis = analyzeFashionQuery(query);
+    if (!analysis.allowed) {
+      return NextResponse.json(
+        { error: analysis.reason, blocked: true, suggestedQueries: analysis.suggestedQueries },
+        { status: 400 }
+      );
+    }
+    const effectiveQuery = analysis.normalizedQuery || query;
+
     // 환경변수에서 API 키 가져오기
     const clientId = process.env.NAVER_CLIENT_ID;
     const clientSecret = process.env.NAVER_CLIENT_SECRET;
@@ -57,7 +67,7 @@ export async function GET(request: NextRequest) {
 
     // 네이버 쇼핑 API 호출
     const url = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(
-      query
+      effectiveQuery
     )}&display=${display}&start=${start}&sort=${sort}`;
 
     const response = await fetch(url, {

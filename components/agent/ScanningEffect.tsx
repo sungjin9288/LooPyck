@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { designTokens } from '@/styles/designTokens';
+import { DEFAULT_SCANNING_SOURCE_LABELS } from '@/lib/api/sourceCatalog';
 
 interface ScanningEffectProps {
     isActive: boolean;
     sources?: string[];
 }
 
-export function ScanningEffect({ isActive, sources = ['Naver Shopping', 'Musinsa', '29CM', 'W Concept'] }: ScanningEffectProps) {
+export function ScanningEffect({ isActive, sources = DEFAULT_SCANNING_SOURCE_LABELS }: ScanningEffectProps) {
     const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
 
     useEffect(() => {

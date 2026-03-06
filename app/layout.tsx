@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "LooPyck - Smart Fashion Price Comparison",
+  metadataBase: new URL(SITE_URL),
+  title: `${SITE_NAME} - Smart Fashion Price Comparison`,
   description: "Compare prices across multiple stores and pick the best option. LooPyck uses smart search to help you shop efficiently.",
   manifest: '/manifest.webmanifest',
   icons: {
@@ -10,8 +12,10 @@ export const metadata: Metadata = {
     apple: '/icons/icon-192x192.png',
   },
   openGraph: {
-    title: "LooPyck - Smart Fashion Price Comparison",
+    title: `${SITE_NAME} - Smart Fashion Price Comparison`,
     description: "Compare prices across multiple stores and pick the best option.",
+    url: SITE_URL,
+    siteName: SITE_NAME,
     type: "website",
     locale: "ko_KR",
   }

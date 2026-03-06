@@ -8,8 +8,8 @@ import { useLanguage } from '@/lib/i18n/LanguageContext';
 import BrandTicker from '@/components/layout/BrandTicker'; // Phase 39 Ticker
 
 interface NavbarProps {
-    currentView: 'search' | 'favorites';
-    setCurrentView: (view: 'search' | 'favorites') => void;
+    currentView: 'search' | 'favorites' | 'recommend';
+    setCurrentView: (view: 'search' | 'favorites' | 'recommend') => void;
     onLogoClick: () => void;
 }
 
@@ -51,7 +51,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
                             LooPyck
                         </h1>
                         <p className="text-gray-600 mt-1 text-sm sm:text-base group-hover:text-gray-900 transition-colors">
-                            Fashion Intelligent Search
+                            Fashion Price Comparison Platform
                         </p>
                     </div>
 
@@ -67,6 +67,15 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
                                 {t('nav.search')}
                             </button>
                             <button
+                                onClick={() => setCurrentView('recommend')}
+                                className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'recommend'
+                                    ? 'bg-white text-violet-700 shadow-sm border border-slate-200/50'
+                                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                                    }`}
+                            >
+                                {t('nav.recommend') || '추천'}
+                            </button>
+                            <button
                                 onClick={() => setCurrentView('favorites')}
                                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'favorites'
                                     ? 'bg-white text-rose-500 shadow-sm border border-slate-200/50'
@@ -78,9 +87,12 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
                         </nav>
 
                         {/* Notification Bell */}
-                        <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
+                        <button
+                            type="button"
+                            className="relative p-2 rounded-full hover:bg-gray-100 transition-colors"
+                            aria-label="가격 알림"
+                        >
                             <span className="text-xl">🔔</span>
-                            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
                         </button>
 
                         {/* Auth Section */}

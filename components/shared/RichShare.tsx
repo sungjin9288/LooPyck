@@ -8,9 +8,20 @@ interface RichShareProps {
     productTitle: string;
     productImage: string;
     currentPrice: number;
+    shareUrl: string;
 }
 
-export default function RichShare({ productTitle, productImage, currentPrice }: RichShareProps) {
+function toAbsoluteUrl(url: string): string {
+    if (typeof window === 'undefined') return url;
+
+    try {
+        return new URL(url, window.location.origin).toString();
+    } catch {
+        return window.location.href;
+    }
+}
+
+export default function RichShare({ productTitle, productImage, currentPrice, shareUrl }: RichShareProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
 
@@ -22,7 +33,7 @@ export default function RichShare({ productTitle, productImage, currentPrice }: 
     const handleCopyLink = () => {
         haptics.trigger('success');
         setIsCopied(true);
-        navigator.clipboard.writeText(window.location.href); // In real app, this would be the product link
+        navigator.clipboard.writeText(toAbsoluteUrl(shareUrl));
         setTimeout(() => setIsCopied(false), 2000);
     };
 
@@ -32,7 +43,7 @@ export default function RichShare({ productTitle, productImage, currentPrice }: 
                 onClick={handleOpen}
                 className="flex-1 py-4 bg-gray-100 text-black font-bold rounded-xl hover:bg-gray-200 transition-colors"
             >
-                Share Asset 📤
+                비교 링크 공유
             </button>
 
             <AnimatePresence>
@@ -60,8 +71,8 @@ export default function RichShare({ productTitle, productImage, currentPrice }: 
                                 </svg>
 
                                 <div className="relative z-10 flex justify-between items-start mb-4">
-                                    <span className="font-bold tracking-widest text-xs border border-white/30 px-2 py-1 rounded">LOOPYCK ASSET</span>
-                                    <span className="text-green-400 font-mono text-xs">▲ STRONG BUY</span>
+                                    <span className="font-bold tracking-widest text-xs border border-white/30 px-2 py-1 rounded">LOOPYCK COMPARE</span>
+                                    <span className="text-sky-300 font-mono text-xs">PRICE CHECK</span>
                                 </div>
 
                                 <div className="flex gap-4 items-center">
@@ -76,20 +87,20 @@ export default function RichShare({ productTitle, productImage, currentPrice }: 
                             {/* Actions */}
                             <div className="p-6 bg-white">
                                 <p className="text-center text-gray-500 text-sm mb-6">
-                                    Share this asset card with your network.
+                                    상품 상세와 비교 링크를 바로 복사할 수 있습니다.
                                 </p>
                                 <div className="flex gap-3">
                                     <button
                                         onClick={handleCopyLink}
                                         className={`flex-1 py-3 rounded-xl font-bold transition-all ${isCopied ? 'bg-green-500 text-white' : 'bg-black text-white'}`}
                                     >
-                                        {isCopied ? 'Copied! ✅' : 'Copy Link 🔗'}
+                                        {isCopied ? '복사 완료' : '링크 복사'}
                                     </button>
                                     <button
                                         onClick={() => setIsOpen(false)}
                                         className="py-3 px-6 bg-gray-100 rounded-xl font-bold hover:bg-gray-200"
                                     >
-                                        Close
+                                        닫기
                                     </button>
                                 </div>
                             </div>

@@ -11,18 +11,19 @@ interface InvestmentReportProps {
 export default function InvestmentReport({ score, reason }: InvestmentReportProps) {
     let rating = '보류';
     let ratingEN = 'HOLD';
-    let color = 'bg-yellow-100 text-yellow-800';
     let statusColor = 'text-yellow-600';
 
     if (score >= 80) {
-        rating = '적극 매수';
-        ratingEN = 'BUY';
-        color = 'bg-green-100 text-green-800';
+        rating = '추천';
+        ratingEN = 'RECOMMENDED';
         statusColor = 'text-green-600';
+    } else if (score >= 60) {
+        rating = '관심';
+        ratingEN = 'WATCH';
+        statusColor = 'text-blue-600';
     } else if (score <= 40) {
-        rating = '대기';
-        ratingEN = 'WAIT';
-        color = 'bg-red-100 text-red-800';
+        rating = '주의';
+        ratingEN = 'CAUTION';
         statusColor = 'text-red-600';
     }
 
@@ -31,7 +32,7 @@ export default function InvestmentReport({ score, reason }: InvestmentReportProp
             <div className="flex justify-between items-start mb-3">
                 <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
-                        AI 구매 의견
+                        AI 구매 가치
                     </span>
                     <h4 className={`text-2xl font-black tracking-tighter ${statusColor}`}>
                         {rating}

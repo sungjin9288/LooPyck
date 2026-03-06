@@ -93,7 +93,7 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
             <div className="flex justify-between items-start mb-6">
                 <div>
                     <h3 className="text-sm font-bold text-violet-600 uppercase tracking-wider mb-1">
-                        LooPyck AI 분석
+                        LooPyck AI 구매 인사이트
                     </h3>
                     <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 flex-wrap">
                         <span className="line-clamp-1">{product.title}</span>
@@ -112,7 +112,7 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
                     )}
                 </div>
                 <div className="text-right flex-shrink-0">
-                    <div className="text-xs text-slate-500">AI 한줄 평</div>
+                    <div className="text-xs text-slate-500">구매 의견</div>
                     <div className="text-sm font-bold mt-1" style={{ color: trendColor }}>
                         {insight.advice}
                     </div>
@@ -181,8 +181,8 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
 
             {/* Footer */}
             <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400">
-                <span>Powered by Gemini 2.5 Flash</span>
-                <span>Region: {process.env.NEXT_PUBLIC_VERCEL_REGION || 'icn1'}</span>
+                <span>AI 분석은 참고용입니다.</span>
+                <span>실제 최저가와 함께 판단하세요.</span>
             </div>
         </div>
     );

@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
         const validCounts = counts.filter((entry) => entry.count > 0);
         if (validCounts.length === 0) {
             return NextResponse.json(
-                { brands: getFallbackData() },
+                { brands: getFallbackData(), fallback: true },
                 {
                     headers: {
                         'X-RateLimit-Remaining': String(rateLimit.remaining),
@@ -136,13 +136,13 @@ export async function GET(request: NextRequest) {
 
 function getFallbackData(): BrandTrendItem[] {
     return [
-        { name: 'NIKE', productCount: 0, change: 2.4, isUp: true },
-        { name: 'ADIDAS', productCount: 0, change: 0.8, isUp: true },
-        { name: 'NEW BALANCE', productCount: 0, change: 3.2, isUp: true },
-        { name: 'STUSSY', productCount: 0, change: 0.5, isUp: false },
-        { name: 'SUPREME', productCount: 0, change: 12.1, isUp: true },
-        { name: 'ARC TERYX', productCount: 0, change: 5.7, isUp: true },
-        { name: 'SALOMON', productCount: 0, change: 4.1, isUp: true },
-        { name: 'KITH', productCount: 0, change: 0.3, isUp: false },
+        { name: 'NIKE', productCount: 0, change: 0, isUp: true },
+        { name: 'ADIDAS', productCount: 0, change: 0, isUp: true },
+        { name: 'NEW BALANCE', productCount: 0, change: 0, isUp: true },
+        { name: 'STUSSY', productCount: 0, change: 0, isUp: true },
+        { name: 'SUPREME', productCount: 0, change: 0, isUp: true },
+        { name: 'ARC TERYX', productCount: 0, change: 0, isUp: true },
+        { name: 'SALOMON', productCount: 0, change: 0, isUp: true },
+        { name: 'KITH', productCount: 0, change: 0, isUp: true },
     ];
 }

@@ -28,7 +28,7 @@ function getInsight(
         return { text: '서버 가격 이력 기능이 비활성화되어 있습니다', color: 'text-slate-500' };
     }
     if (data.length < 2) {
-        return { text: '가격 이력 수집 중입니다', color: 'text-slate-500' };
+        return { text: '첫 가격 데이터가 수집되는 중입니다', color: 'text-slate-500' };
     }
 
     const first = data[0].price;
@@ -36,10 +36,10 @@ function getInsight(
     const min = Math.min(...data.map(d => d.price));
     const diff = ((last - first) / first) * 100;
 
-    if (last <= min) return { text: '현재 가격대가 상대적으로 낮게 추정됩니다', color: 'text-green-600' };
-    if (diff < -5) return { text: `변동 추정치 기준 하락 흐름이 관찰됩니다`, color: 'text-green-600' };
-    if (diff > 10) return { text: `변동 추정치 기준 상승 흐름입니다`, color: 'text-amber-600' };
-    return { text: '최근 가격 변동이 크지 않은 패턴입니다', color: 'text-slate-500' };
+    if (last <= min) return { text: '최근 수집 구간 기준 낮은 가격대에 가깝습니다', color: 'text-green-600' };
+    if (diff < -5) return { text: '최근 수집 데이터에서 하락 흐름이 보입니다', color: 'text-green-600' };
+    if (diff > 10) return { text: '최근 수집 데이터에서 상승 흐름이 보입니다', color: 'text-amber-600' };
+    return { text: '최근 수집 구간에서는 큰 변동이 없습니다', color: 'text-slate-500' };
 }
 
 export default function PriceHistoryChart({ source, productId, currentPrice }: PriceHistoryChartProps) {
@@ -114,7 +114,7 @@ export default function PriceHistoryChart({ source, productId, currentPrice }: P
         <div className="w-full bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    6개월 가격 변동 추정
+                    최근 수집된 가격 흐름
                 </h3>
                 <span className={`text-[11px] font-medium ${insight.color}`}>
                     {insight.text}

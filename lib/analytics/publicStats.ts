@@ -1,3 +1,6 @@
+import { SITE_URL } from '@/lib/site';
+import { ALLOWED_PRODUCT_SOURCES } from '@/lib/api/types';
+
 /**
  * Public Stats - 대외 공개용 실시간 성과 지표
  * Zero-Cost 아키텍처 기반 비용 절감 및 성공률 시각화
@@ -46,6 +49,7 @@ const SIMULATED_STATS = {
 // 비용 상수
 const COST_PER_MANUAL_ANALYSIS = 25000;  // ₩25,000/건
 const COST_PER_AI_ANALYSIS = 50;          // ₩50/건
+const SUPPORTED_SOURCE_COUNT = ALLOWED_PRODUCT_SOURCES.length;
 
 /**
  * 공개 대시보드 통계 생성
@@ -68,7 +72,7 @@ export function getPublicDashboardStats(): PublicDashboardStats {
         totalSavings,
         costPerAnalysis: COST_PER_AI_ANALYSIS,
         costReductionRate: Math.round(costReductionRate * 10) / 10,
-        supportedMalls: 7,
+        supportedMalls: SUPPORTED_SOURCE_COUNT,
         topPerformingMall: '무신사',
         uptime,
         avgResponseTime: avgLatencyMs,
@@ -88,6 +92,8 @@ export function getMallPerformances(): MallPerformance[] {
         { mall: '지그재그', successRate: 86, totalExtractions: 1934, avgLatency: 2341 },
         { mall: 'SSF샵', successRate: 71, totalExtractions: 1523, avgLatency: 2156 },
         { mall: '한섬', successRate: 43, totalExtractions: 1383, avgLatency: 2487 },
+        { mall: 'Farfetch', successRate: 67, totalExtractions: 942, avgLatency: 2261 },
+        { mall: 'SSENSE', successRate: 64, totalExtractions: 801, avgLatency: 2314 },
     ];
 }
 
@@ -133,9 +139,9 @@ export function getAnimatedCounters(): {
 export function getOpenGraphMetadata() {
     return {
         title: 'LooPyck - AI 패션 가격 비교 플랫폼',
-        description: '99.8% 비용 절감, 7개 쇼핑몰 AI 자동 분석. Zero-Cost로 상용 수준의 AI 에이전트 구축.',
+        description: `99.8% 비용 절감, ${SUPPORTED_SOURCE_COUNT}개 패션 소스 가격 비교. Zero-Cost로 상용 수준의 AI 에이전트 구축.`,
         image: '/og-image.png',
-        url: 'https://loo-pyck.vercel.app',
+        url: SITE_URL,
         type: 'website',
         locale: 'ko_KR',
     };

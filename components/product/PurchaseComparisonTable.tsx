@@ -1,0 +1,246 @@
+import CouponBadge from './CouponBadge';
+import type { PurchasePriceEstimate } from '@/lib/product/purchasePricing';
+import { analyzeVariantAlignment, getProductOptionKey } from '@/lib/product/variantAlignment';
+import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
+
+interface PurchaseComparisonTableProps {
+    offers: PurchasePriceEstimate[];
+    selectedProductId?: string;
+    showDisclaimer?: boolean;
+}
+
+function hasActualShippingData(offer: PurchasePriceEstimate): boolean {
+    return typeof offer.product.shippingFee === 'number'
+        || typeof offer.product.shippingFreeThreshold === 'number'
+        || Boolean(offer.product.shippingText?.trim());
+}
+
+function hasActualBenefitData(offer: PurchasePriceEstimate): boolean {
+    return typeof offer.product.benefitPrice === 'number'
+        || Boolean(offer.product.benefitText?.trim());
+}
+
+function hasActualStockData(offer: PurchasePriceEstimate): boolean {
+    return (offer.product.stockStatus !== undefined && offer.product.stockStatus !== 'unknown')
+        || Boolean(offer.product.stockText?.trim());
+}
+
+function hasPdpDetailData(offer: PurchasePriceEstimate): boolean {
+    return Boolean(
+        offer.product.detailCollectedAt
+        || offer.product.optionSummary
+        || offer.product.optionValues?.length
+        || offer.product.sizeOptions?.length
+        || offer.product.colorOptions?.length
+    );
+}
+
+export default function PurchaseComparisonTable({
+    offers,
+    selectedProductId,
+    showDisclaimer = true,
+}: PurchaseComparisonTableProps) {
+    if (offers.length === 0) {
+        return null;
+    }
+
+    const lowestCheckoutOffer = offers[0];
+    const alignment = analyzeVariantAlignment(offers.map((offer) => offer.product));
+
+    function renderOptionPills(offer: PurchasePriceEstimate) {
+        const signal = alignment.signalsByKey[getProductOptionKey(offer.product)];
+        if (!signal) {
+            return null;
+        }
+
+        const pills = [
+            signal.color ? `색상 ${signal.color}` : null,
+            signal.size ? `사이즈 ${signal.size}` : null,
+            signal.gender ? `성별 ${signal.gender}` : null,
+        ].filter(Boolean) as string[];
+
+        if (pills.length === 0) {
+            return null;
+        }
+
+        return (
+            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                {pills.map((pill) => (
+                    <span
+                        key={`${offer.product.source}:${offer.product.id}:${pill}`}
+                        className="rounded-full border border-slate-200 bg-white px-2 py-1"
+                    >
+                        {pill}
+                    </span>
+                ))}
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-2">
+            {alignment.hasMismatchRisk && (
+                <div className={`rounded-2xl border px-4 py-3 ${
+                    alignment.riskLevel === 'high'
+                        ? 'border-amber-300 bg-amber-50'
+                        : 'border-sky-200 bg-sky-50'
+                }`}>
+                    <p className="text-sm font-bold text-slate-900">
+                        옵션 혼재 주의: {alignment.summaryLabel}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                        {alignment.mismatchReasons.join(' · ')}
+                        {alignment.distinctColors.length > 1 ? ` · 감지 색상 ${alignment.distinctColors.join(', ')}` : ''}
+                        {alignment.distinctSizes.length > 1 ? ` · 감지 사이즈 ${alignment.distinctSizes.join(', ')}` : ''}
+                        {alignment.distinctGenders.length > 1 ? ` · 감지 성별 ${alignment.distinctGenders.join(', ')}` : ''}
+                    </p>
+                </div>
+            )}
+
+            {offers.map((offer) => {
+                const product = offer.product;
+                const safeVariantLink = sanitizeExternalUrl(product.link);
+                const isLowestCheckout = product.id === lowestCheckoutOffer.product.id;
+                const isSelectedProduct = selectedProductId === product.id;
+                const shippingActual = hasActualShippingData(offer);
+                const benefitActual = hasActualBenefitData(offer);
+                const stockActual = hasActualStockData(offer);
+                const hasDetailData = hasPdpDetailData(offer);
+
+                return (
+                    <div
+                        key={`${product.source}:${product.id}`}
+                        className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${
+                            isLowestCheckout
+                                ? 'border-accent-light bg-accent/5'
+                                : 'border-slate-100 bg-slate-50'
+                        }`}
+                    >
+                        <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                                {isLowestCheckout && (
+                                    <span className="rounded-full bg-accent px-2 py-1 text-[10px] font-bold text-white">
+                                        최저 결제가
+                                    </span>
+                                )}
+                                {isSelectedProduct && (
+                                    <span className="rounded-full bg-slate-900 px-2 py-1 text-[10px] font-bold text-white">
+                                        현재 상품
+                                    </span>
+                                )}
+                                <span
+                                    className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+                                        offer.isAvailable
+                                            ? 'bg-slate-900 text-white'
+                                            : 'bg-rose-100 text-rose-700'
+                                    }`}
+                                >
+                                    {offer.stockLabel}
+                                </span>
+                                {offer.potentialCouponDiscount > 0 && (
+                                    <span className="rounded-full bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700">
+                                        혜택 최대 {offer.potentialCouponDiscount.toLocaleString()}원
+                                    </span>
+                                )}
+                                {shippingActual && (
+                                    <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">
+                                        배송 실데이터
+                                    </span>
+                                )}
+                                {benefitActual && (
+                                    <span className="rounded-full bg-sky-50 px-2 py-1 text-[10px] font-bold text-sky-700">
+                                        혜택 실데이터
+                                    </span>
+                                )}
+                                {stockActual && (
+                                    <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">
+                                        재고 실데이터
+                                    </span>
+                                )}
+                                {hasDetailData && (
+                                    <span className="rounded-full bg-violet-50 px-2 py-1 text-[10px] font-bold text-violet-700">
+                                        PDP 실데이터
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold text-slate-800">{product.mallName}</span>
+                                <CouponBadge mallName={product.mallName} source={product.source} />
+                            </div>
+                            {product.optionSummary && (
+                                <p className="mt-2 text-xs font-medium text-slate-600">
+                                    상세 옵션: {product.optionSummary}
+                                </p>
+                            )}
+                            {renderOptionPills(offer)}
+
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                                <span className="rounded-full border border-slate-200 px-2 py-1">
+                                    표시가 {offer.basePrice.toLocaleString()}원
+                                </span>
+                                <span className="rounded-full border border-slate-200 px-2 py-1">
+                                    배송 {offer.shippingFee === 0 ? '무료' : `${offer.shippingFee.toLocaleString()}원`}
+                                </span>
+                                <span className="rounded-full border border-slate-200 px-2 py-1">
+                                    결제가 {offer.checkoutPrice.toLocaleString()}원
+                                </span>
+                                {offer.potentialCouponDiscount > 0 && (
+                                    <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700">
+                                        혜택 적용시 {offer.bestCasePrice.toLocaleString()}원
+                                    </span>
+                                )}
+                            </div>
+
+                            <p className="mt-2 text-[11px] text-slate-400">
+                                {offer.shippingLabel}
+                                {offer.potentialCouponLabel ? ` · ${offer.potentialCouponLabel}` : ''}
+                                {product.stockText ? ` · ${product.stockText}` : ''}
+                            </p>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                            <p className={`text-sm font-bold ${isLowestCheckout ? 'text-accent-dark' : 'text-slate-700'}`}>
+                                {offer.checkoutPrice.toLocaleString()}원
+                            </p>
+                            {offer.potentialCouponDiscount > 0 && (
+                                <p className="mt-1 text-xs text-rose-600">
+                                    최저 {offer.bestCasePrice.toLocaleString()}원
+                                </p>
+                            )}
+                            {safeVariantLink && offer.isAvailable ? (
+                                <a
+                                    href={safeVariantLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-3 inline-flex rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-700"
+                                >
+                                    이동
+                                </a>
+                            ) : safeVariantLink ? (
+                                <a
+                                    href={safeVariantLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-3 inline-flex rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-200"
+                                >
+                                    품절 확인
+                                </a>
+                            ) : (
+                                <span className="mt-3 inline-flex rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-medium text-slate-500">
+                                    링크 없음
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                );
+            })}
+
+            {showDisclaimer && (
+                <p className="mt-3 text-[11px] text-slate-400">
+                    배송비와 혜택은 쇼핑몰 정책, 회원 상태, 옵션 구성에 따라 달라질 수 있습니다. PDP 실데이터가 없는 옵션 신호는 title/category 기반 추정으로 보완합니다.
+                </p>
+            )}
+        </div>
+    );
+}

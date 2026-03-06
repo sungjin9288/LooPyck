@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import { SearchSort } from '@/types/searchSort';
+import { SearchExperienceMeta } from '@/lib/search/fashionQueryAssistant';
 
 interface UseMultiSourceSearchResult {
     products: UnifiedProduct[];
@@ -11,6 +12,9 @@ interface UseMultiSourceSearchResult {
     sources: string[];
     isScanning: boolean;
     totalCount: number;
+    searchMeta: SearchExperienceMeta | null;
+    suggestedQueries: string[];
+    blockedReason: string | null;
 }
 
 export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): UseMultiSourceSearchResult {
@@ -18,9 +22,12 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
     const [isLoading, setIsLoading] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [blockedReason, setBlockedReason] = useState<string | null>(null);
     const [sources, setSources] = useState<string[]>([]);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const [searchMeta, setSearchMeta] = useState<SearchExperienceMeta | null>(null);
+    const [suggestedQueries, setSuggestedQueries] = useState<string[]>([]);
     const controllerRef = useRef<AbortController | null>(null);
 
     const fetchData = useCallback(async (searchQuery: string, pageNum: number, isInitial: boolean) => {
@@ -41,7 +48,17 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
             );
             const data = await res.json();
 
-            if (!res.ok) throw new Error(data.error || 'Server Error');
+            if (!res.ok) {
+                setBlockedReason(data.blocked ? data.error || '검색 제한' : null);
+                setSearchMeta(data.searchMeta ?? null);
+                setSuggestedQueries(Array.isArray(data.suggestedQueries) ? data.suggestedQueries : []);
+                throw new Error(data.error || 'Server Error');
+            }
+
+            setBlockedReason(null);
+            setError(null);
+            setSearchMeta(data.searchMeta ?? null);
+            setSuggestedQueries(Array.isArray(data.searchMeta?.suggestedQueries) ? data.searchMeta.suggestedQueries : []);
 
             const newProducts: UnifiedProduct[] = data.products || [];
 
@@ -83,7 +100,10 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
         setPage(1);
         setHasMore(true);
         setError(null);
+        setBlockedReason(null);
         setSources([]);
+        setSearchMeta(null);
+        setSuggestedQueries([]);
 
         fetchData(query, 1, true);
     }, [query, sort, fetchData]);
@@ -120,6 +140,9 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
         hasMore,
         sources,
         isScanning,
-        totalCount: products.length
+        totalCount: products.length,
+        searchMeta,
+        suggestedQueries,
+        blockedReason,
     };
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { ALLOWED_PRODUCT_SOURCES } from '@/lib/api/types';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 import { readPriceHistory } from '@/lib/server/priceHistoryStore';
 
@@ -7,7 +8,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const HistoryQuerySchema = z.object({
-    source: z.enum(['NAVER', 'MUSINSA', '29CM', 'W_CONCEPT', 'ZIGZAG', 'FARFETCH', 'COUPANG', 'SSENSE']),
+    source: z.enum(ALLOWED_PRODUCT_SOURCES),
     id: z.string().trim().min(1).max(160),
     limit: z.coerce.number().int().min(1).max(120).optional().default(24),
 });

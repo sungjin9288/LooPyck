@@ -32,6 +32,60 @@ const BRANDS: Record<string, { label: string; description: string; tags: string[
         tags: ['지그재그 원피스', '지그재그 상의', '지그재그 패션'],
         color: '#ff0084',
     },
+    ssf: {
+        label: 'SSF샵',
+        description: 'SSF샵의 프리미엄 패션 브랜드를 가격과 구성 기준으로 비교하세요.',
+        tags: ['SSF샵 니트', 'SSF샵 셔츠', 'SSF샵 코트'],
+        color: '#0f172a',
+    },
+    handsome: {
+        label: '한섬',
+        description: '한섬 계열 브랜드 상품을 다른 쇼핑몰과 함께 비교해보세요.',
+        tags: ['한섬 니트', '타임 자켓', '시스템 옴므 셔츠'],
+        color: '#5b4636',
+    },
+    coupang: {
+        label: '쿠팡',
+        description: '쿠팡 패션 상품을 빠르게 비교하고 최저가를 확인하세요.',
+        tags: ['쿠팡 패션 운동화', '쿠팡 여성 원피스', '쿠팡 남성 아우터'],
+        color: '#346aff',
+    },
+    farfetch: {
+        label: 'Farfetch',
+        description: 'Farfetch의 글로벌 디자이너 상품을 국내 소스와 함께 비교하세요.',
+        tags: ['Farfetch 스니커즈', 'Farfetch 가방', 'Farfetch 자켓'],
+        color: '#111111',
+    },
+    ssense: {
+        label: 'SSENSE',
+        description: 'SSENSE 편집숍 상품을 다른 패션 플랫폼 가격과 비교해보세요.',
+        tags: ['SSENSE 후드', 'SSENSE 스니커즈', 'SSENSE 셔츠'],
+        color: '#1e293b',
+    },
+    hago: {
+        label: 'HAGO',
+        description: 'HAGO 디자이너 편집숍 상품을 다양한 소스와 비교하세요.',
+        tags: ['HAGO 블라우스', 'HAGO 원피스', 'HAGO 가방'],
+        color: '#2f4858',
+    },
+    eql: {
+        label: 'EQL',
+        description: 'EQL에서 찾은 컨템포러리 패션 상품을 빠르게 비교하세요.',
+        tags: ['EQL 셔츠', 'EQL 팬츠', 'EQL 스니커즈'],
+        color: '#7c3aed',
+    },
+    lfmall: {
+        label: 'LF몰',
+        description: 'LF몰 주요 브랜드 상품을 가격 비교 중심으로 탐색하세요.',
+        tags: ['LF몰 자켓', '헤지스 셔츠', '닥스 가방'],
+        color: '#1d4ed8',
+    },
+    sivillage: {
+        label: 'S.I.VILLAGE',
+        description: 'S.I.VILLAGE의 프리미엄 브랜드 상품을 한 번에 비교하세요.',
+        tags: ['SIVILLAGE 니트', 'SIVILLAGE 코트', 'SIVILLAGE 가방'],
+        color: '#8b5e3c',
+    },
 };
 
 interface BrandPageProps {

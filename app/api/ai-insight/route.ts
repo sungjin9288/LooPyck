@@ -81,8 +81,8 @@ export async function POST(request: NextRequest) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const prompt = `
-당신은 한국 패션 트렌드와 가격 방어율(리셀 가치)을 전문적으로 분석하는 AI 애널리스트입니다.
-아래 상품 정보를 바탕으로 구매 가치(Investment Insight)와 트렌드 지수(Trend Score)를 분석해주세요.
+당신은 한국 패션 가격 비교 서비스의 전문 쇼핑 어드바이저입니다.
+아래 상품 정보를 바탕으로 구매 가치와 트렌드 적합도를 분석해주세요.
 
 [상품 정보]
 - 상품명: ${title}
@@ -91,9 +91,9 @@ export async function POST(request: NextRequest) {
 - 현재 최저가: ${price}원
 
 [분석 요구사항]
-1. 트렌드 분석: 이 아이템이 현재 유행(Y2K, 올드머니, 고프코어 등)에 부합하는지, 검색량이 많을 만한 핫한 아이템인지 평가하세요.
+1. 트렌드 분석: 이 아이템이 현재 패션 흐름(Y2K, 올드머니, 고프코어 등)에 얼마나 잘 맞는지 평가하세요.
 2. 가격 가치: 브랜드 인지도와 아이템 종류를 감안했을 때 현재 가격(${price}원)이 합리적인지 평가하세요.
-3. 구매 의견: "적극 매수", "매수", "보류", "대기" 중 하나로 평가하고 그 이유를 150자 내외로 설명하세요.
+3. 구매 의견: 사용자가 가격 비교 플랫폼에서 참고할 수 있게 "지금 비교해볼 만함", "추천", "보류", "주의" 중 하나의 톤으로 설명하세요.
 
 [출력 형식]
 반드시 아래 JSON 형식으로만 응답하세요 (백틱 묶음 없이 순수 JSON만 반환):
@@ -101,12 +101,12 @@ export async function POST(request: NextRequest) {
   "insight": {
     "score": 85,
     "ratingEN": "BUY",
-    "advice": "트렌디한 아이템이며 가격 방어가 잘 됩니다.",
-    "reason": "고프코어 트렌드에 부합하고 현재 가격은 브랜드 평균 대비 합리적이라 구매 매력이 높습니다.",
+    "advice": "지금 비교해볼 만한 상품입니다.",
+    "reason": "고프코어 트렌드에 부합하고 현재 가격은 브랜드 평균 대비 합리적인 편이라 구매 검토 가치가 높습니다.",
     "reasoning": [
       { "factor": "트렌드 부합도", "score": 90, "note": "고프코어/아웃도어 트렌드와 강하게 부합" },
       { "factor": "가격 합리성", "score": 80, "note": "브랜드 평균 대비 5~10% 저렴" },
-      { "factor": "브랜드 파워", "score": 85, "note": "글로벌 1티어 브랜드로 리셀 가치 안정" },
+      { "factor": "브랜드 신뢰도", "score": 85, "note": "인지도가 높아 가격 설득력이 있는 편" },
       { "factor": "계절 적합성", "score": 88, "note": "현 시즌 착용 빈도 높음" }
     ]
   },

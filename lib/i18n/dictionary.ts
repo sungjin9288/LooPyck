@@ -4,6 +4,7 @@ export const dictionary = {
     ko: {
         nav: {
             search: '검색',
+            recommend: '추천',
             favorites: '즐겨찾기',
             login: '로그인',
             logout: '로그아웃'
@@ -23,7 +24,7 @@ export const dictionary = {
                 new: '최신순'
             },
             buyNow: '구매하기',
-            analysis: 'AI 투자 분석'
+            analysis: 'AI 구매 분석'
         },
         pwa: {
             installTitle: '앱으로 더 편하게 보세요',
@@ -36,6 +37,7 @@ export const dictionary = {
     en: {
         nav: {
             search: 'Search',
+            recommend: 'Recommend',
             favorites: 'Favorites',
             login: 'Login',
             logout: 'Logout'
@@ -55,7 +57,7 @@ export const dictionary = {
                 new: 'Newest'
             },
             buyNow: 'Buy Now',
-            analysis: 'AI Investment Analysis'
+            analysis: 'AI Shopping Insight'
         },
         pwa: {
             installTitle: 'Install App',

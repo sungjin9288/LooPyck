@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { ALLOWED_PRODUCT_SOURCES, ALLOWED_PRODUCT_STOCK_STATUSES } from '@/lib/api/types';
 
 // Product Schema Validation
 export const UnifiedProductSchema = z.object({
@@ -14,9 +15,21 @@ export const UnifiedProductSchema = z.object({
     link: z.string().url(),
     mallName: z.string(),
     brand: z.string().optional(),
-    source: z.enum(['NAVER', 'MUSINSA', '29CM', 'W_CONCEPT', 'ZIGZAG']).or(z.string()),
+    source: z.enum(ALLOWED_PRODUCT_SOURCES),
     category1: z.string().optional(),
     category2: z.string().optional(),
+    shippingFee: z.number().nonnegative().optional(),
+    shippingFreeThreshold: z.number().nonnegative().optional(),
+    shippingText: z.string().optional(),
+    benefitPrice: z.number().nonnegative().optional(),
+    benefitText: z.string().optional(),
+    stockStatus: z.enum(ALLOWED_PRODUCT_STOCK_STATUSES).optional(),
+    stockText: z.string().optional(),
+    optionSummary: z.string().optional(),
+    optionValues: z.array(z.string()).optional(),
+    sizeOptions: z.array(z.string()).optional(),
+    colorOptions: z.array(z.string()).optional(),
+    detailCollectedAt: z.string().optional(),
 });
 
 export type UnifiedProductSchemaType = z.infer<typeof UnifiedProductSchema>;

@@ -1,17 +1,7 @@
-import type { UnifiedProduct } from '@/lib/api/types';
+import { isProductSource, type ProductSource, type UnifiedProduct } from '@/lib/api/types';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 
 const MAX_SNAPSHOT_CHARS = 12_000;
-const ALLOWED_SOURCES = new Set<UnifiedProduct['source']>([
-    'NAVER',
-    'MUSINSA',
-    '29CM',
-    'W_CONCEPT',
-    'ZIGZAG',
-    'FARFETCH',
-    'COUPANG',
-    'SSENSE',
-]);
 
 function normalizeText(value: string, maxLength: number): string {
     return value.replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, maxLength);
@@ -20,6 +10,24 @@ function normalizeText(value: string, maxLength: number): string {
 function normalizeOptionalText(value: unknown, maxLength: number): string | undefined {
     if (typeof value !== 'string') return undefined;
     const normalized = normalizeText(value, maxLength);
+    return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizeOptionalMoney(value: unknown): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0
+        ? Math.floor(value)
+        : undefined;
+}
+
+function normalizeOptionalStringArray(value: unknown, maxItems: number, maxLength: number): string[] | undefined {
+    if (!Array.isArray(value)) return undefined;
+
+    const normalized = value
+        .filter((entry): entry is string => typeof entry === 'string')
+        .map((entry) => normalizeText(entry, maxLength))
+        .filter(Boolean)
+        .slice(0, maxItems);
+
     return normalized.length > 0 ? normalized : undefined;
 }
 
@@ -65,7 +73,7 @@ export function decodeProductSnapshot(snapshot: string): UnifiedProduct | null {
         if (!id || !title || !mallName) return null;
         if (!Number.isFinite(price)) return null;
         if (!image || !link) return null;
-        if (!ALLOWED_SOURCES.has(source as UnifiedProduct['source'])) return null;
+        if (!isProductSource(source)) return null;
 
         return {
             id,
@@ -74,17 +82,44 @@ export function decodeProductSnapshot(snapshot: string): UnifiedProduct | null {
             image,
             link,
             mallName,
-            source: source as UnifiedProduct['source'],
+            source,
             brand: normalizeOptionalText(parsed.brand, 120),
             category1: normalizeOptionalText(parsed.category1, 80),
             category2: normalizeOptionalText(parsed.category2, 80),
+            shippingFee: normalizeOptionalMoney(parsed.shippingFee),
+            shippingFreeThreshold: normalizeOptionalMoney(parsed.shippingFreeThreshold),
+            shippingText: normalizeOptionalText(parsed.shippingText, 160),
+            benefitPrice: normalizeOptionalMoney(parsed.benefitPrice),
+            benefitText: normalizeOptionalText(parsed.benefitText, 160),
+            stockStatus: parsed.stockStatus === 'in_stock' || parsed.stockStatus === 'low_stock' || parsed.stockStatus === 'sold_out' || parsed.stockStatus === 'unknown'
+                ? parsed.stockStatus
+                : undefined,
+            stockText: normalizeOptionalText(parsed.stockText, 120),
+            optionSummary: normalizeOptionalText(parsed.optionSummary, 200),
+            optionValues: normalizeOptionalStringArray(parsed.optionValues, 12, 60),
+            sizeOptions: normalizeOptionalStringArray(parsed.sizeOptions, 12, 40),
+            colorOptions: normalizeOptionalStringArray(parsed.colorOptions, 12, 40),
+            detailCollectedAt: normalizeOptionalText(parsed.detailCollectedAt, 64),
         };
     } catch {
         return null;
     }
 }
 
+export function normalizeProductSource(value: unknown): ProductSource | null {
+    return typeof value === 'string' && isProductSource(value) ? value : null;
+}
+
+export function buildCanonicalProductDetailHref(product: Pick<UnifiedProduct, 'id' | 'source'>): string {
+    const params = new URLSearchParams({ source: product.source });
+    return `/product/${encodeURIComponent(product.id)}?${params.toString()}`;
+}
+
 export function buildProductDetailHref(product: UnifiedProduct): string {
     const snapshot = encodeProductSnapshot(product);
-    return `/product/${encodeURIComponent(product.id)}?snapshot=${encodeURIComponent(snapshot)}`;
+    const params = new URLSearchParams({
+        source: product.source,
+        snapshot,
+    });
+    return `/product/${encodeURIComponent(product.id)}?${params.toString()}`;
 }

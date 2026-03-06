@@ -1,4 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
+import { loadEnvConfig } from '@next/env';
+import { resolveCapacitorAppId, resolveCapacitorAppName, resolveCapacitorServerUrl } from './lib/config/appConfig';
+
+loadEnvConfig(process.cwd());
 
 /**
  * Capacitor 설정 — Remote URL 방식
@@ -9,11 +13,11 @@ import { CapacitorConfig } from '@capacitor/cli';
  * - 앱 업데이트 시 App Store 재심사 불필요 (서버 코드 변경 한정)
  */
 const config: CapacitorConfig = {
-    appId: 'app.loopyck.fashion',
-    appName: 'LooPyck',
+    appId: resolveCapacitorAppId(),
+    appName: resolveCapacitorAppName(),
     webDir: 'public', // server.url 사용 시 실제론 무시됨
     server: {
-        url: 'https://loo-pyck.vercel.app',
+        url: resolveCapacitorServerUrl(),
         cleartext: false,
     },
     ios: {

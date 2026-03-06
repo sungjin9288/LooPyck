@@ -1,5 +1,10 @@
 import { DocumentData, FieldValue, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { aggregateRealtimeSearch } from '@/lib/api/realtimeAggregator';
+import {
+    detectMarketplaceSource,
+    getSourceDisplayName,
+    stripSourceIdPrefix,
+} from '@/lib/api/sourceCatalog';
 import { normalizeTitle } from '@/lib/core/dataNormalizer';
 import { getAdminDb, getAdminMessaging } from '@/lib/server/firebaseAdmin';
 import { markAlertDelivery } from '@/lib/server/priceHistoryStore';
@@ -30,7 +35,7 @@ function findCheapestCrossMall(
     const sorted = [...results].filter(r => r.price > 0).sort((a, b) => a.price - b.price);
     if (sorted.length === 0) return null;
     const cheapest = sorted[0];
-    const mallName = cheapest.source === 'MUSINSA' ? '무신사' : cheapest.source === '29CM' ? '29CM' : '네이버쇼핑';
+    const mallName = getSourceDisplayName(cheapest.source, cheapest.mallName);
     return { price: cheapest.price, mallName, link: cheapest.link || '' };
 }
 
@@ -38,15 +43,12 @@ function sanitizeQuery(title: string): string {
     return normalizeTitle(title).replace(/\s+/g, ' ').trim().slice(0, 50);
 }
 
-function normalizeSourceFromMall(mallName: string): string {
-    const lower = mallName.toLowerCase();
-    if (lower.includes('musinsa') || lower.includes('무신사')) return 'MUSINSA';
-    if (lower.includes('29')) return '29CM';
-    return 'NAVER';
+function normalizeSourceFromMall(mallName: string, link?: string): string {
+    return detectMarketplaceSource(mallName, link || '');
 }
 
 function normalizeId(value: string): string {
-    return value.replace(/^(naver_|musinsa_|29cm_)/i, '');
+    return stripSourceIdPrefix(value);
 }
 
 function pickCurrentPrice(
@@ -58,7 +60,7 @@ function pickCurrentPrice(
     }
 
     const expectedId = favorite.productId ? normalizeId(favorite.productId) : '';
-    const expectedSource = normalizeSourceFromMall(favorite.mallName || '');
+    const expectedSource = normalizeSourceFromMall(favorite.mallName || '', favorite.link);
 
     const exact = queryResults.find((item) => {
         if (expectedSource && item.source !== expectedSource) return false;

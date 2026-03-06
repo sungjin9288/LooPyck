@@ -1,11 +1,17 @@
-import { App, cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
-import { getMessaging, Messaging } from 'firebase-admin/messaging';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import type { App } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import type { Auth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+import type { Firestore } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
+import type { Messaging } from 'firebase-admin/messaging';
 
 type CachedAdmin = {
     app: App | null;
     db: Firestore | null;
     messaging: Messaging | null;
+    auth: Auth | null;
     initialized: boolean;
 };
 
@@ -54,6 +60,7 @@ function initAdmin(): CachedAdmin {
                 app: null,
                 db: null,
                 messaging: null,
+                auth: null,
                 initialized: true,
             };
             return globalAdmin.__loopyckAdmin;
@@ -63,6 +70,7 @@ function initAdmin(): CachedAdmin {
             app,
             db: getFirestore(app),
             messaging: getMessaging(app),
+            auth: getAuth(app),
             initialized: true,
         };
         globalAdmin.__loopyckAdmin = cached;
@@ -73,6 +81,7 @@ function initAdmin(): CachedAdmin {
             app: null,
             db: null,
             messaging: null,
+            auth: null,
             initialized: true,
         };
         return globalAdmin.__loopyckAdmin;
@@ -85,6 +94,10 @@ export function getAdminDb(): Firestore | null {
 
 export function getAdminMessaging(): Messaging | null {
     return initAdmin().messaging;
+}
+
+export function getAdminAuth(): Auth | null {
+    return initAdmin().auth;
 }
 
 export function isFirebaseAdminConfigured(): boolean {

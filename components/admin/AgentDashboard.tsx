@@ -11,12 +11,6 @@ import { costTracker, DailyCostSummary } from '@/lib/ai/costTracker';
 import { concurrencyManager, QueueStats } from '@/lib/agent/concurrency';
 import { usageTracker } from '@/lib/ai/usageTracker';
 
-// Admin UID 목록 (환경변수로 관리 권장)
-const ADMIN_UIDS = (process.env.NEXT_PUBLIC_ADMIN_UIDS || '')
-    .split(',')
-    .map((uid) => uid.trim())
-    .filter(Boolean);
-
 // 대시보드 데이터 타입
 interface DashboardData {
     // 쿼터 상태
@@ -124,16 +118,52 @@ function getStatusColor(level: 'safe' | 'caution' | 'danger'): string {
 export default function AgentDashboard() {
     const { user, loading: authLoading } = useUser();
     const [data, setData] = useState<DashboardData | null>(null);
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
     const [refreshCount, setRefreshCount] = useState(0);
+    const [accessError, setAccessError] = useState<string | null>(null);
 
     // Admin 권한 체크
     useEffect(() => {
-        if (user && ADMIN_UIDS.includes(user.uid)) {
-            setIsAdmin(true);
-        } else {
-            setIsAdmin(false);
+        if (!user) {
+            setIsAdmin(null);
+            setAccessError(null);
+            return;
         }
+
+        let cancelled = false;
+
+        const checkAccess = async () => {
+            try {
+                const token = await user.getIdToken();
+                const response = await fetch('/api/admin/access', {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    cache: 'no-store',
+                });
+                const payload = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(payload.error || '관리자 권한이 필요합니다.');
+                }
+
+                if (!cancelled) {
+                    setIsAdmin(true);
+                    setAccessError(null);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setIsAdmin(false);
+                    setAccessError(error instanceof Error ? error.message : '관리자 권한이 필요합니다.');
+                }
+            }
+        };
+
+        void checkAccess();
+
+        return () => {
+            cancelled = true;
+        };
     }, [user]);
 
     // 데이터 로드
@@ -180,11 +210,28 @@ export default function AgentDashboard() {
     }
 
     // 접근 거부
-    if (!user || !isAdmin) {
+    if (!user) {
+        return (
+            <div style={styles.accessDenied}>
+                <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>Sign In Required</h2>
+                <p>로그인이 필요합니다.</p>
+            </div>
+        );
+    }
+
+    if (isAdmin === null) {
+        return (
+            <div style={styles.accessDenied}>
+                <p>Checking admin access...</p>
+            </div>
+        );
+    }
+
+    if (!isAdmin) {
         return (
             <div style={styles.accessDenied}>
                 <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>🔒 Access Denied</h2>
-                <p>Admin 권한이 필요합니다.</p>
+                <p>{accessError || 'Admin 권한이 필요합니다.'}</p>
                 {user && <p style={{ marginTop: '8px', fontSize: '12px' }}>UID: {user.uid}</p>}
             </div>
         );

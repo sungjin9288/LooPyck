@@ -4,6 +4,7 @@
  */
 
 import { StyleProfile } from './userDna';
+import { SITE_HOST } from '@/lib/site';
 
 export const ShareEngine = {
     /**
@@ -79,7 +80,7 @@ export const ShareEngine = {
             ctx.fillStyle = '#666666';
             ctx.font = '40px Inter, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('loopyck.com', width / 2, height - 100);
+            ctx.fillText(SITE_HOST, width / 2, height - 100);
 
             resolve(canvas.toDataURL('image/png'));
         });

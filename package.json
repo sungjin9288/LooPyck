@@ -1,6 +1,6 @@
 {
   "name": "fashion-price-compare",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit --incremental false",
     "lint": "npm run typecheck",
     "test:trends": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/monthlyTrendAnalyzer.test.mjs",
+    "test:adapters": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --experimental-specifier-resolution=node --test tests/marketplaceScrapers.test.ts tests/searchDiagnostics.test.ts tests/pdpDiagnostics.test.ts tests/productMatching.test.ts tests/purchasePricing.test.ts tests/sourceCommerceParsing.test.ts tests/variantAlignment.test.ts tests/pdpDetailEnrichment.test.ts tests/fashionQueryAssistant.test.ts tests/preferenceRerank.test.ts",
     "cap:sync": "npx cap sync",
     "cap:ios": "npx cap open ios",
     "cap:android": "npx cap open android",

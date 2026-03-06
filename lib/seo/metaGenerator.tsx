@@ -4,6 +4,7 @@
  */
 
 import type { Metadata } from 'next';
+import { SITE_NAME, SITE_URL } from '@/lib/site';
 
 // 상품 정보 타입
 interface ProductSEOData {
@@ -22,9 +23,9 @@ interface ProductSEOData {
 
 // 사이트 기본 정보
 const SITE_CONFIG = {
-    name: 'LooPyck',
+    name: SITE_NAME,
     description: '패션 쇼핑몰 가격 비교 및 AI 스타일 추천',
-    url: 'https://loopyck.com',
+    url: SITE_URL,
     locale: 'ko_KR',
     twitterHandle: '@loopyck',
 };

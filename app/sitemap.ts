@@ -1,7 +1,12 @@
 import { MetadataRoute } from 'next';
+import { buildCanonicalProductDetailHref } from '@/lib/api/productSnapshot';
 import { BRANDS_TO_TRACK } from '@/lib/config/brands';
+import { listTrackedProductsForSitemap } from '@/lib/server/priceHistoryStore';
+import { SITE_URL } from '@/lib/site';
 
-const BASE_URL = 'https://loo-pyck.vercel.app';
+export const runtime = 'nodejs';
+export const revalidate = 300;
+const MAX_TRACKED_PRODUCTS = 200;
 
 /**
  * 시즌 인기 검색어 — 크롤러가 검색 결과 페이지를 발견할 수 있도록 노출
@@ -26,14 +31,46 @@ const STATIC_ROUTES = [
     '/brand/wconcept',
     '/brand/29cm',
     '/brand/zigzag',
+    '/brand/ssf',
+    '/brand/handsome',
+    '/brand/coupang',
+    '/brand/farfetch',
+    '/brand/ssense',
+    '/brand/hago',
+    '/brand/eql',
+    '/brand/lfmall',
+    '/brand/sivillage',
 ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
+function dedupeEntries(entries: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
+    const seen = new Set<string>();
+
+    return entries.filter((entry) => {
+        if (seen.has(entry.url)) {
+            return false;
+        }
+        seen.add(entry.url);
+        return true;
+    });
+}
+
+async function getTrackedProductEntries(): Promise<MetadataRoute.Sitemap> {
+    const products = await listTrackedProductsForSitemap(MAX_TRACKED_PRODUCTS);
+
+    return products.map((product) => ({
+        url: new URL(buildCanonicalProductDetailHref(product), SITE_URL).toString(),
+        lastModified: new Date(product.updatedAt),
+        changeFrequency: 'daily',
+        priority: 0.7,
+    }));
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const now = new Date();
 
     // 1. 정적 페이지
     const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((route) => ({
-        url: `${BASE_URL}${route === '/' ? '' : route}`,
+        url: `${SITE_URL}${route === '/' ? '' : route}`,
         lastModified: now,
         changeFrequency: route === '/' ? 'daily' : 'weekly',
         priority: route === '/' ? 1.0 : 0.8,
@@ -41,7 +78,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
     // 2. 브랜드 페이지 (brands.ts에서 자동 파생)
     const brandEntries: MetadataRoute.Sitemap = BRANDS_TO_TRACK.map((brand) => ({
-        url: `${BASE_URL}/?q=${encodeURIComponent(brand)}`,
+        url: `${SITE_URL}/?q=${encodeURIComponent(brand)}`,
         lastModified: now,
         changeFrequency: 'daily',
         priority: 0.7,
@@ -49,11 +86,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
     // 3. 시즌 인기 검색 키워드 페이지
     const trendingEntries: MetadataRoute.Sitemap = TRENDING_QUERIES.map((q) => ({
-        url: `${BASE_URL}/?q=${encodeURIComponent(q)}`,
+        url: `${SITE_URL}/?q=${encodeURIComponent(q)}`,
         lastModified: now,
         changeFrequency: 'weekly',
         priority: 0.6,
     }));
 
-    return [...staticEntries, ...brandEntries, ...trendingEntries];
+    const trackedEntries = await getTrackedProductEntries();
+
+    return dedupeEntries([...staticEntries, ...brandEntries, ...trendingEntries, ...trackedEntries]);
 }
