@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
+import { DEFAULT_ALERT_TUNING_CONFIG, type AlertBehaviorMode, type AlertTuningConfig } from '@/lib/favorites/alertPersonalization';
+import { buildAlertRolloutRecommendations, buildAlertTuningSuggestions } from '@/lib/favorites/alertRecommendations';
+import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 
 type SourceSummary = {
     source: string;
@@ -109,6 +112,118 @@ type PdpRecentEvent = {
     queryContext?: string;
 };
 
+type AlertSourceSummary = {
+    source: string;
+    alerts: number;
+    unreadCount: number;
+    archivedCount: number;
+    highPriorityCount: number;
+    criticalPriorityCount: number;
+    activeTargets: number;
+    snoozedTargets: number;
+    avgReadLatencyMinutes: number;
+    lastSeenAt: string | null;
+};
+
+type AlertSourceDrilldown = {
+    source: string;
+    unreadRate: number;
+    archivedRate: number;
+    activeTargets: number;
+    snoozedTargets: number;
+    avgReadLatencyMinutes: number;
+    criticalAlerts: number;
+    highAlerts: number;
+    topMalls: Array<{ name: string; count: number }>;
+    topVariants: Array<{ label: string; count: number }>;
+    recentCritical: AlertRecentEvent[];
+    recentUnread: AlertRecentEvent[];
+};
+
+type AlertRecentEvent = {
+    id: string;
+    title: string;
+    source: string;
+    mallName?: string;
+    priority: 'critical' | 'high' | 'medium';
+    read: boolean;
+    archived: boolean;
+    currentPrice?: number;
+    targetPrice?: number;
+    generatedAt: string;
+    variantLabel?: string;
+    productId?: string;
+};
+
+type AlertPersonaModeSummary = {
+    mode: 'instant' | 'balanced' | 'batch';
+    count: number;
+    share: number;
+    avgDefaultSnoozeHours: number;
+    avgUnreadRate: number;
+    avgReadLatencyMinutes: number;
+};
+
+type AlertPersonaRecentProfile = {
+    userKey: string;
+    mode: 'instant' | 'balanced' | 'batch';
+    summary: string;
+    defaultSnoozeHours: number;
+    unreadRate: number;
+    snoozeShare: number;
+    avgReadLatencyMinutes: number;
+    updatedAt: string | null;
+};
+
+type AlertRolloutCohortSummary = {
+    users: number;
+    alerts: number;
+    unreadCount: number;
+    unreadRate: number;
+    activeTargets: number;
+    snoozedTargets: number;
+    snoozedTargetRate: number;
+    criticalAlerts: number;
+    highAlerts: number;
+    avgReadLatencyMinutes: number;
+};
+
+type AlertRolloutSourceSummary = {
+    source: string;
+    rolloutPercentage: number;
+    experiment: AlertRolloutCohortSummary;
+    control: AlertRolloutCohortSummary;
+    delta: {
+        unreadRate: number;
+        snoozedTargetRate: number;
+        avgReadLatencyMinutes: number;
+    };
+};
+
+type AlertRolloutTrendPoint = {
+    day: string;
+    experimentAlerts: number;
+    controlAlerts: number;
+    experimentUnreadRate: number;
+    controlUnreadRate: number;
+    experimentAvgReadLatencyMinutes: number;
+    controlAvgReadLatencyMinutes: number;
+};
+
+type AlertRolloutTrend = {
+    source: string;
+    rolloutPercentage: number;
+    points: AlertRolloutTrendPoint[];
+};
+
+type AlertTuningHistoryEntry = {
+    id: string;
+    updatedAt: string | null;
+    updatedBy: string | null;
+    summary: string;
+    restorable: boolean;
+};
+
 type DiagnosticsResponse = {
     summary: {
         trackedSearches: number;
@@ -145,6 +260,44 @@ type DiagnosticsResponse = {
         };
         recent: PdpRecentEvent[];
         storage: 'memory' | 'firestore';
+    };
+    alerts: {
+        summary: {
+            trackedAlerts: number;
+            unreadCount: number;
+            archivedCount: number;
+            activeTargets: number;
+            snoozedTargets: number;
+            criticalPriorityCount: number;
+            highPriorityCount: number;
+            avgReadLatencyMinutes: number;
+            lastUpdatedAt: string | null;
+            sources: AlertSourceSummary[];
+        };
+        recent: AlertRecentEvent[];
+        drilldown: AlertSourceDrilldown[];
+        personas: {
+            summary: {
+                trackedProfiles: number;
+                dominantMode: 'instant' | 'balanced' | 'batch' | null;
+                avgDefaultSnoozeHours: number;
+                avgUnreadRate: number;
+                avgReadLatencyMinutes: number;
+                lastUpdatedAt: string | null;
+                modes: AlertPersonaModeSummary[];
+            };
+            recent: AlertPersonaRecentProfile[];
+        };
+        rollout: AlertRolloutSourceSummary[];
+        rolloutTrends: AlertRolloutTrend[];
+        storage: 'firestore' | 'unavailable';
+    };
+    alertTuning: {
+        config: AlertTuningConfig;
+        updatedAt: string | null;
+        updatedBy: string | null;
+        storage: 'firestore' | 'default';
+        history: AlertTuningHistoryEntry[];
     };
     error?: string;
 };
@@ -236,6 +389,99 @@ function pdpStrategyLabel(strategy: PdpRecentEvent['strategy']): string {
             return 'parse 실패';
         default:
             return '미지원';
+    }
+}
+
+function alertPriorityLabel(priority: AlertRecentEvent['priority']): string {
+    switch (priority) {
+        case 'critical':
+            return '긴급';
+        case 'high':
+            return '높음';
+        default:
+            return '기본';
+    }
+}
+
+function alertPriorityClass(priority: AlertRecentEvent['priority']): string {
+    switch (priority) {
+        case 'critical':
+            return 'bg-rose-500/15 text-rose-200';
+        case 'high':
+            return 'bg-amber-500/15 text-amber-200';
+        default:
+            return 'bg-slate-700/60 text-slate-200';
+    }
+}
+
+function alertPersonaModeLabel(mode: AlertPersonaRecentProfile['mode'] | null | undefined): string {
+    switch (mode) {
+        case 'instant':
+            return '빠른 대응형';
+        case 'batch':
+            return '배치 확인형';
+        case 'balanced':
+            return '균형 확인형';
+        default:
+            return '미확인';
+    }
+}
+
+function alertPersonaModeClass(mode: AlertPersonaRecentProfile['mode'] | null | undefined): string {
+    switch (mode) {
+        case 'instant':
+            return 'bg-emerald-500/15 text-emerald-200';
+        case 'batch':
+            return 'bg-amber-500/15 text-amber-200';
+        case 'balanced':
+            return 'bg-sky-500/15 text-sky-200';
+        default:
+            return 'bg-slate-700/60 text-slate-200';
+    }
+}
+
+function formatSnoozeHours(hours: number): string {
+    if (!Number.isFinite(hours) || hours <= 0) {
+        return '-';
+    }
+
+    if (hours % 24 === 0) {
+        return `${Math.round(hours / 24)}d`;
+    }
+
+    return `${hours}h`;
+}
+
+function tuningSeverityClass(severity: 'high' | 'medium' | 'low'): string {
+    switch (severity) {
+        case 'high':
+            return 'bg-rose-500/15 text-rose-200';
+        case 'medium':
+            return 'bg-amber-500/15 text-amber-200';
+        default:
+            return 'bg-emerald-500/15 text-emerald-200';
+    }
+}
+
+function rolloutDeltaClass(value: number, direction: 'lower_better' | 'higher_better' = 'lower_better'): string {
+    if (value === 0) {
+        return 'text-slate-300';
+    }
+
+    const positive = direction === 'higher_better' ? value > 0 : value < 0;
+    return positive ? 'text-emerald-300' : 'text-rose-300';
+}
+
+function rolloutActionLabel(action: 'increase' | 'hold' | 'decrease' | 'collect_more'): string {
+    switch (action) {
+        case 'increase':
+            return '확대 추천';
+        case 'decrease':
+            return '축소 추천';
+        case 'collect_more':
+            return '표본 대기';
+        default:
+            return '유지 추천';
     }
 }
 
@@ -334,6 +580,12 @@ export default function SearchDiagnosticsDashboard() {
     const [error, setError] = useState<string | null>(null);
     const [selectedSource, setSelectedSource] = useState<string | null>(null);
     const [isAdminAuthorized, setIsAdminAuthorized] = useState<boolean | null>(null);
+    const [alertTuningDraft, setAlertTuningDraft] = useState<AlertTuningConfig | null>(null);
+    const [isTuningDirty, setIsTuningDirty] = useState(false);
+    const [isSavingTuning, setIsSavingTuning] = useState(false);
+    const [rollbackingHistoryId, setRollbackingHistoryId] = useState<string | null>(null);
+    const [tuningMessage, setTuningMessage] = useState<string | null>(null);
+    const [selectedOverrideSource, setSelectedOverrideSource] = useState<string | null>(null);
 
     useEffect(() => {
         if (!user) {
@@ -411,6 +663,30 @@ export default function SearchDiagnosticsDashboard() {
         }
     }, [data, selectedSource]);
 
+    useEffect(() => {
+        if (data?.alertTuning?.config && !isTuningDirty) {
+            setAlertTuningDraft(data.alertTuning.config);
+        }
+    }, [data?.alertTuning, isTuningDirty]);
+
+    const availableOverrideSources = Array.from(new Set([
+        ...(data?.summary.sources.map((entry) => entry.source) || []),
+        ...(data?.alerts.summary.sources.map((entry) => entry.source) || []),
+        ...Object.keys((alertTuningDraft || data?.alertTuning?.config || DEFAULT_ALERT_TUNING_CONFIG).sourceOverrides || {}),
+        ...Object.keys((alertTuningDraft || data?.alertTuning?.config || DEFAULT_ALERT_TUNING_CONFIG).sourceRollouts || {}),
+    ])).sort((left, right) => left.localeCompare(right));
+
+    useEffect(() => {
+        if (!availableOverrideSources.length) {
+            setSelectedOverrideSource(null);
+            return;
+        }
+
+        if (!selectedOverrideSource || !availableOverrideSources.includes(selectedOverrideSource)) {
+            setSelectedOverrideSource(availableOverrideSources[0]);
+        }
+    }, [availableOverrideSources, selectedOverrideSource]);
+
     if (loading) {
         return <div className="min-h-screen bg-slate-950 text-slate-200 p-8">Loading...</div>;
     }
@@ -460,6 +736,225 @@ export default function SearchDiagnosticsDashboard() {
     const recentPdpEvents = (data?.pdp.recent || []).slice(0, 16);
     const pdpFailures = recentPdpEvents.filter((entry) => entry.strategy === 'fetch_failed' || entry.strategy === 'parse_empty');
     const pdpSelectedEvents = recentPdpEvents.filter((entry) => !selectedPdpSummary || entry.source === selectedPdpSummary.source);
+    const alertSummary = data?.alerts.summary;
+    const selectedAlertSummary = alertSummary?.sources.find((entry) => entry.source === selectedSource)
+        || alertSummary?.sources[0]
+        || null;
+    const alertDrilldown = data?.alerts.drilldown || [];
+    const selectedAlertDrilldown = alertDrilldown.find((entry) => entry.source === selectedAlertSummary?.source)
+        || alertDrilldown[0]
+        || null;
+    const alertSuggestions = buildAlertTuningSuggestions(alertDrilldown);
+    const selectedAlertSuggestion = alertSuggestions.find((entry) => entry.source === selectedAlertDrilldown?.source)
+        || null;
+    const recentAlertEvents = (data?.alerts.recent || []).slice(0, 16);
+    const selectedAlertEvents = recentAlertEvents.filter((entry) => !selectedAlertSummary || entry.source === selectedAlertSummary.source);
+    const alertPersonaSummary = data?.alerts.personas.summary;
+    const alertPersonaRecent = data?.alerts.personas.recent || [];
+    const alertRollout = data?.alerts.rollout || [];
+    const alertRolloutTrends = data?.alerts.rolloutTrends || [];
+    const rolloutRecommendations = buildAlertRolloutRecommendations(alertRollout);
+    const alertTuning = data?.alertTuning;
+    const draftTuning = alertTuningDraft || alertTuning?.config || DEFAULT_ALERT_TUNING_CONFIG;
+    const currentOverrideSource = selectedOverrideSource || availableOverrideSources[0] || null;
+    const currentSourceOverride = currentOverrideSource
+        ? draftTuning.sourceOverrides?.[currentOverrideSource]
+        : undefined;
+    const currentSourceRollout = currentOverrideSource
+        ? draftTuning.sourceRollouts?.[currentOverrideSource] ?? 100
+        : 100;
+
+    function updateAlertTuningMode(
+        mode: AlertBehaviorMode,
+        field: 'defaultSnoozeHours' | 'targetDiscountRate' | AlertRecentEvent['priority'],
+        value: number
+    ) {
+        setAlertTuningDraft((current) => {
+            const base = current || alertTuning?.config || DEFAULT_ALERT_TUNING_CONFIG;
+            const nextMode = { ...base.modes[mode] };
+
+            if (field === 'defaultSnoozeHours' || field === 'targetDiscountRate') {
+                (nextMode[field] as number) = value;
+            } else {
+                nextMode.recommendedByPriority = {
+                    ...nextMode.recommendedByPriority,
+                    [field]: value,
+                };
+            }
+
+            return {
+                ...base,
+                modes: {
+                    ...base.modes,
+                    [mode]: nextMode,
+                },
+            };
+        });
+        setIsTuningDirty(true);
+        setTuningMessage(null);
+    }
+
+    function updateSourceAlertTuningMode(
+        source: string,
+        mode: AlertBehaviorMode,
+        field: 'defaultSnoozeHours' | 'targetDiscountRate' | AlertRecentEvent['priority'],
+        value: number
+    ) {
+        setAlertTuningDraft((current) => {
+            const base = current || alertTuning?.config || DEFAULT_ALERT_TUNING_CONFIG;
+            const existingSource = base.sourceOverrides?.[source] || {};
+            const nextMode = {
+                defaultSnoozeHours: existingSource[mode]?.defaultSnoozeHours ?? base.modes[mode].defaultSnoozeHours,
+                targetDiscountRate: existingSource[mode]?.targetDiscountRate ?? base.modes[mode].targetDiscountRate,
+                recommendedByPriority: {
+                    ...base.modes[mode].recommendedByPriority,
+                    ...(existingSource[mode]?.recommendedByPriority || {}),
+                },
+            };
+
+            if (field === 'defaultSnoozeHours' || field === 'targetDiscountRate') {
+                nextMode[field] = value;
+            } else {
+                nextMode.recommendedByPriority = {
+                    ...nextMode.recommendedByPriority,
+                    [field]: value,
+                };
+            }
+
+            return {
+                ...base,
+                sourceOverrides: {
+                    ...(base.sourceOverrides || {}),
+                    [source]: {
+                        ...existingSource,
+                        [mode]: nextMode,
+                    },
+                },
+            };
+        });
+        setIsTuningDirty(true);
+        setTuningMessage(null);
+    }
+
+    function updateSourceRolloutPercentage(source: string, value: number) {
+        setAlertTuningDraft((current) => {
+            const base = current || alertTuning?.config || DEFAULT_ALERT_TUNING_CONFIG;
+            return {
+                ...base,
+                sourceRollouts: {
+                    ...(base.sourceRollouts || {}),
+                    [source]: Math.min(100, Math.max(0, Math.round(value * 10) / 10)),
+                },
+            };
+        });
+        setIsTuningDirty(true);
+        setTuningMessage(null);
+    }
+
+    function applyRecommendedSourceRollout(source: string, rolloutPercentage: number) {
+        setSelectedOverrideSource(source);
+        updateSourceRolloutPercentage(source, rolloutPercentage);
+        setTuningMessage(`${source} rollout 추천값 ${rolloutPercentage}%를 draft에 반영했습니다. 저장하면 적용됩니다.`);
+    }
+
+    function handleRemoveSourceOverride(source: string) {
+        setAlertTuningDraft((current) => {
+            const base = current || alertTuning?.config || DEFAULT_ALERT_TUNING_CONFIG;
+            const nextOverrides = { ...(base.sourceOverrides || {}) };
+            const nextRollouts = { ...(base.sourceRollouts || {}) };
+            delete nextOverrides[source];
+            delete nextRollouts[source];
+            return {
+                ...base,
+                sourceOverrides: nextOverrides,
+                sourceRollouts: nextRollouts,
+            };
+        });
+        setIsTuningDirty(true);
+        setTuningMessage(`${source} source override를 제거했습니다. 저장하면 반영됩니다.`);
+    }
+
+    async function handleSaveAlertTuning() {
+        if (!user || !draftTuning) {
+            return;
+        }
+
+        setIsSavingTuning(true);
+        setTuningMessage(null);
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/alert-tuning', {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ config: draftTuning }),
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error(payload.error || '알림 튜닝 설정 저장에 실패했습니다.');
+            }
+
+            primeAlertTuningSettings(payload);
+            setData((current) => current ? {
+                ...current,
+                alertTuning: payload,
+            } : current);
+            setAlertTuningDraft(payload.config);
+            setIsTuningDirty(false);
+            setTuningMessage('알림 튜닝 설정을 저장했습니다.');
+        } catch (saveError) {
+            setTuningMessage(saveError instanceof Error ? saveError.message : '알림 튜닝 설정 저장에 실패했습니다.');
+        } finally {
+            setIsSavingTuning(false);
+        }
+    }
+
+    async function handleRollbackAlertTuning(historyId: string) {
+        if (!user || !historyId) {
+            return;
+        }
+
+        setRollbackingHistoryId(historyId);
+        setTuningMessage(null);
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/alert-tuning', {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ rollbackHistoryId: historyId }),
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error(payload.error || '알림 튜닝 설정 복원에 실패했습니다.');
+            }
+
+            primeAlertTuningSettings(payload);
+            setData((current) => current ? {
+                ...current,
+                alertTuning: payload,
+            } : current);
+            setAlertTuningDraft(payload.config);
+            setIsTuningDirty(false);
+            setTuningMessage('선택한 설정 이력으로 복원했습니다.');
+        } catch (rollbackError) {
+            setTuningMessage(rollbackError instanceof Error ? rollbackError.message : '알림 튜닝 설정 복원에 실패했습니다.');
+        } finally {
+            setRollbackingHistoryId(null);
+        }
+    }
+
+    function handleResetAlertTuning() {
+        setAlertTuningDraft(DEFAULT_ALERT_TUNING_CONFIG);
+        setIsTuningDirty(true);
+        setTuningMessage('기본 알림 튜닝값으로 되돌렸습니다. 저장하면 전체에 반영됩니다.');
+    }
 
     return (
         <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.12),_transparent_40%),linear-gradient(180deg,#020617_0%,#0f172a_100%)] text-slate-100">
@@ -475,6 +970,7 @@ export default function SearchDiagnosticsDashboard() {
                     <div className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-xs text-slate-400">
                         <div>Search storage: <span className="font-semibold text-slate-200">{data?.storage || 'memory'}</span></div>
                         <div className="mt-1">PDP storage: <span className="font-semibold text-slate-200">{data?.pdp.storage || 'memory'}</span></div>
+                        <div className="mt-1">Alert storage: <span className="font-semibold text-slate-200">{data?.alerts.storage || 'unavailable'}</span></div>
                         <div className="mt-1">Last updated: <span className="font-semibold text-slate-200">{formatTime(summary?.lastUpdatedAt)}</span></div>
                         <div className="mt-1">{isFetching ? 'Refreshing...' : 'Auto refresh 15s'}</div>
                     </div>
@@ -648,6 +1144,931 @@ export default function SearchDiagnosticsDashboard() {
                                     최근 PDP enrichment 이벤트가 없습니다.
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="mt-8 grid gap-4 lg:grid-cols-4">
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Alert Events</p>
+                        <p className="mt-2 text-4xl font-black tracking-tight text-white">{alertSummary?.trackedAlerts ?? 0}</p>
+                    </div>
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Unread Alerts</p>
+                        <p className="mt-2 text-4xl font-black tracking-tight text-amber-300">{alertSummary?.unreadCount ?? 0}</p>
+                    </div>
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Snoozed Targets</p>
+                        <p className="mt-2 text-4xl font-black tracking-tight text-sky-300">{alertSummary?.snoozedTargets ?? 0}</p>
+                    </div>
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Avg Read Latency</p>
+                        <p className="mt-2 text-4xl font-black tracking-tight text-violet-300">{alertSummary?.avgReadLatencyMinutes ?? 0}m</p>
+                    </div>
+                </section>
+
+                <section className="mt-8 grid gap-4 lg:grid-cols-4">
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Synced Personas</p>
+                        <p className="mt-2 text-4xl font-black tracking-tight text-white">{alertPersonaSummary?.trackedProfiles ?? 0}</p>
+                    </div>
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Dominant Mode</p>
+                        <p className="mt-2 text-2xl font-black tracking-tight text-emerald-300">
+                            {alertPersonaModeLabel(alertPersonaSummary?.dominantMode)}
+                        </p>
+                    </div>
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Avg Default Snooze</p>
+                        <p className="mt-2 text-4xl font-black tracking-tight text-sky-300">
+                            {formatSnoozeHours(alertPersonaSummary?.avgDefaultSnoozeHours ?? 0)}
+                        </p>
+                    </div>
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Persona Unread</p>
+                        <p className="mt-2 text-4xl font-black tracking-tight text-amber-300">{alertPersonaSummary?.avgUnreadRate ?? 0}%</p>
+                    </div>
+                </section>
+
+                <section className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-white">Alert Persona Distribution</h2>
+                                <p className="mt-2 text-sm text-slate-400">
+                                    사용자별 저장된 alert persona 분포와 기본 스누즈 성향입니다.
+                                </p>
+                            </div>
+                            <div className="text-right text-xs text-slate-400">
+                                <div>Last persona sync</div>
+                                <div className="mt-1 font-semibold text-slate-200">{formatTime(alertPersonaSummary?.lastUpdatedAt)}</div>
+                            </div>
+                        </div>
+                        <div className="mt-4 grid gap-3">
+                            {(alertPersonaSummary?.modes || []).map((entry) => (
+                                <div key={`persona_mode_${entry.mode}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-semibold text-white">{alertPersonaModeLabel(entry.mode)}</p>
+                                            <p className="mt-2 text-xs text-slate-400">
+                                                profiles {entry.count} · share {entry.share}%
+                                            </p>
+                                        </div>
+                                        <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${alertPersonaModeClass(entry.mode)}`}>
+                                            {entry.mode.toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                                        <div className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-400">
+                                            snooze <span className="font-semibold text-sky-200">{formatSnoozeHours(entry.avgDefaultSnoozeHours)}</span>
+                                        </div>
+                                        <div className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-400">
+                                            unread <span className="font-semibold text-amber-200">{entry.avgUnreadRate}%</span>
+                                        </div>
+                                        <div className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-400">
+                                            read <span className="font-semibold text-violet-200">{entry.avgReadLatencyMinutes}m</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {(alertPersonaSummary?.modes || []).length === 0 && (
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                    저장된 alert persona가 없습니다.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <h2 className="text-lg font-bold text-white">Recent Synced Personas</h2>
+                        <p className="mt-2 text-sm text-slate-400">
+                            최근 저장된 사용자 alert persona 샘플입니다.
+                        </p>
+                        <div className="mt-4 space-y-3">
+                            {alertPersonaRecent.slice(0, 10).map((entry) => (
+                                <div key={`${entry.userKey}_${entry.updatedAt || entry.mode}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{formatTime(entry.updatedAt)}</p>
+                                            <p className="mt-1 text-sm font-semibold text-white">{entry.userKey}</p>
+                                            <p className="mt-1 text-xs text-slate-400">{entry.summary}</p>
+                                        </div>
+                                        <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${alertPersonaModeClass(entry.mode)}`}>
+                                            {alertPersonaModeLabel(entry.mode)}
+                                        </span>
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-400">
+                                        <span className="rounded-full border border-slate-800 px-2 py-1">snooze {formatSnoozeHours(entry.defaultSnoozeHours)}</span>
+                                        <span className="rounded-full border border-slate-800 px-2 py-1">unread {entry.unreadRate}%</span>
+                                        <span className="rounded-full border border-slate-800 px-2 py-1">snoozed {entry.snoozeShare}%</span>
+                                        <span className="rounded-full border border-slate-800 px-2 py-1">read {entry.avgReadLatencyMinutes}m</span>
+                                    </div>
+                                </div>
+                            ))}
+                            {alertPersonaRecent.length === 0 && (
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                    최근 동기화된 alert persona가 없습니다.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                        <div>
+                            <h2 className="text-lg font-bold text-white">Recommended Rollout Actions</h2>
+                            <p className="mt-2 text-sm text-slate-400">
+                                experiment/control 비교를 바탕으로 source별 rollout 확대, 유지, 축소를 추천합니다.
+                            </p>
+                        </div>
+                        <div className="text-right text-xs text-slate-400">
+                            <div>Recommendation count: <span className="font-semibold text-slate-200">{rolloutRecommendations.length}</span></div>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                        {rolloutRecommendations.map((recommendation) => {
+                            const currentDraftRollout = draftTuning.sourceRollouts?.[recommendation.source] ?? 100;
+                            const canApply = currentDraftRollout !== recommendation.recommendedRolloutPercentage;
+                            return (
+                                <div key={`rollout_recommendation_${recommendation.source}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-semibold text-white">{recommendation.source}</p>
+                                            <p className="mt-2 text-sm text-slate-200">{recommendation.title}</p>
+                                        </div>
+                                        <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${tuningSeverityClass(recommendation.severity)}`}>
+                                            {rolloutActionLabel(recommendation.action)}
+                                        </span>
+                                    </div>
+
+                                    <p className="mt-3 text-xs leading-6 text-slate-400">{recommendation.description}</p>
+
+                                    <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-slate-400">
+                                        <span className="rounded-full border border-slate-800 px-2 py-1">
+                                            current {recommendation.currentRolloutPercentage}%
+                                        </span>
+                                        <span className="rounded-full border border-slate-800 px-2 py-1 text-slate-200">
+                                            recommended {recommendation.recommendedRolloutPercentage}%
+                                        </span>
+                                        <span className="rounded-full border border-slate-800 px-2 py-1">
+                                            exp {recommendation.experimentAlerts}
+                                        </span>
+                                        <span className="rounded-full border border-slate-800 px-2 py-1">
+                                            ctrl {recommendation.controlAlerts}
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => applyRecommendedSourceRollout(recommendation.source, recommendation.recommendedRolloutPercentage)}
+                                            disabled={!canApply}
+                                            className="rounded-full border border-slate-700 px-4 py-2 text-xs font-bold text-slate-200 disabled:opacity-40"
+                                        >
+                                            {canApply ? '추천 rollout 적용' : '이미 draft 반영됨'}
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {rolloutRecommendations.length === 0 && (
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                rollout recommendation을 계산할 source override 데이터가 없습니다.
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+                <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                        <div>
+                            <h2 className="text-lg font-bold text-white">Alert Rollout Performance</h2>
+                            <p className="mt-2 text-sm text-slate-400">
+                                source override가 적용된 실험군과 control 그룹의 unread, snooze, 읽음 지연을 비교합니다.
+                            </p>
+                        </div>
+                        <div className="text-right text-xs text-slate-400">
+                            <div>Tracked rollouts: <span className="font-semibold text-slate-200">{alertRollout.length}</span></div>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                        {alertRollout.map((entry) => (
+                            <div key={`alert_rollout_${entry.source}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-semibold text-white">{entry.source}</p>
+                                        <p className="mt-2 text-xs text-slate-400">rollout {entry.rolloutPercentage}%</p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 text-[11px] font-bold">
+                                        <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-emerald-200">
+                                            experiment {entry.experiment.users} users
+                                        </span>
+                                        <span className="rounded-full border border-slate-700 px-3 py-1.5 text-slate-300">
+                                            control {entry.control.users} users
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-4">
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-200">Experiment</p>
+                                        <div className="mt-3 space-y-2 text-sm text-slate-200">
+                                            <div>alerts {entry.experiment.alerts} · unread {entry.experiment.unreadRate}%</div>
+                                            <div>targets {entry.experiment.activeTargets} · snoozed {entry.experiment.snoozedTargetRate}%</div>
+                                            <div>read latency {entry.experiment.avgReadLatencyMinutes}m</div>
+                                        </div>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-300">Control</p>
+                                        <div className="mt-3 space-y-2 text-sm text-slate-200">
+                                            <div>alerts {entry.control.alerts} · unread {entry.control.unreadRate}%</div>
+                                            <div>targets {entry.control.activeTargets} · snoozed {entry.control.snoozedTargetRate}%</div>
+                                            <div>read latency {entry.control.avgReadLatencyMinutes}m</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                                    <div className="rounded-2xl bg-slate-950/70 p-4">
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Unread Delta</p>
+                                        <p className={`mt-2 text-lg font-black ${rolloutDeltaClass(entry.delta.unreadRate, 'lower_better')}`}>
+                                            {entry.delta.unreadRate > 0 ? '+' : ''}{entry.delta.unreadRate}%
+                                        </p>
+                                        <p className="mt-1 text-xs text-slate-500">experiment - control</p>
+                                    </div>
+                                    <div className="rounded-2xl bg-slate-950/70 p-4">
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Snooze Delta</p>
+                                        <p className={`mt-2 text-lg font-black ${rolloutDeltaClass(entry.delta.snoozedTargetRate, 'lower_better')}`}>
+                                            {entry.delta.snoozedTargetRate > 0 ? '+' : ''}{entry.delta.snoozedTargetRate}%
+                                        </p>
+                                        <p className="mt-1 text-xs text-slate-500">experiment - control</p>
+                                    </div>
+                                    <div className="rounded-2xl bg-slate-950/70 p-4">
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Latency Delta</p>
+                                        <p className={`mt-2 text-lg font-black ${rolloutDeltaClass(entry.delta.avgReadLatencyMinutes, 'lower_better')}`}>
+                                            {entry.delta.avgReadLatencyMinutes > 0 ? '+' : ''}{entry.delta.avgReadLatencyMinutes}m
+                                        </p>
+                                        <p className="mt-1 text-xs text-slate-500">experiment - control</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {alertRollout.length === 0 && (
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                비교 가능한 rollout source가 없습니다. source override와 rollout 비율이 저장되면 여기에 실험군/대조군 비교가 표시됩니다.
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+                <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                        <div>
+                            <h2 className="text-lg font-bold text-white">Alert Rollout Trends</h2>
+                            <p className="mt-2 text-sm text-slate-400">
+                                source별로 최근 7일 동안 experiment/control unread와 읽음 지연 추이를 봅니다.
+                            </p>
+                        </div>
+                        <div className="text-right text-xs text-slate-400">
+                            <div>Trend sources: <span className="font-semibold text-slate-200">{alertRolloutTrends.length}</span></div>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                        {alertRolloutTrends.map((entry) => (
+                            <div key={`alert_rollout_trend_${entry.source}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-semibold text-white">{entry.source}</p>
+                                        <p className="mt-2 text-xs text-slate-400">rollout {entry.rolloutPercentage}% · last {entry.points.length} days</p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 overflow-x-auto">
+                                    <table className="min-w-full text-left text-xs text-slate-300">
+                                        <thead className="text-slate-500">
+                                            <tr>
+                                                <th className="pb-2 pr-4 font-semibold">Day</th>
+                                                <th className="pb-2 pr-4 font-semibold">Exp</th>
+                                                <th className="pb-2 pr-4 font-semibold">Ctrl</th>
+                                                <th className="pb-2 pr-4 font-semibold">Unread Δ</th>
+                                                <th className="pb-2 font-semibold">Latency Δ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {entry.points.map((point) => {
+                                                const unreadDelta = Math.round((point.experimentUnreadRate - point.controlUnreadRate) * 10) / 10;
+                                                const latencyDelta = point.experimentAvgReadLatencyMinutes - point.controlAvgReadLatencyMinutes;
+                                                return (
+                                                    <tr key={`${entry.source}_${point.day}`} className="border-t border-slate-800/80 align-top">
+                                                        <td className="py-2 pr-4 font-semibold text-slate-200">{point.day.slice(5)}</td>
+                                                        <td className="py-2 pr-4">
+                                                            <div>{point.experimentAlerts} alerts</div>
+                                                            <div className="text-[11px] text-slate-500">unread {point.experimentUnreadRate}% · {point.experimentAvgReadLatencyMinutes}m</div>
+                                                        </td>
+                                                        <td className="py-2 pr-4">
+                                                            <div>{point.controlAlerts} alerts</div>
+                                                            <div className="text-[11px] text-slate-500">unread {point.controlUnreadRate}% · {point.controlAvgReadLatencyMinutes}m</div>
+                                                        </td>
+                                                        <td className={`py-2 pr-4 font-bold ${rolloutDeltaClass(unreadDelta, 'lower_better')}`}>
+                                                            {unreadDelta > 0 ? '+' : ''}{unreadDelta}%
+                                                        </td>
+                                                        <td className={`py-2 font-bold ${rolloutDeltaClass(latencyDelta, 'lower_better')}`}>
+                                                            {latencyDelta > 0 ? '+' : ''}{latencyDelta}m
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ))}
+                        {alertRolloutTrends.length === 0 && (
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                rollout trend를 계산할 최근 alert 이벤트가 아직 충분하지 않습니다.
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+                <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                        <div>
+                            <h2 className="text-lg font-bold text-white">Alert Tuning Settings</h2>
+                            <p className="mt-2 text-sm text-slate-400">
+                                persona별 기본 스누즈, 목표가 할인율, 우선순위별 재확인 시간을 직접 조정합니다.
+                            </p>
+                        </div>
+                        <div className="text-right text-xs text-slate-400">
+                            <div>Storage: <span className="font-semibold text-slate-200">{alertTuning?.storage || 'default'}</span></div>
+                            <div className="mt-1">Updated: <span className="font-semibold text-slate-200">{formatTime(alertTuning?.updatedAt)}</span></div>
+                            {alertTuning?.updatedBy && (
+                                <div className="mt-1">By: <span className="font-semibold text-slate-200">{alertTuning.updatedBy}</span></div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 lg:grid-cols-3">
+                        {(['instant', 'balanced', 'batch'] as AlertBehaviorMode[]).map((mode) => {
+                            const modeSettings = draftTuning.modes[mode];
+                            return (
+                                <div key={`alert_tuning_${mode}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-semibold text-white">{alertPersonaModeLabel(mode)}</p>
+                                            <p className="mt-2 text-xs text-slate-400">{mode.toUpperCase()} preset</p>
+                                        </div>
+                                        <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${alertPersonaModeClass(mode)}`}>
+                                            {mode.toUpperCase()}
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-4 grid gap-3">
+                                        <label className="text-xs text-slate-400">
+                                            기본 스누즈 시간
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                value={modeSettings.defaultSnoozeHours}
+                                                onChange={(event) => updateAlertTuningMode(mode, 'defaultSnoozeHours', Math.max(1, Number(event.target.value) || 0))}
+                                                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm font-semibold text-slate-100 outline-none focus:border-sky-400"
+                                            />
+                                        </label>
+                                        <label className="text-xs text-slate-400">
+                                            추천 목표가 할인율 (%)
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                max={50}
+                                                step={0.5}
+                                                value={modeSettings.targetDiscountRate}
+                                                onChange={(event) => updateAlertTuningMode(mode, 'targetDiscountRate', Math.max(1, Number(event.target.value) || 0))}
+                                                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm font-semibold text-slate-100 outline-none focus:border-sky-400"
+                                            />
+                                        </label>
+                                        <div className="grid gap-3 sm:grid-cols-3">
+                                            {(['critical', 'high', 'medium'] as AlertRecentEvent['priority'][]).map((priority) => (
+                                                <label key={`${mode}_${priority}`} className="text-xs text-slate-400">
+                                                    {alertPriorityLabel(priority)}
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        value={modeSettings.recommendedByPriority[priority]}
+                                                        onChange={(event) => updateAlertTuningMode(mode, priority, Math.max(1, Number(event.target.value) || 0))}
+                                                        className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm font-semibold text-slate-100 outline-none focus:border-sky-400"
+                                                    />
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                            <div>
+                                <h3 className="text-sm font-bold text-white">Source Override Settings</h3>
+                                <p className="mt-2 text-xs text-slate-400">
+                                    source별로 기본 스누즈와 할인율을 따로 조정하고, rollout 비율로 일부 사용자군에만 적용할 수 있습니다.
+                                </p>
+                            </div>
+                            {currentOverrideSource && currentSourceOverride && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveSourceOverride(currentOverrideSource)}
+                                    className="rounded-full border border-rose-700/40 px-4 py-2 text-xs font-bold text-rose-200"
+                                >
+                                    {currentOverrideSource} override 제거
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            {availableOverrideSources.map((source) => (
+                                <button
+                                    key={`override_source_${source}`}
+                                    type="button"
+                                    onClick={() => setSelectedOverrideSource(source)}
+                                    className={`rounded-full px-4 py-2 text-xs font-bold ${
+                                        currentOverrideSource === source
+                                            ? 'bg-slate-100 text-slate-950'
+                                            : 'border border-slate-700 text-slate-300'
+                                    }`}
+                                >
+                                    {source}
+                                    {draftTuning.sourceOverrides?.[source] ? ' · override' : ''}
+                                    {draftTuning.sourceOverrides?.[source] ? ` · ${draftTuning.sourceRollouts?.[source] ?? 100}%` : ''}
+                                </button>
+                            ))}
+                            {availableOverrideSources.length === 0 && (
+                                <div className="text-xs text-slate-500">override 가능한 source 데이터가 없습니다.</div>
+                            )}
+                        </div>
+
+                        {currentOverrideSource && (
+                            <div className="mt-4 space-y-4">
+                                <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                                        <div>
+                                            <p className="text-sm font-semibold text-white">{currentOverrideSource} rollout</p>
+                                            <p className="mt-2 text-xs text-slate-400">
+                                                선택한 source override를 전체 사용자 중 몇 %에 적용할지 설정합니다. 100이면 전체 적용, 0이면 control 그룹 유지입니다.
+                                            </p>
+                                        </div>
+                                        <label className="text-xs text-slate-400">
+                                            Rollout (%)
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={100}
+                                                step={5}
+                                                value={currentSourceRollout}
+                                                onChange={(event) => updateSourceRolloutPercentage(currentOverrideSource, Number(event.target.value) || 0)}
+                                                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm font-semibold text-slate-100 outline-none focus:border-sky-400 md:w-40"
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-4 lg:grid-cols-3">
+                                {(['instant', 'balanced', 'batch'] as AlertBehaviorMode[]).map((mode) => {
+                                    const sourceMode = currentSourceOverride?.[mode];
+                                    const effectiveMode = {
+                                        defaultSnoozeHours: sourceMode?.defaultSnoozeHours ?? draftTuning.modes[mode].defaultSnoozeHours,
+                                        targetDiscountRate: sourceMode?.targetDiscountRate ?? draftTuning.modes[mode].targetDiscountRate,
+                                        recommendedByPriority: {
+                                            ...draftTuning.modes[mode].recommendedByPriority,
+                                            ...(sourceMode?.recommendedByPriority || {}),
+                                        },
+                                    };
+
+                                    return (
+                                        <div key={`override_${currentOverrideSource}_${mode}`} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-sm font-semibold text-white">{currentOverrideSource} · {alertPersonaModeLabel(mode)}</p>
+                                                    <p className="mt-2 text-xs text-slate-400">
+                                                        {sourceMode ? 'custom override' : 'using global default'}
+                                                    </p>
+                                                </div>
+                                                <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${alertPersonaModeClass(mode)}`}>
+                                                    {mode.toUpperCase()}
+                                                </span>
+                                            </div>
+                                            <div className="mt-4 grid gap-3">
+                                                <label className="text-xs text-slate-400">
+                                                    기본 스누즈 시간
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        value={effectiveMode.defaultSnoozeHours}
+                                                        onChange={(event) => updateSourceAlertTuningMode(currentOverrideSource, mode, 'defaultSnoozeHours', Math.max(1, Number(event.target.value) || 0))}
+                                                        className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm font-semibold text-slate-100 outline-none focus:border-sky-400"
+                                                    />
+                                                </label>
+                                                <label className="text-xs text-slate-400">
+                                                    추천 목표가 할인율 (%)
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        max={50}
+                                                        step={0.5}
+                                                        value={effectiveMode.targetDiscountRate}
+                                                        onChange={(event) => updateSourceAlertTuningMode(currentOverrideSource, mode, 'targetDiscountRate', Math.max(1, Number(event.target.value) || 0))}
+                                                        className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm font-semibold text-slate-100 outline-none focus:border-sky-400"
+                                                    />
+                                                </label>
+                                                <div className="grid gap-3 sm:grid-cols-3">
+                                                    {(['critical', 'high', 'medium'] as AlertRecentEvent['priority'][]).map((priority) => (
+                                                        <label key={`${currentOverrideSource}_${mode}_${priority}`} className="text-xs text-slate-400">
+                                                            {alertPriorityLabel(priority)}
+                                                            <input
+                                                                type="number"
+                                                                min={1}
+                                                                value={effectiveMode.recommendedByPriority[priority]}
+                                                                onChange={(event) => updateSourceAlertTuningMode(currentOverrideSource, mode, priority, Math.max(1, Number(event.target.value) || 0))}
+                                                                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm font-semibold text-slate-100 outline-none focus:border-sky-400"
+                                                            />
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => void handleSaveAlertTuning()}
+                            disabled={isSavingTuning || Boolean(rollbackingHistoryId) || !isTuningDirty}
+                            className="rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-950 disabled:opacity-40"
+                        >
+                            {isSavingTuning ? '저장 중...' : '설정 저장'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleResetAlertTuning}
+                            disabled={isSavingTuning || Boolean(rollbackingHistoryId)}
+                            className="rounded-full border border-slate-700 px-5 py-3 text-sm font-bold text-slate-300 disabled:opacity-40"
+                        >
+                            기본값으로 되돌리기
+                        </button>
+                        {tuningMessage && (
+                            <p className={`text-sm ${tuningMessage.includes('실패') ? 'text-rose-300' : 'text-emerald-300'}`}>
+                                {tuningMessage}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+                        <h3 className="text-sm font-bold text-white">Recent Tuning Changes</h3>
+                        <div className="mt-4 space-y-3">
+                            {(alertTuning?.history || []).map((entry) => (
+                                <div key={`tuning_history_${entry.id}`} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{formatTime(entry.updatedAt)}</p>
+                                            <p className="mt-2 text-sm font-semibold text-white">{entry.summary}</p>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                {entry.updatedBy || 'system'}
+                                            </span>
+                                            {entry.restorable ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleRollbackAlertTuning(entry.id)}
+                                                    disabled={isSavingTuning || Boolean(rollbackingHistoryId)}
+                                                    className="rounded-full border border-emerald-700/40 px-3 py-1 text-[11px] font-bold text-emerald-200 disabled:opacity-40"
+                                                >
+                                                    {rollbackingHistoryId === entry.id ? '복원 중...' : '이 버전으로 복원'}
+                                                </button>
+                                            ) : (
+                                                <span className="rounded-full border border-slate-800 px-3 py-1 text-[10px] font-bold text-slate-500">
+                                                    snapshot 없음
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {(alertTuning?.history || []).length === 0 && (
+                                <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500">
+                                    저장된 설정 변경 이력이 없습니다.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                        <div>
+                            <h2 className="text-lg font-bold text-white">Recommended Alert Tuning</h2>
+                            <p className="mt-2 text-sm text-slate-400">
+                                unread, 읽음 지연, 스누즈 비중을 기준으로 source별 권장 조치를 계산합니다.
+                            </p>
+                        </div>
+                        {selectedAlertSuggestion && (
+                            <span className={`inline-flex rounded-full px-3 py-2 text-xs font-bold ${tuningSeverityClass(selectedAlertSuggestion.severity)}`}>
+                                {selectedAlertSuggestion.source} · {selectedAlertSuggestion.severity.toUpperCase()}
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                        {alertSuggestions.slice(0, 6).map((suggestion) => (
+                            <div key={`tuning_${suggestion.source}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-semibold text-white">{suggestion.source}</p>
+                                        <p className="mt-2 text-sm text-slate-200">{suggestion.title}</p>
+                                    </div>
+                                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${tuningSeverityClass(suggestion.severity)}`}>
+                                        {suggestion.severity.toUpperCase()}
+                                    </span>
+                                </div>
+                                <p className="mt-3 text-xs leading-6 text-slate-400">{suggestion.description}</p>
+                                {suggestion.recommendedSnoozeHours && (
+                                    <div className="mt-3 text-xs text-sky-200">
+                                        권장 기본 스누즈: {suggestion.recommendedSnoozeHours >= 24
+                                            ? `${Math.round(suggestion.recommendedSnoozeHours / 24)}d`
+                                            : `${suggestion.recommendedSnoozeHours}h`}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {alertSuggestions.length === 0 && (
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                권장 조치를 계산할 alert tuning 데이터가 없습니다.
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+                <section className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-white">Alert Ops Summary</h2>
+                                <p className="mt-2 text-sm text-slate-400">
+                                    소스별 알림 발생 수, 우선순위 분포, 스누즈 상태를 함께 봅니다.
+                                </p>
+                            </div>
+                            <div className="text-right text-xs text-slate-400">
+                                <div>Last alert update</div>
+                                <div className="mt-1 font-semibold text-slate-200">{formatTime(alertSummary?.lastUpdatedAt)}</div>
+                            </div>
+                        </div>
+                        <div className="mt-4 space-y-3">
+                            {(alertSummary?.sources || []).map((entry) => {
+                                const isSelected = selectedAlertSummary?.source === entry.source;
+
+                                return (
+                                    <button
+                                        key={`alert_${entry.source}`}
+                                        type="button"
+                                        onClick={() => setSelectedSource(entry.source)}
+                                        className={`w-full rounded-2xl border p-4 text-left transition-colors ${isSelected ? 'border-sky-500/40 bg-slate-900/90' : 'border-slate-800 bg-slate-900/60 hover:bg-slate-900/80'}`}
+                                    >
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div>
+                                                <p className="text-sm font-semibold text-white">{entry.source}</p>
+                                                <p className="mt-2 text-xs text-slate-400">
+                                                    alerts {entry.alerts} · unread {entry.unreadCount} · archived {entry.archivedCount}
+                                                </p>
+                                            </div>
+                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                snoozed {entry.snoozedTargets}
+                                            </span>
+                                        </div>
+                                        <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                                            <div className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-400">
+                                                critical <span className="font-semibold text-rose-200">{entry.criticalPriorityCount}</span>
+                                            </div>
+                                            <div className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-400">
+                                                high <span className="font-semibold text-amber-200">{entry.highPriorityCount}</span>
+                                            </div>
+                                            <div className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-400">
+                                                targets <span className="font-semibold text-sky-200">{entry.activeTargets}</span>
+                                            </div>
+                                            <div className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-400">
+                                                read <span className="font-semibold text-violet-200">{entry.avgReadLatencyMinutes}m</span>
+                                            </div>
+                                        </div>
+                                        <div className="mt-2 text-[11px] text-slate-500">
+                                            last seen {formatTime(entry.lastSeenAt)}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                            {(alertSummary?.sources || []).length === 0 && (
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                    최근 알림 운영 데이터가 없습니다.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <h2 className="text-lg font-bold text-white">Recent Alert Events</h2>
+                        <p className="mt-2 text-sm text-slate-400">
+                            {selectedAlertSummary
+                                ? `${selectedAlertSummary.source} 기준 recent alert 흐름입니다.`
+                                : '최근 가격 알림 이벤트입니다.'}
+                        </p>
+                        <div className="mt-4 space-y-3">
+                            {selectedAlertEvents.slice(0, 10).map((entry) => (
+                                <div key={`${entry.id}_${entry.generatedAt}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{formatTime(entry.generatedAt)}</p>
+                                            <p className="mt-1 text-sm font-semibold text-white">{entry.title}</p>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${alertPriorityClass(entry.priority)}`}>
+                                                {alertPriorityLabel(entry.priority)}
+                                            </span>
+                                            <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${entry.read ? 'bg-slate-700/60 text-slate-200' : 'bg-amber-500/15 text-amber-200'}`}>
+                                                {entry.read ? 'read' : 'unread'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-400">
+                                        <span className="rounded-full border border-slate-800 px-2 py-1">{entry.source}</span>
+                                        {entry.mallName && <span className="rounded-full border border-slate-800 px-2 py-1">{entry.mallName}</span>}
+                                        {entry.variantLabel && <span className="rounded-full border border-slate-800 px-2 py-1">{entry.variantLabel}</span>}
+                                        {entry.archived && <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-sky-200">archived</span>}
+                                    </div>
+                                    <div className="mt-3 text-xs text-slate-400">
+                                        {typeof entry.currentPrice === 'number' && <div>current: <span className="text-slate-200">{entry.currentPrice.toLocaleString()}원</span></div>}
+                                        {typeof entry.targetPrice === 'number' && <div>target: <span className="text-slate-200">{entry.targetPrice.toLocaleString()}원</span></div>}
+                                        {entry.productId && <div>product: <span className="text-slate-200">{entry.productId}</span></div>}
+                                    </div>
+                                </div>
+                            ))}
+                            {selectedAlertEvents.length === 0 && (
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                    최근 알림 이벤트가 없습니다.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <h2 className="text-lg font-bold text-white">Alert Source Drill-down</h2>
+                        <p className="mt-2 text-sm text-slate-400">
+                            {selectedAlertDrilldown
+                                ? `${selectedAlertDrilldown.source} 알림 품질과 대응 우선순위를 바로 확인합니다.`
+                                : '선택한 source의 alert drill-down 데이터가 없습니다.'}
+                        </p>
+
+                        {selectedAlertDrilldown ? (
+                            <>
+                                {selectedAlertSuggestion && (
+                                    <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Recommended Action</p>
+                                                <p className="mt-2 text-sm font-semibold text-white">{selectedAlertSuggestion.title}</p>
+                                            </div>
+                                            <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${tuningSeverityClass(selectedAlertSuggestion.severity)}`}>
+                                                {selectedAlertSuggestion.severity.toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <p className="mt-3 text-xs leading-6 text-slate-400">{selectedAlertSuggestion.description}</p>
+                                    </div>
+                                )}
+
+                                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Unread Rate</p>
+                                        <p className="mt-2 text-3xl font-black text-amber-300">{selectedAlertDrilldown.unreadRate}%</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Archived Rate</p>
+                                        <p className="mt-2 text-3xl font-black text-sky-300">{selectedAlertDrilldown.archivedRate}%</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Snooze Share</p>
+                                        <p className="mt-2 text-3xl font-black text-violet-300">
+                                            {selectedAlertDrilldown.activeTargets > 0
+                                                ? Math.round((selectedAlertDrilldown.snoozedTargets / selectedAlertDrilldown.activeTargets) * 1000) / 10
+                                                : 0}%
+                                        </p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Read Latency</p>
+                                        <p className="mt-2 text-3xl font-black text-emerald-300">{selectedAlertDrilldown.avgReadLatencyMinutes}m</p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <h3 className="text-sm font-bold text-white">Top Malls</h3>
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {selectedAlertDrilldown.topMalls.map((entry) => (
+                                                <span key={`${selectedAlertDrilldown.source}_${entry.name}`} className="rounded-full border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200">
+                                                    {entry.name} · {entry.count}
+                                                </span>
+                                            ))}
+                                            {selectedAlertDrilldown.topMalls.length === 0 && (
+                                                <span className="text-sm text-slate-500">mall 샘플이 없습니다.</span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <h3 className="text-sm font-bold text-white">Top Variants</h3>
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {selectedAlertDrilldown.topVariants.map((entry) => (
+                                                <span key={`${selectedAlertDrilldown.source}_${entry.label}`} className="rounded-full border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200">
+                                                    {entry.label} · {entry.count}
+                                                </span>
+                                            ))}
+                                            {selectedAlertDrilldown.topVariants.length === 0 && (
+                                                <span className="text-sm text-slate-500">variant 샘플이 없습니다.</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                drill-down 데이터가 없습니다.
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                        <h2 className="text-lg font-bold text-white">Alert Tuning Queue</h2>
+                        <p className="mt-2 text-sm text-slate-400">
+                            최근 critical alert와 unread backlog를 같이 봅니다.
+                        </p>
+
+                        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <h3 className="text-sm font-bold text-white">Critical Alerts</h3>
+                                <div className="mt-3 space-y-3">
+                                    {(selectedAlertDrilldown?.recentCritical || []).map((entry) => (
+                                        <div key={`critical_${entry.id}`} className="rounded-2xl border border-slate-800 bg-slate-950/80 p-3">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <p className="text-sm font-semibold text-white">{entry.title}</p>
+                                                <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${alertPriorityClass(entry.priority)}`}>
+                                                    {alertPriorityLabel(entry.priority)}
+                                                </span>
+                                            </div>
+                                            <div className="mt-2 text-xs text-slate-400">
+                                                <div>{formatTime(entry.generatedAt)}</div>
+                                                {entry.mallName && <div>mall: <span className="text-slate-200">{entry.mallName}</span></div>}
+                                                {typeof entry.currentPrice === 'number' && typeof entry.targetPrice === 'number' && (
+                                                    <div>gap: <span className="text-rose-200">{(entry.currentPrice - entry.targetPrice).toLocaleString()}원</span></div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {(selectedAlertDrilldown?.recentCritical || []).length === 0 && (
+                                        <div className="text-sm text-slate-500">최근 critical alert가 없습니다.</div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <h3 className="text-sm font-bold text-white">Unread Backlog</h3>
+                                <div className="mt-3 space-y-3">
+                                    {(selectedAlertDrilldown?.recentUnread || []).map((entry) => (
+                                        <div key={`unread_${entry.id}`} className="rounded-2xl border border-slate-800 bg-slate-950/80 p-3">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <p className="text-sm font-semibold text-white">{entry.title}</p>
+                                                <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${alertPriorityClass(entry.priority)}`}>
+                                                    {alertPriorityLabel(entry.priority)}
+                                                </span>
+                                            </div>
+                                            <div className="mt-2 text-xs text-slate-400">
+                                                <div>{formatTime(entry.generatedAt)}</div>
+                                                {entry.variantLabel && <div>variant: <span className="text-slate-200">{entry.variantLabel}</span></div>}
+                                                {entry.mallName && <div>mall: <span className="text-slate-200">{entry.mallName}</span></div>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {(selectedAlertDrilldown?.recentUnread || []).length === 0 && (
+                                        <div className="text-sm text-slate-500">현재 unread backlog가 없습니다.</div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>

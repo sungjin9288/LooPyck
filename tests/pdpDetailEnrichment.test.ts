@@ -40,6 +40,8 @@ function product(overrides: Partial<UnifiedProduct>): UnifiedProduct {
         benefitText: overrides.benefitText,
         stockStatus: overrides.stockStatus,
         stockText: overrides.stockText,
+        variantId: overrides.variantId,
+        variantSku: overrides.variantSku,
         optionSummary: overrides.optionSummary,
         optionValues: overrides.optionValues,
         sizeOptions: overrides.sizeOptions,
@@ -383,6 +385,7 @@ test('generic PDP parser falls back to JSON-LD and meta signals when selectors m
                         "@context": "https://schema.org",
                         "@type": "Product",
                         "name": "Structured Coat",
+                        "sku": "SKU-COAT-01",
                         "color": "Camel",
                         "size": ["M", "L"],
                         "offers": {
@@ -414,9 +417,94 @@ test('generic PDP parser falls back to JSON-LD and meta signals when selectors m
     assert.equal(parsed.shippingFee, 0);
     assert.equal(parsed.benefitPrice, 179000);
     assert.equal(parsed.stockStatus, 'in_stock');
+    assert.equal(parsed.variantSku, 'SKU-COAT-01');
     assert.deepEqual(parsed.colorOptions, ['Camel']);
     assert.deepEqual(parsed.sizeOptions, ['M', 'L']);
     assert.equal(parsed.optionSummary, '색상 Camel · 사이즈 M, L');
+});
+
+test('structured product variants are captured as selectable variant candidates', () => {
+    const html = `
+        <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "Product",
+                "name": "Structured Knit",
+                "hasVariant": [
+                    {
+                        "@type": "Product",
+                        "name": "블랙/M",
+                        "variantId": "VAR-BLACK-M",
+                        "sku": "SKU-BLACK-M",
+                        "color": "블랙",
+                        "size": "M",
+                        "offers": {
+                            "@type": "Offer",
+                            "price": "149000",
+                            "availability": "https://schema.org/InStock"
+                        }
+                    },
+                    {
+                        "@type": "Product",
+                        "name": "블랙/L",
+                        "variantId": "VAR-BLACK-L",
+                        "sku": "SKU-BLACK-L",
+                        "color": "블랙",
+                        "size": "L",
+                        "offers": {
+                            "@type": "Offer",
+                            "price": "149000",
+                            "availability": "https://schema.org/OutOfStock"
+                        }
+                    }
+                ]
+            }
+        </script>
+    `;
+
+    const parsed = parseProductDetailHtml(html, product({
+        source: 'SSF',
+        price: 159000,
+        link: 'https://www.ssfshop.com/goods/structured-knit',
+    }));
+
+    assert.equal(parsed.variantCandidates?.length, 2);
+    assert.deepEqual(parsed.variantCandidates?.map((candidate) => candidate.label), ['블랙/M', '블랙/L']);
+    assert.equal(parsed.variantCandidates?.[0]?.variantSku, 'SKU-BLACK-M');
+    assert.equal(parsed.variantCandidates?.[0]?.price, 149000);
+    assert.equal(parsed.variantCandidates?.[1]?.stockStatus, 'sold_out');
+});
+
+test('generic PDP parser extracts variant identifiers from DOM data attributes', () => {
+    const html = `
+        <button
+            data-variant-id="VARIANT_12345"
+            data-sku="SKU-12345"
+            data-color="블랙"
+            data-size="L"
+            data-price="99000"
+        >
+            블랙/L
+        </button>
+        <div class="delivery-info">무료배송</div>
+        <div class="size-list"><button>L</button></div>
+    `;
+
+    const parsed = parseProductDetailHtml(html, product({
+        source: 'MUSINSA',
+        price: 99000,
+        link: 'https://www.musinsa.com/products/12345',
+    }));
+
+    assert.equal(parsed.variantId, 'VARIANT_12345');
+    assert.equal(parsed.variantSku, 'SKU-12345');
+    assert.equal(parsed.shippingFee, 0);
+    assert.equal(parsed.variantCandidates?.length, 1);
+    assert.equal(parsed.variantCandidates?.[0]?.label, '블랙/L');
+    assert.equal(parsed.variantCandidates?.[0]?.color, '블랙');
+    assert.equal(parsed.variantCandidates?.[0]?.size, 'L');
+    assert.equal(parsed.variantCandidates?.[0]?.price, 99000);
+    assert.equal(parsed.optionSummary, '색상 블랙 · 사이즈 L');
 });
 
 test('host validation blocks unsupported detail URLs', () => {

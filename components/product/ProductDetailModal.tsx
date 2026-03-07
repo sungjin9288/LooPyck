@@ -11,10 +11,16 @@ import PriceHistoryChart from './PriceHistoryChart';
 import SizeFitGuide from './SizeFitGuide';
 import AffordableAlternatives from './AffordableAlternatives';
 import PurchaseComparisonTable from './PurchaseComparisonTable';
+import ComparePriceAlertButton from './ComparePriceAlertButton';
+import VariantPicker from './VariantPicker';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
+import { buildOptionHistoryIdentity } from '@/lib/product/optionHistory';
+import { buildVariantHistoryIdentity } from '@/lib/product/variantHistory';
 import { comparePurchaseOffers } from '@/lib/product/purchasePricing';
 import { hasPdpDetailData, isPdpDetailEnrichmentSupported } from '@/lib/product/pdpDetailEnrichment';
 import { analyzeVariantAlignment } from '@/lib/product/variantAlignment';
+import { applyVariantSelectionToProducts, findSelectedVariantOption, getDefaultVariantSelectionKey, listVariantSelectionOptions } from '@/lib/product/variantSelection';
+import { buildFavoriteProductFromUnified } from '@/lib/favorites/favoriteProduct';
 import { logSearchInteraction } from '@/lib/search/searchInteractionClient';
 
 interface ProductDetailModalProps {
@@ -33,6 +39,7 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
     const [enrichedVariants, setEnrichedVariants] = React.useState<UnifiedProduct[]>([]);
     const [isRefreshingDetails, setIsRefreshingDetails] = React.useState(false);
     const [detailRefreshError, setDetailRefreshError] = React.useState<string | null>(null);
+    const [selectedVariantKey, setSelectedVariantKey] = React.useState<string | undefined>(undefined);
 
     React.useEffect(() => {
         setEnrichedVariants([]);
@@ -95,14 +102,40 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
     }, [baseVariants]);
 
     const allVariants = enrichedVariants.length > 0 ? enrichedVariants : baseVariants;
-    const activeProduct = allVariants.find((entry) => entry.id === product.id && entry.source === product.source) || product;
-    const offers = comparePurchaseOffers(allVariants);
-    const optionAlignment = analyzeVariantAlignment(allVariants);
+    const baseActiveProduct = allVariants.find((entry) => entry.id === product.id && entry.source === product.source) || product;
+    const variantOptions = React.useMemo(
+        () => listVariantSelectionOptions(allVariants, baseActiveProduct),
+        [allVariants, baseActiveProduct]
+    );
+    React.useEffect(() => {
+        setSelectedVariantKey(getDefaultVariantSelectionKey(allVariants, baseActiveProduct));
+    }, [allVariants, baseActiveProduct]);
+    const selectedVariant = React.useMemo(
+        () => findSelectedVariantOption(variantOptions, selectedVariantKey),
+        [selectedVariantKey, variantOptions]
+    );
+    const scopedVariants = React.useMemo(
+        () => applyVariantSelectionToProducts(allVariants, selectedVariant),
+        [allVariants, selectedVariant]
+    );
+    const activeProduct = scopedVariants.find((entry) => entry.id === product.id && entry.source === product.source) || baseActiveProduct;
+    const offers = comparePurchaseOffers(scopedVariants);
+    const optionAlignment = analyzeVariantAlignment(scopedVariants);
     const selectedOffer = offers.find((offer) => offer.product.id === activeProduct.id && offer.product.source === activeProduct.source) || offers[0];
     const lowestCheckoutOffer = offers[0];
     const savingsAgainstSelection = Math.max(0, selectedOffer.checkoutPrice - lowestCheckoutOffer.checkoutPrice);
     const safeStoreUrl = sanitizeExternalUrl(activeProduct.link);
-    const shareUrl = buildProductDetailHref(activeProduct);
+    const variantHistory = buildVariantHistoryIdentity(activeProduct);
+    const optionHistory = buildOptionHistoryIdentity(activeProduct);
+    const shareUrl = buildProductDetailHref(activeProduct, { variantKey: selectedVariant?.key });
+    const favoriteProduct = React.useMemo(
+        () => buildFavoriteProductFromUnified(activeProduct, {
+            variantKey: selectedVariant?.key,
+            variantLabel: selectedVariant?.label,
+            optionKey: optionHistory.optionKey,
+        }),
+        [activeProduct, optionHistory.optionKey, selectedVariant]
+    );
 
     return (
         <AnimatePresence>
@@ -179,9 +212,35 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                                         옵션 주의: {optionAlignment.summaryLabel}. 색상/사이즈/성별 신호가 섞여 있을 수 있어 상세 옵션 확인이 필요합니다.
                                     </p>
                                 )}
+                                {!optionAlignment.hasMismatchRisk && optionAlignment.verifiedOptionCount >= 2 && allVariants.length > 1 && (
+                                    <p className="mt-2 text-xs text-emerald-700">
+                                        검증 옵션 기준 정렬: {optionAlignment.overlapLabel}
+                                    </p>
+                                )}
                                 {activeProduct.optionSummary && (
                                     <p className="mt-2 text-xs text-slate-500">
                                         상세 옵션 확인: {activeProduct.optionSummary}
+                                    </p>
+                                )}
+                                {selectedVariant && (
+                                    <p className="mt-2 text-xs text-fuchsia-700">
+                                        선택 variant: {selectedVariant.label} · {selectedVariant.matchedMallCount}개 쇼핑몰 확인
+                                    </p>
+                                )}
+                                {activeProduct.variantCandidates && activeProduct.variantCandidates.length > 0 && (
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        선택 가능 variant {activeProduct.variantCandidates.length}개
+                                        {activeProduct.variantCandidates[0]?.label
+                                            ? ` · ${activeProduct.variantCandidates.slice(0, 3).map((candidate) => candidate.label).join(', ')}`
+                                            : ''}
+                                        {activeProduct.variantCandidates.length > 3 ? ` 외 ${activeProduct.variantCandidates.length - 3}` : ''}
+                                    </p>
+                                )}
+                                {(activeProduct.variantSku || activeProduct.variantId) && (
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        {activeProduct.variantSku ? `SKU ${activeProduct.variantSku}` : ''}
+                                        {activeProduct.variantSku && activeProduct.variantId ? ' · ' : ''}
+                                        {activeProduct.variantId ? `Variant ${activeProduct.variantId}` : ''}
                                     </p>
                                 )}
                                 {isRefreshingDetails && (
@@ -198,6 +257,23 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                                     배송비를 먼저 반영한 결제가를 기준으로 비교하고, 쿠폰 혜택은 별도로 가능한 최저가를 표시합니다.
                                 </p>
                             </div>
+
+                            {variantOptions.length > 0 && (
+                                <div className="mb-5 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                                        Variant Picker
+                                    </p>
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        원하는 색상/사이즈 variant를 고르면 쇼핑몰별 재고와 가격을 다시 계산합니다.
+                                    </p>
+                                    <VariantPicker
+                                        className="mt-3"
+                                        options={variantOptions}
+                                        selectedKey={selectedVariantKey}
+                                        onChange={setSelectedVariantKey}
+                                    />
+                                </div>
+                            )}
 
                             {safeStoreUrl ? (
                                 <a
@@ -226,11 +302,15 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                             )}
 
                             <a
-                                href={buildProductDetailHref(activeProduct)}
+                                href={buildProductDetailHref(activeProduct, { variantKey: selectedVariant?.key })}
                                 className="block w-full py-3 border border-gray-300 text-gray-800 text-center font-semibold rounded-xl hover:bg-gray-50 transition-all mb-4"
                             >
                                 상세 비교 페이지
                             </a>
+
+                            <div className="mb-4">
+                                <ComparePriceAlertButton product={favoriteProduct} className="w-full justify-center" />
+                            </div>
 
                             {/* Phase 39: Rich Share Stock Card */}
                             <div className="flex w-full">
@@ -250,7 +330,11 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
                                 쇼핑몰별 실구매가 비교
                             </h3>
-                            <PurchaseComparisonTable offers={offers} selectedProductId={activeProduct.id} />
+                            <PurchaseComparisonTable
+                                offers={offers}
+                                selectedProductId={activeProduct.id}
+                                selectedVariantLabel={selectedVariant?.label}
+                            />
                         </div>
                     )}
 
@@ -273,6 +357,10 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                             source={activeProduct.source}
                             productId={activeProduct.id}
                             currentPrice={activeProduct.price}
+                            variantKey={variantHistory.variantKey}
+                            variantLabel={selectedVariant?.label || variantHistory.variantLabel}
+                            optionKey={optionHistory.optionKey}
+                            optionLabel={optionHistory.optionLabel}
                         />
                         <p className="text-xs text-slate-400 text-center mt-2">
                             수집 데이터가 아직 적으면 현재가 중심으로 간단히 표시됩니다. 목표가 알림과 함께 보시면 더 정확합니다.

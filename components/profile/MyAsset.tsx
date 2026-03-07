@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { motion } from 'framer-motion';
 import { useCloudStorage } from '@/hooks/useCloudStorage';
 import { Product } from '@/types/product';
+import { dedupeFavoritesForInsights } from '@/lib/favorites/favoriteProduct';
 
 const CATEGORY_CONFIG: { label: string; color: string; keywords: string[] }[] = [
     { label: 'Outer',  color: '#000000', keywords: ['아우터', '코트', '자켓', '점퍼', '패딩', 'coat', 'jacket'] },
@@ -24,11 +25,12 @@ function classifyProduct(product: Product): string {
 
 export default function MyAsset() {
     const { favorites, loading } = useCloudStorage();
+    const uniqueFavorites = useMemo(() => dedupeFavoritesForInsights(favorites), [favorites]);
 
     const assetData = useMemo(() => {
-        if (favorites.length === 0) return [];
+        if (uniqueFavorites.length === 0) return [];
         const grouped: Record<string, number> = {};
-        for (const fav of favorites) {
+        for (const fav of uniqueFavorites) {
             const cat = classifyProduct(fav);
             const price = parseInt(fav.lprice, 10) || 0;
             grouped[cat] = (grouped[cat] ?? 0) + price;
@@ -37,7 +39,7 @@ export default function MyAsset() {
             .map(c => ({ name: c.label, value: grouped[c.label] ?? 0, color: c.color }))
             .concat(grouped['Etc'] ? [{ name: 'Etc', value: grouped['Etc'], color: '#e5e5e5' }] : [])
             .filter(d => d.value > 0);
-    }, [favorites]);
+    }, [uniqueFavorites]);
 
     const totalValue = useMemo(() => assetData.reduce((a, d) => a + d.value, 0), [assetData]);
 
@@ -51,7 +53,7 @@ export default function MyAsset() {
         );
     }
 
-    if (favorites.length === 0 || assetData.length === 0) {
+    if (uniqueFavorites.length === 0 || assetData.length === 0) {
         return (
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm text-center">
                 <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">My Wardrobe Value</p>
@@ -72,7 +74,7 @@ export default function MyAsset() {
                             ₩{totalValue.toLocaleString()}
                         </span>
                         <span className="text-xs text-gray-400 font-medium">
-                            찜 {favorites.length}개
+                            기준 상품 {uniqueFavorites.length}개
                         </span>
                     </div>
                 </div>

@@ -1,5 +1,6 @@
 // 상품 정보 타입 정의
 export interface Product {
+  favoriteId?: string;    // favorites 문서 키
   title: string;           // 상품명
   link: string;            // 상품 링크
   image: string;           // 상품 이미지 URL
@@ -14,7 +15,15 @@ export interface Product {
   category2: string;       // 카테고리2
   category3: string;       // 카테고리3
   category4: string;       // 카테고리4
+  source?: string;         // 플랫폼 소스
+  variantKey?: string;     // 선택 variant key
+  variantLabel?: string;   // 선택 variant label
+  variantId?: string;      // 실제 variant id
+  variantSku?: string;     // 실제 sku
+  optionKey?: string;      // 옵션 이력 key
+  deepLink?: string;       // 내부 compare link
   targetPrice?: number;    // 사용자 설정 목표 가격 (확장)
+  alertSnoozedUntil?: number; // 알림 스누즈 만료 시각
 }
 
 // 네이버 쇼핑 API 응답 타입

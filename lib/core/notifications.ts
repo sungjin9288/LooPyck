@@ -4,6 +4,7 @@ export interface AppNotificationPayload {
     title: string;
     message: string;
     type: AppNotificationType;
+    link?: string;
 }
 
 export const APP_NOTIFICATION_EVENT = 'loopyck:notify';

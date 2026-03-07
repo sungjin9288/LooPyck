@@ -1,12 +1,16 @@
 import { createHash } from 'node:crypto';
 import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore';
-import { isProductSource, type GroupedProduct, type ProductSource, type UnifiedProduct } from '@/lib/api/types';
+import { isProductSource, type GroupedProduct, type ProductSource, type ProductVariantCandidate, type UnifiedProduct } from '@/lib/api/types';
+import { buildOptionHistoryIdentity, buildOptionHistoryStorageKey } from '@/lib/product/optionHistory';
 import { groupProducts } from '@/lib/product/productMatching';
+import { buildVariantHistoryIdentity, buildVariantHistoryStorageKey } from '@/lib/product/variantHistory';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 import { getAdminDb } from '@/lib/server/firebaseAdmin';
 
 const MAX_PRODUCTS_PER_INGEST = 40;
 const MAX_SITEMAP_PRODUCTS = 200;
+const OPTION_HISTORY_COLLECTION = 'optionPriceHistory';
+const VARIANT_HISTORY_COLLECTION = 'variantPriceHistory';
 const GROUP_MATCH_STRATEGIES: GroupedProduct['matchStrategy'][] = ['single', 'model', 'brand_model', 'brand_token', 'token'];
 
 function toSafeDocId(value: string): string {
@@ -54,6 +58,38 @@ function normalizeOptionalStringArray(value: unknown, maxItems: number, maxLengt
     return normalized.length > 0 ? normalized.slice(0, maxItems) : undefined;
 }
 
+function normalizeOptionalVariantCandidates(value: unknown, maxItems: number = 24): ProductVariantCandidate[] | undefined {
+    if (!Array.isArray(value)) return undefined;
+
+    const normalized = value.flatMap((entry) => {
+        if (!entry || typeof entry !== 'object') {
+            return [];
+        }
+
+        const candidate = entry as Record<string, unknown>;
+        const label = normalizeOptionalText(candidate.label, 120);
+        if (!label) {
+            return [];
+        }
+
+        const normalizedCandidate: ProductVariantCandidate = {
+            label,
+            variantId: normalizeOptionalText(candidate.variantId, 120),
+            variantSku: normalizeOptionalText(candidate.variantSku, 120),
+            color: normalizeOptionalText(candidate.color, 60),
+            size: normalizeOptionalText(candidate.size, 40),
+            price: normalizeOptionalMoney(candidate.price),
+            stockStatus: candidate.stockStatus === 'in_stock' || candidate.stockStatus === 'low_stock' || candidate.stockStatus === 'sold_out' || candidate.stockStatus === 'unknown'
+                ? candidate.stockStatus
+                : undefined,
+        };
+
+        return [normalizedCandidate];
+    }).slice(0, maxItems);
+
+    return normalized.length > 0 ? normalized : undefined;
+}
+
 function normalizeCount(value: unknown): number | undefined {
     if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
     return Math.max(0, Math.floor(value));
@@ -77,6 +113,9 @@ function normalizeTimestampMillis(value: unknown): number | null {
 }
 
 function buildStoredProductRecord(product: UnifiedProduct): Record<string, unknown> {
+    const optionHistory = buildOptionHistoryIdentity(product);
+    const variantHistory = buildVariantHistoryIdentity(product);
+
     return {
         productId: product.id,
         source: product.source,
@@ -95,11 +134,20 @@ function buildStoredProductRecord(product: UnifiedProduct): Record<string, unkno
         benefitText: product.benefitText || null,
         stockStatus: product.stockStatus || null,
         stockText: product.stockText || null,
+        variantId: product.variantId || null,
+        variantSku: product.variantSku || null,
         optionSummary: product.optionSummary || null,
         optionValues: product.optionValues || null,
         sizeOptions: product.sizeOptions || null,
         colorOptions: product.colorOptions || null,
+        variantCandidates: product.variantCandidates?.slice(0, 24) || null,
         detailCollectedAt: product.detailCollectedAt || null,
+        variantHistoryKey: variantHistory.variantKey || null,
+        variantHistoryLabel: variantHistory.variantLabel || null,
+        variantHistorySignature: variantHistory.variantSignature || null,
+        optionHistoryKey: optionHistory.optionKey || null,
+        optionHistoryLabel: optionHistory.optionLabel || null,
+        optionHistorySignature: optionHistory.optionSignature || null,
     };
 }
 
@@ -136,10 +184,13 @@ function toTrackedProduct(data: Record<string, unknown>): UnifiedProduct | null 
             ? data.stockStatus
             : undefined,
         stockText: normalizeOptionalText(data.stockText, 120),
+        variantId: normalizeOptionalText(data.variantId, 120),
+        variantSku: normalizeOptionalText(data.variantSku, 120),
         optionSummary: normalizeOptionalText(data.optionSummary, 200),
         optionValues: normalizeOptionalStringArray(data.optionValues, 12, 60),
         sizeOptions: normalizeOptionalStringArray(data.sizeOptions, 12, 40),
         colorOptions: normalizeOptionalStringArray(data.colorOptions, 12, 40),
+        variantCandidates: normalizeOptionalVariantCandidates(data.variantCandidates, 24),
         detailCollectedAt: normalizeOptionalText(data.detailCollectedAt, 64),
     };
 }
@@ -265,9 +316,23 @@ async function reconstructComparableGroup(
 export async function persistPriceHistorySnapshot(
     products: UnifiedProduct[],
     searchQuery: string
-): Promise<{ persisted: number; enabled: boolean; comparisonGroupsPersisted: number }> {
+): Promise<{
+    persisted: number;
+    enabled: boolean;
+    comparisonGroupsPersisted: number;
+    optionHistoriesPersisted: number;
+    variantHistoriesPersisted: number;
+}> {
     const db = getAdminDb();
-    if (!db) return { persisted: 0, enabled: false, comparisonGroupsPersisted: 0 };
+    if (!db) {
+        return {
+            persisted: 0,
+            enabled: false,
+            comparisonGroupsPersisted: 0,
+            optionHistoriesPersisted: 0,
+            variantHistoriesPersisted: 0,
+        };
+    }
 
     const now = Timestamp.now();
     const searchTag = searchQuery.slice(0, 80);
@@ -282,12 +347,20 @@ export async function persistPriceHistorySnapshot(
 
     const entries = Array.from(dedup.entries());
     if (entries.length === 0) {
-        return { persisted: 0, enabled: true, comparisonGroupsPersisted: 0 };
+        return {
+            persisted: 0,
+            enabled: true,
+            comparisonGroupsPersisted: 0,
+            optionHistoriesPersisted: 0,
+            variantHistoriesPersisted: 0,
+        };
     }
 
     const batch = db.batch();
     const capturedAtMs = Date.now();
     const groups = groupProducts(entries.map(([, product]) => product));
+    let optionHistoriesPersisted = 0;
+    let variantHistoriesPersisted = 0;
     const groupMetaByHistoryKey = new Map<string, {
         comparisonGroupId: string;
         matchConfidence: number;
@@ -328,6 +401,8 @@ export async function persistPriceHistorySnapshot(
         const rootRef = db.collection('marketPriceHistory').doc(historyKey);
         const entryRef = rootRef.collection('entries').doc(`${capturedAtMs}-${index}`);
         const groupMeta = groupMetaByHistoryKey.get(historyKey);
+        const variantHistory = buildVariantHistoryIdentity(product);
+        const optionHistory = buildOptionHistoryIdentity(product);
 
         batch.set(rootRef, {
             ...buildStoredProductRecord(product),
@@ -346,49 +421,186 @@ export async function persistPriceHistorySnapshot(
             searchQuery: searchTag,
             mallName: product.mallName,
             source: product.source,
+            stockStatus: product.stockStatus || null,
+            stockText: product.stockText || null,
+            variantId: product.variantId || null,
+            variantSku: product.variantSku || null,
+            optionKey: optionHistory.optionKey || null,
+            optionLabel: optionHistory.optionLabel || null,
         }, { merge: true });
+
+        if (variantHistory.variantKey) {
+            const variantHistoryKey = toSafeDocId(buildVariantHistoryStorageKey(product.source, product.id, variantHistory.variantKey));
+            const variantRootRef = db.collection(VARIANT_HISTORY_COLLECTION).doc(variantHistoryKey);
+            const variantEntryRef = variantRootRef.collection('entries').doc(`${capturedAtMs}-${index}`);
+
+            batch.set(variantRootRef, {
+                ...buildStoredProductRecord(product),
+                parentHistoryKey: historyKey,
+                variantKey: variantHistory.variantKey,
+                variantLabel: variantHistory.variantLabel || null,
+                variantSignature: variantHistory.variantSignature || null,
+                updatedAt: now,
+                lastSeenQuery: searchTag,
+            }, { merge: true });
+
+            batch.set(variantEntryRef, {
+                price: product.price,
+                capturedAt: now,
+                searchQuery: searchTag,
+                mallName: product.mallName,
+                source: product.source,
+                stockStatus: product.stockStatus || null,
+                stockText: product.stockText || null,
+                variantId: product.variantId || null,
+                variantSku: product.variantSku || null,
+                variantKey: variantHistory.variantKey,
+                variantLabel: variantHistory.variantLabel || null,
+                optionKey: optionHistory.optionKey || null,
+                optionLabel: optionHistory.optionLabel || null,
+            }, { merge: true });
+
+            variantHistoriesPersisted += 1;
+        }
+
+        if (optionHistory.optionKey) {
+            const optionHistoryKey = toSafeDocId(buildOptionHistoryStorageKey(product.source, product.id, optionHistory.optionKey));
+            const optionRootRef = db.collection(OPTION_HISTORY_COLLECTION).doc(optionHistoryKey);
+            const optionEntryRef = optionRootRef.collection('entries').doc(`${capturedAtMs}-${index}`);
+
+            batch.set(optionRootRef, {
+                ...buildStoredProductRecord(product),
+                parentHistoryKey: historyKey,
+                optionKey: optionHistory.optionKey,
+                optionLabel: optionHistory.optionLabel || null,
+                optionSignature: optionHistory.optionSignature || null,
+                updatedAt: now,
+                lastSeenQuery: searchTag,
+            }, { merge: true });
+
+            batch.set(optionEntryRef, {
+                price: product.price,
+                capturedAt: now,
+                searchQuery: searchTag,
+                mallName: product.mallName,
+                source: product.source,
+                stockStatus: product.stockStatus || null,
+                stockText: product.stockText || null,
+                variantId: product.variantId || null,
+                variantSku: product.variantSku || null,
+                optionKey: optionHistory.optionKey,
+                optionLabel: optionHistory.optionLabel || null,
+            }, { merge: true });
+
+            optionHistoriesPersisted += 1;
+        }
     });
 
     await batch.commit();
-    return { persisted: entries.length, enabled: true, comparisonGroupsPersisted: groups.length };
+    return {
+        persisted: entries.length,
+        enabled: true,
+        comparisonGroupsPersisted: groups.length,
+        optionHistoriesPersisted,
+        variantHistoriesPersisted,
+    };
 }
 
 export type PriceHistoryPoint = {
     price: number;
     capturedAt: number;
+    stockStatus?: UnifiedProduct['stockStatus'];
+    stockText?: string;
+    variantKey?: string;
+    variantLabel?: string;
+    optionKey?: string;
+    optionLabel?: string;
 };
 
 export async function readPriceHistory(
     source: string,
     productId: string,
-    limitCount: number = 24
-): Promise<{ points: PriceHistoryPoint[]; enabled: boolean }> {
+    limitCount: number = 24,
+    options?: {
+        optionKey?: string;
+        variantKey?: string;
+    }
+): Promise<{ points: PriceHistoryPoint[]; enabled: boolean; scope: 'product' | 'option' | 'variant' }> {
     const db = getAdminDb();
-    if (!db) return { points: [], enabled: false };
+    if (!db) return { points: [], enabled: false, scope: 'product' };
 
-    const historyKey = buildHistoryKey({ source: source as UnifiedProduct['source'], id: productId });
-    const snap = await db
-        .collection('marketPriceHistory')
-        .doc(historyKey)
-        .collection('entries')
-        .orderBy('capturedAt', 'desc')
-        .limit(Math.max(1, Math.min(limitCount, 120)))
-        .get();
+    const normalizedLimit = Math.max(1, Math.min(limitCount, 120));
+    const normalizedSource = source as UnifiedProduct['source'];
+    const optionKey = options?.optionKey;
+    const variantKey = options?.variantKey;
 
-    const points: PriceHistoryPoint[] = [];
-    snap.forEach((doc) => {
-        const data = doc.data();
-        const price = Number(data.price);
-        const capturedAt = data.capturedAt instanceof Timestamp
-            ? data.capturedAt.toMillis()
-            : Number(data.capturedAt);
-        if (Number.isFinite(price) && Number.isFinite(capturedAt)) {
-            points.push({ price, capturedAt });
+    async function readPoints(
+        collection: 'marketPriceHistory' | typeof OPTION_HISTORY_COLLECTION | typeof VARIANT_HISTORY_COLLECTION,
+        docId: string
+    ): Promise<PriceHistoryPoint[]> {
+        const snap = await db
+            .collection(collection)
+            .doc(docId)
+            .collection('entries')
+            .orderBy('capturedAt', 'desc')
+            .limit(normalizedLimit)
+            .get();
+
+        const points: PriceHistoryPoint[] = [];
+        snap.forEach((doc) => {
+            const data = doc.data();
+            const price = Number(data.price);
+            const capturedAt = data.capturedAt instanceof Timestamp
+                ? data.capturedAt.toMillis()
+                : Number(data.capturedAt);
+
+            if (!Number.isFinite(price) || !Number.isFinite(capturedAt)) {
+                return;
+            }
+
+            points.push({
+                price,
+                capturedAt,
+                stockStatus: data.stockStatus === 'in_stock' || data.stockStatus === 'low_stock' || data.stockStatus === 'sold_out' || data.stockStatus === 'unknown'
+                    ? data.stockStatus
+                    : undefined,
+                stockText: normalizeOptionalText(data.stockText, 120),
+                variantKey: normalizeOptionalText(data.variantKey, 120),
+                variantLabel: normalizeOptionalText(data.variantLabel, 200),
+                optionKey: normalizeOptionalText(data.optionKey, 120),
+                optionLabel: normalizeOptionalText(data.optionLabel, 200),
+            });
+        });
+
+        points.sort((a, b) => a.capturedAt - b.capturedAt);
+        return points;
+    }
+
+    if (variantKey) {
+        const variantPoints = await readPoints(
+            VARIANT_HISTORY_COLLECTION,
+            toSafeDocId(buildVariantHistoryStorageKey(normalizedSource, productId, variantKey))
+        );
+
+        if (variantPoints.length > 0) {
+            return { points: variantPoints, enabled: true, scope: 'variant' };
         }
-    });
+    }
 
-    points.sort((a, b) => a.capturedAt - b.capturedAt);
-    return { points, enabled: true };
+    if (optionKey) {
+        const optionPoints = await readPoints(
+            OPTION_HISTORY_COLLECTION,
+            toSafeDocId(buildOptionHistoryStorageKey(normalizedSource, productId, optionKey))
+        );
+
+        if (optionPoints.length > 0) {
+            return { points: optionPoints, enabled: true, scope: 'option' };
+        }
+    }
+
+    const historyKey = buildHistoryKey({ source: normalizedSource, id: productId });
+    const points = await readPoints('marketPriceHistory', historyKey);
+    return { points, enabled: true, scope: 'product' };
 }
 
 export async function readTrackedProduct(
@@ -446,11 +658,44 @@ export async function persistTrackedProductDetails(
     products.forEach((product) => {
         const historyKey = buildHistoryKey(product);
         const rootRef = db.collection('marketPriceHistory').doc(historyKey);
+        const variantHistory = buildVariantHistoryIdentity(product);
+        const optionHistory = buildOptionHistoryIdentity(product);
 
         batch.set(rootRef, {
             ...buildStoredProductRecord(product),
             updatedAt: now,
         }, { merge: true });
+
+        if (variantHistory.variantKey) {
+            const variantRootRef = db.collection(VARIANT_HISTORY_COLLECTION).doc(
+                toSafeDocId(buildVariantHistoryStorageKey(product.source, product.id, variantHistory.variantKey))
+            );
+
+            batch.set(variantRootRef, {
+                ...buildStoredProductRecord(product),
+                parentHistoryKey: historyKey,
+                variantKey: variantHistory.variantKey,
+                variantLabel: variantHistory.variantLabel || null,
+                variantSignature: variantHistory.variantSignature || null,
+                updatedAt: now,
+            }, { merge: true });
+        }
+
+        if (optionHistory.optionKey) {
+            const optionRootRef = db.collection(OPTION_HISTORY_COLLECTION).doc(
+                toSafeDocId(buildOptionHistoryStorageKey(product.source, product.id, optionHistory.optionKey))
+            );
+
+            batch.set(optionRootRef, {
+                ...buildStoredProductRecord(product),
+                parentHistoryKey: historyKey,
+                optionKey: optionHistory.optionKey,
+                optionLabel: optionHistory.optionLabel || null,
+                optionSignature: optionHistory.optionSignature || null,
+                updatedAt: now,
+            }, { merge: true });
+        }
+
         persisted += 1;
     });
 

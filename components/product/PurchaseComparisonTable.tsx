@@ -6,6 +6,7 @@ import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 interface PurchaseComparisonTableProps {
     offers: PurchasePriceEstimate[];
     selectedProductId?: string;
+    selectedVariantLabel?: string;
     showDisclaimer?: boolean;
 }
 
@@ -28,16 +29,20 @@ function hasActualStockData(offer: PurchasePriceEstimate): boolean {
 function hasPdpDetailData(offer: PurchasePriceEstimate): boolean {
     return Boolean(
         offer.product.detailCollectedAt
+        || offer.product.variantId
+        || offer.product.variantSku
         || offer.product.optionSummary
         || offer.product.optionValues?.length
         || offer.product.sizeOptions?.length
         || offer.product.colorOptions?.length
+        || offer.product.variantCandidates?.length
     );
 }
 
 export default function PurchaseComparisonTable({
     offers,
     selectedProductId,
+    selectedVariantLabel,
     showDisclaimer = true,
 }: PurchaseComparisonTableProps) {
     if (offers.length === 0) {
@@ -77,6 +82,53 @@ export default function PurchaseComparisonTable({
         );
     }
 
+    function renderCoveragePills(offer: PurchasePriceEstimate) {
+        const signal = alignment.signalsByKey[getProductOptionKey(offer.product)];
+        if (!signal) {
+            return null;
+        }
+
+        const pills: string[] = [];
+        const sharedColors = signal.colors.filter((color) => alignment.sharedColors.includes(color));
+        const sharedSizes = signal.sizes.filter((size) => alignment.sharedSizes.includes(size));
+
+        if (signal.hasVerifiedOptions) {
+            pills.push('검증 옵션');
+        }
+        if (sharedColors.length > 0) {
+            pills.push(`공통 색상 ${sharedColors.join(', ')}`);
+        }
+        if (sharedSizes.length > 0) {
+            pills.push(`공통 사이즈 ${sharedSizes.join(', ')}`);
+        }
+        if (alignment.verifiedOptionCount >= 2 && signal.hasVerifiedOptions && sharedColors.length === 0 && sharedSizes.length === 0) {
+            pills.push('공통 옵션 미확인');
+        }
+
+        if (pills.length === 0) {
+            return null;
+        }
+
+        return (
+            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                {pills.map((pill) => (
+                    <span
+                        key={`${offer.product.source}:${offer.product.id}:coverage:${pill}`}
+                        className={`rounded-full border px-2 py-1 ${
+                            pill === '공통 옵션 미확인'
+                                ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                : pill === '검증 옵션'
+                                    ? 'border-violet-200 bg-violet-50 text-violet-700'
+                                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        }`}
+                    >
+                        {pill}
+                    </span>
+                ))}
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-2">
             {alignment.hasMismatchRisk && (
@@ -93,6 +145,26 @@ export default function PurchaseComparisonTable({
                         {alignment.distinctColors.length > 1 ? ` · 감지 색상 ${alignment.distinctColors.join(', ')}` : ''}
                         {alignment.distinctSizes.length > 1 ? ` · 감지 사이즈 ${alignment.distinctSizes.join(', ')}` : ''}
                         {alignment.distinctGenders.length > 1 ? ` · 감지 성별 ${alignment.distinctGenders.join(', ')}` : ''}
+                    </p>
+                </div>
+            )}
+            {!alignment.hasMismatchRisk && alignment.verifiedOptionCount >= 2 && alignment.overlapLevel !== 'unknown' && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <p className="text-sm font-bold text-emerald-900">
+                        옵션 정렬 확인: {alignment.overlapLabel}
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-700">
+                        검증 옵션 보유 쇼핑몰 {alignment.verifiedOptionCount}개 기준으로 공통 옵션을 확인했습니다.
+                    </p>
+                </div>
+            )}
+            {selectedVariantLabel && (
+                <div className="rounded-2xl border border-fuchsia-200 bg-fuchsia-50 px-4 py-3">
+                    <p className="text-sm font-bold text-fuchsia-900">
+                        선택 variant 기준 비교: {selectedVariantLabel}
+                    </p>
+                    <p className="mt-1 text-xs text-fuchsia-700">
+                        지원하는 쇼핑몰은 해당 variant 가격과 재고를 반영하고, 미지원 쇼핑몰은 분리해서 표시합니다.
                     </p>
                 </div>
             )}
@@ -137,6 +209,11 @@ export default function PurchaseComparisonTable({
                                 >
                                     {offer.stockLabel}
                                 </span>
+                                {product.stockText?.includes('선택 variant 미지원') && (
+                                    <span className="rounded-full bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700">
+                                        선택 variant 미지원
+                                    </span>
+                                )}
                                 {offer.potentialCouponDiscount > 0 && (
                                     <span className="rounded-full bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700">
                                         혜택 최대 {offer.potentialCouponDiscount.toLocaleString()}원
@@ -162,6 +239,16 @@ export default function PurchaseComparisonTable({
                                         PDP 실데이터
                                     </span>
                                 )}
+                                {(product.variantSku || product.variantId) && (
+                                    <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700">
+                                        실제 SKU
+                                    </span>
+                                )}
+                                {product.variantCandidates && product.variantCandidates.length > 0 && (
+                                    <span className="rounded-full bg-fuchsia-50 px-2 py-1 text-[10px] font-bold text-fuchsia-700">
+                                        선택 variant {product.variantCandidates.length}개
+                                    </span>
+                                )}
                             </div>
 
                             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -173,7 +260,21 @@ export default function PurchaseComparisonTable({
                                     상세 옵션: {product.optionSummary}
                                 </p>
                             )}
+                            {(product.variantSku || product.variantId) && (
+                                <p className="mt-2 text-xs text-slate-500">
+                                    {product.variantSku ? `SKU ${product.variantSku}` : ''}
+                                    {product.variantSku && product.variantId ? ' · ' : ''}
+                                    {product.variantId ? `Variant ${product.variantId}` : ''}
+                                </p>
+                            )}
+                            {product.variantCandidates && product.variantCandidates.length > 0 && (
+                                <p className="mt-2 text-xs text-slate-500">
+                                    선택 가능: {product.variantCandidates.slice(0, 3).map((candidate) => candidate.label).join(', ')}
+                                    {product.variantCandidates.length > 3 ? ` 외 ${product.variantCandidates.length - 3}` : ''}
+                                </p>
+                            )}
                             {renderOptionPills(offer)}
+                            {renderCoveragePills(offer)}
 
                             <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
                                 <span className="rounded-full border border-slate-200 px-2 py-1">

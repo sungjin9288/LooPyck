@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import type { ProductSource, UnifiedProduct } from '../api/types.ts';
+import type { ProductSource, ProductVariantCandidate, UnifiedProduct } from '../api/types.ts';
 import { normalizeTitle } from '../core/dataNormalizer.ts';
 import { buildCommerceDataFromTexts, inferAvailabilityStatus, mergeCommerceData, parseBenefitText, parseShippingText, parseStockSignal } from './sourceCommerceParsing.ts';
 
@@ -12,20 +12,26 @@ export type PdpDetailSignals = Pick<
     | 'benefitText'
     | 'stockStatus'
     | 'stockText'
+    | 'variantId'
+    | 'variantSku'
     | 'optionSummary'
     | 'optionValues'
     | 'sizeOptions'
     | 'colorOptions'
+    | 'variantCandidates'
     | 'detailCollectedAt'
 >;
 
-export function hasPdpDetailData(product: Pick<UnifiedProduct, 'detailCollectedAt' | 'optionSummary' | 'optionValues' | 'sizeOptions' | 'colorOptions'>): boolean {
+export function hasPdpDetailData(product: Pick<UnifiedProduct, 'detailCollectedAt' | 'variantId' | 'variantSku' | 'optionSummary' | 'optionValues' | 'sizeOptions' | 'colorOptions' | 'variantCandidates'>): boolean {
     return Boolean(
         product.detailCollectedAt
+        || product.variantId
+        || product.variantSku
         || product.optionSummary
         || product.optionValues?.length
         || product.sizeOptions?.length
         || product.colorOptions?.length
+        || product.variantCandidates?.length
     );
 }
 
@@ -83,6 +89,15 @@ function collectTexts($: cheerio.CheerioAPI, selectors: readonly string[]): stri
     ).filter(Boolean);
 }
 
+function collectAttrValues($: cheerio.CheerioAPI, selectors: readonly string[], attribute: string): string[] {
+    return selectors.flatMap((selector) =>
+        $(selector)
+            .toArray()
+            .map((element) => normalizeOptionalText($(element).attr(attribute)))
+            .filter(Boolean) as string[]
+    );
+}
+
 function buildSummaryLabel(prefix: string, values: string[]): string | undefined {
     if (values.length === 0) return undefined;
     const preview = values.slice(0, 3).join(', ');
@@ -107,6 +122,123 @@ function buildOptionSummary(optionValues: string[], sizeOptions: string[], color
     return optionValues.length > 4 ? `옵션 ${preview} 외 ${optionValues.length - 4}` : `옵션 ${preview}`;
 }
 
+function buildVariantCandidateLabel(input: {
+    label?: string;
+    color?: string;
+    size?: string;
+    variantSku?: string;
+    variantId?: string;
+}): string | undefined {
+    const explicitLabel = normalizeOptionalText(input.label);
+    if (explicitLabel && isUsefulOptionText(explicitLabel)) {
+        return normalizeOptionText(explicitLabel).slice(0, 120);
+    }
+
+    const parts = [
+        normalizeOptionalText(input.color),
+        normalizeOptionalText(input.size),
+    ].filter(Boolean) as string[];
+
+    if (parts.length > 0) {
+        return parts.join('/').slice(0, 120);
+    }
+
+    const variantSku = normalizeIdentifier(input.variantSku);
+    if (variantSku) {
+        return `SKU ${variantSku}`.slice(0, 120);
+    }
+
+    const variantId = normalizeIdentifier(input.variantId);
+    if (variantId) {
+        return `Variant ${variantId}`.slice(0, 120);
+    }
+
+    return undefined;
+}
+
+function toVariantStockStatus(value: unknown): UnifiedProduct['stockStatus'] | undefined {
+    const normalized = normalizeOptionalText(value);
+    if (!normalized) return undefined;
+    return inferAvailabilityStatus(normalized);
+}
+
+function normalizeVariantCandidate(input: Partial<ProductVariantCandidate>): ProductVariantCandidate | null {
+    const variantId = normalizeIdentifier(input.variantId);
+    const variantSku = normalizeIdentifier(input.variantSku);
+    const color = normalizeOptionalText(input.color)?.slice(0, 60);
+    const size = normalizeOptionalText(input.size)?.slice(0, 40);
+    const label = buildVariantCandidateLabel({
+        label: input.label,
+        color,
+        size,
+        variantSku,
+        variantId,
+    });
+
+    if (!label) {
+        return null;
+    }
+
+    const candidate: ProductVariantCandidate = {
+        label,
+        variantId,
+        variantSku,
+        color,
+        size,
+        price: normalizeMoneyValue(input.price),
+        stockStatus: input.stockStatus === 'in_stock' || input.stockStatus === 'low_stock' || input.stockStatus === 'sold_out' || input.stockStatus === 'unknown'
+            ? input.stockStatus
+            : undefined,
+    };
+
+    return candidate;
+}
+
+function buildVariantCandidateKey(candidate: ProductVariantCandidate): string {
+    return [
+        candidate.variantId || '',
+        candidate.variantSku || '',
+        candidate.color || '',
+        candidate.size || '',
+        candidate.label || '',
+    ].join('|').toLowerCase();
+}
+
+function mergeVariantCandidateLists(...candidateLists: Array<Array<Partial<ProductVariantCandidate>> | undefined>): ProductVariantCandidate[] | undefined {
+    const merged = new Map<string, ProductVariantCandidate>();
+
+    candidateLists.forEach((list) => {
+        list?.forEach((candidate) => {
+            const normalized = normalizeVariantCandidate(candidate);
+            if (!normalized) {
+                return;
+            }
+
+            const key = buildVariantCandidateKey(normalized);
+            const existing = merged.get(key);
+            if (!existing) {
+                merged.set(key, normalized);
+                return;
+            }
+
+            merged.set(key, {
+                label: existing.label.length >= normalized.label.length ? existing.label : normalized.label,
+                variantId: existing.variantId || normalized.variantId,
+                variantSku: existing.variantSku || normalized.variantSku,
+                color: existing.color || normalized.color,
+                size: existing.size || normalized.size,
+                price: typeof existing.price === 'number' ? existing.price : normalized.price,
+                stockStatus: existing.stockStatus && existing.stockStatus !== 'unknown'
+                    ? existing.stockStatus
+                    : normalized.stockStatus,
+            });
+        });
+    });
+
+    const values = Array.from(merged.values()).slice(0, 24);
+    return values.length > 0 ? values : undefined;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -127,6 +259,12 @@ function normalizeOptionalText(value: unknown): string | undefined {
     }
 
     return undefined;
+}
+
+function normalizeIdentifier(value: unknown, maxLength: number = 120): string | undefined {
+    const text = normalizeOptionalText(value);
+    if (!text) return undefined;
+    return text.replace(/[^\w\-:/]/g, '').slice(0, maxLength) || undefined;
 }
 
 function normalizeMoneyValue(value: unknown): number | undefined {
@@ -273,6 +411,23 @@ function parseStructuredShippingDetails(raw: unknown): PdpDetailSignals {
     };
 }
 
+function pickIdentifierFromRecords(
+    records: Record<string, unknown>[],
+    keys: string[],
+    maxLength: number = 120
+): string | undefined {
+    for (const record of records) {
+        for (const key of keys) {
+            const value = normalizeIdentifier(record[key], maxLength);
+            if (value) {
+                return value;
+            }
+        }
+    }
+
+    return undefined;
+}
+
 function parseStructuredOffer(offer: Record<string, unknown>, basePrice: number): PdpDetailSignals {
     const priceCandidate = normalizeMoneyValue(
         offer.price
@@ -289,6 +444,8 @@ function parseStructuredOffer(offer: Record<string, unknown>, basePrice: number)
 
     return {
         ...parseStructuredShippingDetails(offer.shippingDetails ?? offer.shippingOfferDetails),
+        variantId: normalizeIdentifier(offer.identifier ?? offer.serialNumber ?? offer.offerId ?? offer.itemOffered),
+        variantSku: normalizeIdentifier(offer.sku ?? offer.mpn ?? offer.productID ?? offer.productId),
         ...(typeof benefitPrice === 'number'
             ? {
                 benefitPrice,
@@ -328,6 +485,30 @@ function parseStructuredDataSignals($: cheerio.CheerioAPI, product: UnifiedProdu
     ]);
     const offerSignals = [...productNodes.flatMap((node) => toArray(node.offers)), ...offerNodes]
         .flatMap((offer) => isRecord(offer) ? [parseStructuredOffer(offer, product.price)] : []);
+    const variantNodes = productNodes.flatMap((node) =>
+        toArray(node.hasVariant ?? node.variant ?? node.variants).flatMap((variant) => isRecord(variant) ? [variant] : [])
+    );
+    const variantCandidates = mergeVariantCandidateLists(
+        variantNodes.flatMap((variant) => {
+            const color = extractStringValues(variant.color)[0]
+                || extractAdditionalPropertyValues(variant.additionalProperty ?? variant.additionalProperties, ['color', 'colour', '색상'])[0];
+            const size = extractStringValues(variant.size)[0]
+                || extractAdditionalPropertyValues(variant.additionalProperty ?? variant.additionalProperties, ['size', '사이즈'])[0];
+            const offer = toArray(variant.offers).find(isRecord);
+            const availabilityText = normalizeOptionalText(variant.availability ?? (isRecord(offer) ? offer.availability : undefined));
+            const normalized = normalizeVariantCandidate({
+                label: normalizeOptionalText(variant.name) || normalizeOptionalText(variant.description),
+                variantId: normalizeOptionalText(variant.variantId ?? variant.optionId ?? variant.productOptionId ?? variant.identifier ?? variant.productID ?? variant.productId),
+                variantSku: normalizeOptionalText(variant.sku ?? variant.mpn ?? variant.gtin13 ?? variant.gtin ?? variant.gtin12),
+                color,
+                size,
+                price: normalizeMoneyValue(variant.price ?? (isRecord(offer) ? offer.price ?? offer.lowPrice ?? offer.highPrice : undefined)),
+                stockStatus: availabilityText ? inferAvailabilityStatus(availabilityText) : undefined,
+            });
+
+            return normalized ? [normalized] : [];
+        })
+    );
     const shippingSignals = productNodes
         .flatMap((node) => [parseStructuredShippingDetails(node.shippingDetails)]);
     const stockSignals = productNodes
@@ -338,22 +519,34 @@ function parseStructuredDataSignals($: cheerio.CheerioAPI, product: UnifiedProdu
         });
 
     const commerceSignals = mergeCommerceData(...offerSignals, ...shippingSignals, ...stockSignals);
+    const variantId = pickIdentifierFromRecords(
+        [...variantNodes, ...productNodes, ...offerNodes],
+        ['variantId', 'optionId', 'productOptionId', 'identifier', 'productID', 'productId', 'serialNumber']
+    );
+    const variantSku = pickIdentifierFromRecords(
+        [...variantNodes, ...productNodes, ...offerNodes],
+        ['sku', 'mpn', 'gtin13', 'gtin', 'gtin12']
+    );
 
     return {
         ...commerceSignals,
+        variantId,
+        variantSku,
         optionValues: optionValues.length > 0 ? optionValues : undefined,
         sizeOptions: sizeOptions.length > 0 ? sizeOptions : undefined,
         colorOptions: colorOptions.length > 0 ? colorOptions : undefined,
+        variantCandidates,
         optionSummary: buildOptionSummary(optionValues, sizeOptions, colorOptions),
     };
 }
 
-function pickMetaContent($: cheerio.CheerioAPI, selectors: readonly string[]): string | undefined {
+function pickMetaContent($: cheerio.CheerioAPI, selectors: readonly string[], attr: 'content' | 'href' | 'text' = 'content'): string | undefined {
     for (const selector of selectors) {
         const element = $(selector).first();
         if (!element.length) continue;
 
-        const value = normalizeOptionalText(element.attr('content') || element.attr('href') || element.text());
+        const raw = attr === 'text' ? element.text() : element.attr(attr) || element.attr('content') || element.attr('href') || element.text();
+        const value = normalizeOptionalText(raw);
         if (value) {
             return value;
         }
@@ -385,6 +578,15 @@ function parseMetaSignals($: cheerio.CheerioAPI, product: UnifiedProduct): PdpDe
         'meta[itemprop="size"]',
         'meta[property="product:size"]',
     ]);
+    const variantSku = pickMetaContent($, [
+        'meta[itemprop="sku"]',
+        'meta[property="product:sku"]',
+    ]);
+    const variantId = pickMetaContent($, [
+        'meta[itemprop="productID"]',
+        'meta[property="product:retailer_item_id"]',
+        'meta[property="product:item_id"]',
+    ]);
 
     return {
         ...mergeCommerceData(
@@ -392,10 +594,144 @@ function parseMetaSignals($: cheerio.CheerioAPI, product: UnifiedProduct): PdpDe
             priceText ? parseBenefitText(`혜택가 ${priceText}`, product.price) : undefined,
             availabilityText ? parseStockSignal(availabilityText) : undefined,
         ),
+        variantId: normalizeIdentifier(variantId),
+        variantSku: normalizeIdentifier(variantSku),
         colorOptions: colorText ? toUniqueList([colorText]) : undefined,
         sizeOptions: sizeText ? toUniqueList([sizeText]) : undefined,
         optionSummary: buildOptionSummary([], sizeText ? [sizeText] : [], colorText ? [colorText] : []),
     };
+}
+
+function pickFirstAttr($: cheerio.CheerioAPI, selectors: readonly string[], attributes: readonly string[]): string | undefined {
+    for (const selector of selectors) {
+        const element = $(selector).first();
+        if (!element.length) continue;
+
+        for (const attribute of attributes) {
+            const value = normalizeIdentifier(element.attr(attribute));
+            if (value) {
+                return value;
+            }
+        }
+    }
+
+    return undefined;
+}
+
+function parseDomVariantIdentity($: cheerio.CheerioAPI): PdpDetailSignals {
+    const variantIdSelectors = [
+        '[data-variant-id]',
+        '[data-option-id]',
+        '[data-product-option-id]',
+        '[data-item-id]',
+        '[data-product-id]',
+        'input[name="variantId"]',
+        'input[name="optionId"]',
+    ] as const;
+    const variantSkuSelectors = [
+        '[data-sku]',
+        '[data-sku-id]',
+        'input[name="sku"]',
+    ] as const;
+
+    const variantId = pickFirstAttr($, variantIdSelectors, [
+        'data-variant-id',
+        'data-option-id',
+        'data-product-option-id',
+        'data-item-id',
+        'data-product-id',
+        'value',
+    ]);
+    const variantSku = pickFirstAttr($, variantSkuSelectors, [
+        'data-sku',
+        'data-sku-id',
+        'value',
+    ]);
+
+    return {
+        variantId,
+        variantSku,
+    };
+}
+
+function parseCandidateAvailabilityFromElement($: cheerio.CheerioAPI, element: unknown): UnifiedProduct['stockStatus'] | undefined {
+    const wrapped = $(element as never);
+    const text = normalizeWhitespace(wrapped.text());
+    if (text) {
+        const parsed = parseStockSignal(text);
+        if (parsed.stockStatus && parsed.stockStatus !== 'unknown') {
+            return parsed.stockStatus;
+        }
+    }
+
+    const className = normalizeOptionalText(wrapped.attr('class'));
+    if (className) {
+        const parsed = parseStockSignal(className);
+        if (parsed.stockStatus && parsed.stockStatus !== 'unknown') {
+            return parsed.stockStatus;
+        }
+    }
+
+    const ariaDisabled = normalizeOptionalText(wrapped.attr('aria-disabled'));
+    if (ariaDisabled === 'true') {
+        return 'sold_out';
+    }
+
+    const disabledAttr = wrapped.attr('disabled');
+    if (typeof disabledAttr === 'string') {
+        return 'sold_out';
+    }
+
+    return undefined;
+}
+
+function parseVariantCandidatesFromSelectors(
+    $: cheerio.CheerioAPI,
+    selectors: readonly string[],
+    kind: 'option' | 'size' | 'color'
+): ProductVariantCandidate[] | undefined {
+    const matchedElements = selectors.flatMap((selector) => $(selector).toArray());
+    if (matchedElements.length === 0) {
+        return undefined;
+    }
+
+    return mergeVariantCandidateLists(matchedElements.map((element) => {
+        const text = normalizeOptionText(
+            normalizeOptionalText($(element).attr('data-option-value'))
+            || normalizeOptionalText($(element).attr('data-value'))
+            || normalizeOptionalText($(element).attr('data-label'))
+            || normalizeWhitespace($(element).text())
+            || ''
+        );
+        const dataColor = normalizeOptionalText($(element).attr('data-color'));
+        const dataSize = normalizeOptionalText($(element).attr('data-size'));
+        const variantId = $(element).attr('data-variant-id')
+            || $(element).attr('data-option-id')
+            || $(element).attr('data-product-option-id')
+            || $(element).attr('data-item-id');
+        const variantSku = $(element).attr('data-sku')
+            || $(element).attr('data-sku-id');
+        const price = normalizeMoneyValue(
+            $(element).attr('data-price')
+            || $(element).attr('data-sale-price')
+            || $(element).attr('data-benefit-price')
+        );
+        const stockStatus = parseCandidateAvailabilityFromElement($, element);
+
+        if (kind !== 'option' && !variantId && !variantSku && typeof price !== 'number' && !stockStatus) {
+            return null;
+        }
+
+        return {
+            label: text,
+            variantId,
+            variantSku,
+            color: kind === 'color' ? text : dataColor,
+            size: kind === 'size' ? text : dataSize,
+            price,
+            stockStatus,
+        } satisfies Partial<ProductVariantCandidate>;
+    }).filter(Boolean) as Partial<ProductVariantCandidate>[]);
 }
 
 function parseGenericOptionSignals($: cheerio.CheerioAPI): PdpDetailSignals {
@@ -405,8 +741,7 @@ function parseGenericOptionSignals($: cheerio.CheerioAPI): PdpDetailSignals {
         '[aria-label*="size"]',
         '[aria-label*="SIZE"]',
         '[data-option-type="size"] [data-option-value]',
-        '[data-size]',
-    ]));
+    ]).concat(collectAttrValues($, ['[data-size]'], 'data-size')));
     const colorOptions = toUniqueList(collectTexts($, [
         'select[name*="color"] option',
         'select[name*="COLOR"] option',
@@ -417,8 +752,7 @@ function parseGenericOptionSignals($: cheerio.CheerioAPI): PdpDetailSignals {
         '[aria-label*="colour"]',
         '[aria-label*="COLOUR"]',
         '[data-option-type="color"] [data-option-value]',
-        '[data-color]',
-    ]));
+    ]).concat(collectAttrValues($, ['[data-color]'], 'data-color')));
     const optionValues = toUniqueList(collectTexts($, [
         'select[name*="option"] option',
         'select[name*="OPTION"] option',
@@ -458,31 +792,56 @@ function parseWithConfig(html: string, product: UnifiedProduct, config: ProductD
     };
     const structuredSignals = parseStructuredDataSignals($, product);
     const metaSignals = parseMetaSignals($, product);
+    const domVariantSignals = parseDomVariantIdentity($);
     const genericSignals = parseGenericOptionSignals($);
+    const domVariantCandidates = mergeVariantCandidateLists(
+        parseVariantCandidatesFromSelectors($, config.optionSelectors, 'option'),
+        parseVariantCandidatesFromSelectors($, config.sizeSelectors, 'size'),
+        parseVariantCandidatesFromSelectors($, config.colorSelectors, 'color'),
+        parseVariantCandidatesFromSelectors($, [
+            'select[name*="option"] option',
+            'select[name*="size"] option',
+            'select[name*="color"] option',
+            '[data-option-value]',
+            '[data-variant-id]',
+            '[data-sku]',
+        ], 'option')
+    );
+    const mergedVariantCandidates = mergeVariantCandidateLists(
+        structuredSignals.variantCandidates,
+        domVariantCandidates
+    );
     const mergedOptionValues = toUniqueList([
         ...(selectorSignals.optionValues || []),
         ...(structuredSignals.optionValues || []),
         ...(metaSignals.optionValues || []),
         ...(genericSignals.optionValues || []),
+        ...((mergedVariantCandidates || []).map((candidate) => candidate.label)),
     ]);
     const mergedSizeOptions = toUniqueList([
         ...(selectorSignals.sizeOptions || []),
         ...(structuredSignals.sizeOptions || []),
         ...(metaSignals.sizeOptions || []),
         ...(genericSignals.sizeOptions || []),
+        ...((mergedVariantCandidates || []).flatMap((candidate) => candidate.size ? [candidate.size] : [])),
     ]);
     const mergedColorOptions = toUniqueList([
         ...(selectorSignals.colorOptions || []),
         ...(structuredSignals.colorOptions || []),
         ...(metaSignals.colorOptions || []),
         ...(genericSignals.colorOptions || []),
+        ...((mergedVariantCandidates || []).flatMap((candidate) => candidate.color ? [candidate.color] : [])),
     ]);
+    const singleCandidate = mergedVariantCandidates?.length === 1 ? mergedVariantCandidates[0] : undefined;
 
     return {
         ...mergeCommerceData(selectorSignals, structuredSignals, metaSignals, genericSignals),
+        variantId: domVariantSignals.variantId || structuredSignals.variantId || metaSignals.variantId || singleCandidate?.variantId,
+        variantSku: domVariantSignals.variantSku || structuredSignals.variantSku || metaSignals.variantSku || singleCandidate?.variantSku,
         optionValues: mergedOptionValues.length > 0 ? mergedOptionValues : undefined,
         sizeOptions: mergedSizeOptions.length > 0 ? mergedSizeOptions : undefined,
         colorOptions: mergedColorOptions.length > 0 ? mergedColorOptions : undefined,
+        variantCandidates: mergedVariantCandidates,
         optionSummary: buildOptionSummary(mergedOptionValues, mergedSizeOptions, mergedColorOptions)
             || selectorSignals.optionSummary
             || structuredSignals.optionSummary

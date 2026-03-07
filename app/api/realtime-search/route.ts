@@ -80,10 +80,14 @@ export async function GET(request: NextRequest) {
 
         let historyEnabled = false;
         let comparisonGroupsPersisted = 0;
+        let optionHistoriesPersisted = 0;
+        let variantHistoriesPersisted = 0;
         try {
             const historyResult = await persistPriceHistorySnapshot(reranked.products, effectiveQuery);
             historyEnabled = historyResult.enabled;
             comparisonGroupsPersisted = historyResult.comparisonGroupsPersisted;
+            optionHistoriesPersisted = historyResult.optionHistoriesPersisted;
+            variantHistoriesPersisted = historyResult.variantHistoriesPersisted;
         } catch (ingestError) {
             console.warn('[PriceHistory] ingest failed:', ingestError);
         }
@@ -115,6 +119,8 @@ export async function GET(request: NextRequest) {
                     'X-RateLimit-Remaining': String(rateLimit.remaining),
                     'X-PriceHistory-Enabled': String(historyEnabled),
                     'X-Comparison-Groups-Persisted': String(comparisonGroupsPersisted),
+                    'X-Variant-Histories-Persisted': String(variantHistoriesPersisted),
+                    'X-Option-Histories-Persisted': String(optionHistoriesPersisted),
                     'X-Search-Direct-Sources': String(diagnosticsPayload.directSourceCount),
                     'X-Search-Fallback-Sources': String(diagnosticsPayload.fallbackSourceCount),
                 },

@@ -11,9 +11,10 @@ interface NavbarProps {
     currentView: 'search' | 'favorites' | 'recommend';
     setCurrentView: (view: 'search' | 'favorites' | 'recommend') => void;
     onLogoClick: () => void;
+    onNotificationClick?: () => void;
 }
 
-export default function Navbar({ currentView, setCurrentView, onLogoClick }: NavbarProps) {
+export default function Navbar({ currentView, setCurrentView, onLogoClick, onNotificationClick }: NavbarProps) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
@@ -89,6 +90,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick }: Nav
                         {/* Notification Bell */}
                         <button
                             type="button"
+                            onClick={onNotificationClick}
                             className="relative p-2 rounded-full hover:bg-gray-100 transition-colors"
                             aria-label="가격 알림"
                         >

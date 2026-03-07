@@ -3,6 +3,7 @@
 import { Product } from '@/types/product';
 import { useCloudStorage } from '@/hooks/useCloudStorage';
 import { triggerHaptic } from '@/lib/native/bridge';
+import { buildFavoriteDocId } from '@/lib/favorites/favoriteProduct';
 
 interface FavoriteButtonProps {
     product: Product;
@@ -10,10 +11,11 @@ interface FavoriteButtonProps {
 
 export default function FavoriteButton({ product }: FavoriteButtonProps) {
     const { isFavorite, addFavorite, removeFavorite, loading } = useCloudStorage();
+    const favoriteId = buildFavoriteDocId(product);
 
     // We can use optimistic updates or rely on the hook's state.
     // The hook returns the live state from favorites list.
-    const favorite = isFavorite(product.productId);
+    const favorite = isFavorite(favoriteId);
 
     const toggleFavorite = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -23,10 +25,10 @@ export default function FavoriteButton({ product }: FavoriteButtonProps) {
 
         if (favorite) {
             triggerHaptic('medium');
-            await removeFavorite(product.productId);
+            await removeFavorite(favoriteId);
         } else {
             triggerHaptic('success');
-            await addFavorite(product);
+            await addFavorite({ ...product, favoriteId });
         }
     };
 

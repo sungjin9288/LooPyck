@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SearchBar from '@/components/search/SearchBar';
 import RecentSearches from '@/components/search/RecentSearches';
-import FavoritesPage from '@/components/favorites/FavoritesPage';
 import InfiniteProductGrid from '@/components/product/InfiniteProductGrid';
 import Navbar from '@/components/layout/Navbar';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
@@ -42,7 +41,14 @@ export default function Home() {
 
   // URL에서 초기 검색어 복원
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get('q');
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
+    const view = params.get('view');
+
+    if (view === 'recommend') {
+      setCurrentView('recommend');
+    }
+
     if (q) onSearch(q);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -55,6 +61,24 @@ export default function Home() {
     setSearchSort(sort);
     setCurrentView('search');
     router.replace(`/?q=${encodeURIComponent(trimmed)}`, { scroll: false });
+  };
+
+  const handleViewChange = (view: CurrentView) => {
+    if (view === 'favorites') {
+      router.push('/favorites');
+      return;
+    }
+
+    setCurrentView(view);
+
+    if (view === 'recommend') {
+      router.replace('/?view=recommend', { scroll: false });
+      return;
+    }
+
+    if (!searchQuery) {
+      router.replace('/', { scroll: false });
+    }
   };
 
   const handleLogoClick = () => {
@@ -72,8 +96,9 @@ export default function Home() {
       {/* 헤더 */}
       <Navbar
         currentView={currentView}
-        setCurrentView={(v) => setCurrentView(v)}
+        setCurrentView={handleViewChange}
         onLogoClick={handleLogoClick}
+        onNotificationClick={() => router.push('/favorites/alerts')}
       />
 
       {/* 메인 콘텐츠 */}
@@ -145,7 +170,6 @@ export default function Home() {
             )}
 
             {/* ❤️ 찜 뷰 */}
-            {currentView === 'favorites' && <FavoritesPage />}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -156,7 +180,7 @@ export default function Home() {
       {/* 모바일 하단 네비게이션 */}
       <MobileBottomNav
         currentView={currentView}
-        setCurrentView={(v) => setCurrentView(v)}
+        setCurrentView={handleViewChange}
       />
 
       {/* 푸터 */}

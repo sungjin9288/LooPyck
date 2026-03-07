@@ -1,10 +1,19 @@
 import type { UnifiedProduct } from '../api/types.ts';
 import { normalizeTitle } from '../core/dataNormalizer.ts';
 
+export type GenderSignal = '남성' | '여성' | '공용';
+export type VariantOverlapLevel = 'unknown' | 'none' | 'partial' | 'high';
+
 export interface VariantOptionSignal {
     color?: string;
     size?: string;
-    gender?: '남성' | '여성' | '공용';
+    gender?: GenderSignal;
+    colors: string[];
+    sizes: string[];
+    genders: GenderSignal[];
+    optionValues: string[];
+    hasVerifiedOptions: boolean;
+    detectionSource: 'title' | 'pdp' | 'mixed';
 }
 
 export interface VariantAlignmentSummary {
@@ -15,10 +24,13 @@ export interface VariantAlignmentSummary {
     distinctColors: string[];
     distinctSizes: string[];
     distinctGenders: string[];
+    sharedColors: string[];
+    sharedSizes: string[];
+    verifiedOptionCount: number;
+    overlapLevel: VariantOverlapLevel;
+    overlapLabel: string;
     signalsByKey: Record<string, VariantOptionSignal>;
 }
-
-type GenderSignal = VariantOptionSignal['gender'];
 
 const COLOR_PATTERNS: Array<{ label: string; patterns: RegExp[] }> = [
     { label: '블랙', patterns: [/\bblack\b/i, /블랙/i, /검정/i, /흑색/i] },
@@ -48,14 +60,14 @@ const UNISEX_PATTERNS = [/\bunisex\b/i, /공용/i, /유니섹스/i];
 const APPAREL_SIZE_PATTERNS = ['44', '55', '66', '77', '88', '90', '95', '100', '105', '110'];
 const FREE_SIZE_PATTERNS = [/\bfree\b/i, /\bonesize\b/i, /\bone size\b/i, /\bos\b/i, /프리사이즈/i, /프리 사이즈/i];
 
-function toSearchableText(product: UnifiedProduct): string {
-    return normalizeTitle([
-        product.title,
-        product.category1,
-        product.category2,
-        product.brand,
-        product.stockText,
-    ].filter(Boolean).join(' '))
+function normalizeWhitespace(value: string): string {
+    return normalizeTitle(value)
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function toSearchableText(values: Array<string | undefined>): string {
+    return normalizeWhitespace(values.filter(Boolean).join(' '))
         .toLowerCase()
         .replace(/[()_[\],/]/g, ' ');
 }
@@ -119,6 +131,11 @@ function detectAlphaSize(text: string): string | undefined {
         return bracketMatch[1].toUpperCase();
     }
 
+    const tokenMatch = text.match(/\b(xxxl|xxl|xl|xs|s|m|l)\b/i);
+    if (tokenMatch?.[1]) {
+        return tokenMatch[1].toUpperCase();
+    }
+
     return undefined;
 }
 
@@ -130,9 +147,67 @@ function toDistinctList(values: Array<string | undefined>): string[] {
     return Array.from(new Set(values.filter((value): value is string => Boolean(value && value.trim()))));
 }
 
-function buildMismatchReasons(colors: string[], sizes: string[], genders: string[]): string[] {
+function toDistinctGenders(values: Array<GenderSignal | undefined>): GenderSignal[] {
+    return Array.from(new Set(values.filter((value): value is GenderSignal => Boolean(value))));
+}
+
+function extractDetectedColors(values: string[]): string[] {
+    return toDistinctList(values.map((value) => detectColor(toSearchableText([value]))));
+}
+
+function extractDetectedSizes(values: string[]): string[] {
+    return toDistinctList(values.map((value) => detectSize(toSearchableText([value]))));
+}
+
+function extractDetectedGenders(values: string[]): GenderSignal[] {
+    return toDistinctGenders(values.map((value) => detectGender(toSearchableText([value]))));
+}
+
+function getTitleTexts(product: UnifiedProduct): string[] {
+    return [
+        product.title,
+        product.category1,
+        product.category2,
+        product.brand,
+        product.stockText,
+    ].filter(Boolean) as string[];
+}
+
+function getVerifiedOptionTexts(product: UnifiedProduct): string[] {
+    return [
+        product.optionSummary,
+        ...(product.optionValues || []),
+        ...(product.sizeOptions || []),
+        ...(product.colorOptions || []),
+        ...(product.variantCandidates?.map((candidate) => candidate.label) || []),
+        ...(product.variantCandidates?.flatMap((candidate) => candidate.color ? [candidate.color] : []) || []),
+        ...(product.variantCandidates?.flatMap((candidate) => candidate.size ? [candidate.size] : []) || []),
+    ].filter(Boolean) as string[];
+}
+
+function intersectLists(lists: string[][]): string[] {
+    const comparableLists = lists.filter((list) => list.length > 0);
+    if (comparableLists.length < 2) {
+        return [];
+    }
+
+    return comparableLists.slice(1).reduce((shared, current) => (
+        shared.filter((value) => current.includes(value))
+    ), [...comparableLists[0]!]);
+}
+
+function buildMismatchReasons(
+    colors: string[],
+    sizes: string[],
+    genders: GenderSignal[],
+    verifiedOptionCount: number,
+    overlapLevel: VariantOverlapLevel
+): string[] {
     const reasons: string[] = [];
 
+    if (verifiedOptionCount >= 2 && overlapLevel === 'none') {
+        reasons.push('공통 옵션 미확인');
+    }
     if (sizes.length > 1) {
         reasons.push('사이즈 혼재');
     }
@@ -143,12 +218,74 @@ function buildMismatchReasons(colors: string[], sizes: string[], genders: string
         reasons.push('색상 혼재');
     }
 
-    return reasons;
+    return Array.from(new Set(reasons));
 }
 
-function buildSummaryLabel(reasons: string[]): string {
+function buildOverlapLevel(
+    verifiedOptionCount: number,
+    sharedColors: string[],
+    sharedSizes: string[]
+): VariantOverlapLevel {
+    if (verifiedOptionCount < 2) {
+        return 'unknown';
+    }
+
+    if (sharedColors.length > 0 && sharedSizes.length > 0) {
+        return 'high';
+    }
+
+    if (sharedColors.length > 0 || sharedSizes.length > 0) {
+        return 'partial';
+    }
+
+    return 'none';
+}
+
+function buildOverlapLabel(
+    overlapLevel: VariantOverlapLevel,
+    sharedColors: string[],
+    sharedSizes: string[],
+    verifiedOptionCount: number
+): string {
+    if (verifiedOptionCount < 2) {
+        return '검증 옵션 부족';
+    }
+
+    if (overlapLevel === 'high') {
+        const parts = [
+            sharedColors.length > 0 ? `색상 ${sharedColors.join(', ')}` : null,
+            sharedSizes.length > 0 ? `사이즈 ${sharedSizes.join(', ')}` : null,
+        ].filter(Boolean) as string[];
+        return `공통 옵션 ${parts.join(' · ')}`;
+    }
+
+    if (overlapLevel === 'partial') {
+        if (sharedSizes.length > 0) {
+            return `부분 공통 옵션 · 사이즈 ${sharedSizes.join(', ')}`;
+        }
+        if (sharedColors.length > 0) {
+            return `부분 공통 옵션 · 색상 ${sharedColors.join(', ')}`;
+        }
+    }
+
+    if (overlapLevel === 'none') {
+        return '공통 옵션 미확인';
+    }
+
+    return '옵션 차이 신호 없음';
+}
+
+function buildSummaryLabel(
+    reasons: string[],
+    overlapLevel: VariantOverlapLevel,
+    overlapLabel: string
+): string {
+    if (overlapLevel === 'none') {
+        return '공통 옵션 미확인';
+    }
+
     if (reasons.length === 0) {
-        return '옵션 차이 신호 없음';
+        return overlapLevel === 'unknown' ? '옵션 차이 신호 없음' : overlapLabel;
     }
 
     if (reasons.length === 1) {
@@ -158,7 +295,14 @@ function buildSummaryLabel(reasons: string[]): string {
     return '옵션 혼재 가능';
 }
 
-function getRiskLevel(reasons: string[]): VariantAlignmentSummary['riskLevel'] {
+function getRiskLevel(
+    reasons: string[],
+    overlapLevel: VariantOverlapLevel
+): VariantAlignmentSummary['riskLevel'] {
+    if (overlapLevel === 'none') {
+        return 'high';
+    }
+
     if (reasons.some((reason) => reason.includes('사이즈') || reason.includes('성별')) || reasons.length > 1) {
         return 'high';
     }
@@ -167,7 +311,7 @@ function getRiskLevel(reasons: string[]): VariantAlignmentSummary['riskLevel'] {
         return 'medium';
     }
 
-    return 'low';
+    return overlapLevel === 'partial' ? 'medium' : 'low';
 }
 
 export function getProductOptionKey(product: UnifiedProduct): string {
@@ -175,12 +319,48 @@ export function getProductOptionKey(product: UnifiedProduct): string {
 }
 
 export function detectVariantOptionSignal(product: UnifiedProduct): VariantOptionSignal {
-    const text = toSearchableText(product);
+    const verifiedTexts = getVerifiedOptionTexts(product);
+    const titleTexts = getTitleTexts(product);
+    const titleSearchText = toSearchableText(titleTexts);
+    const hasVerifiedOptions = verifiedTexts.length > 0;
+
+    const verifiedColors = toDistinctList([
+        ...extractDetectedColors(product.colorOptions || []),
+        ...extractDetectedColors(verifiedTexts),
+    ]);
+    const verifiedSizes = toDistinctList([
+        ...toDistinctList((product.sizeOptions || []).map((value) => detectSize(toSearchableText([value])))),
+        ...extractDetectedSizes(verifiedTexts),
+    ]);
+    const verifiedGenders = extractDetectedGenders(verifiedTexts);
+
+    const titleColor = detectColor(titleSearchText);
+    const titleSize = detectSize(titleSearchText);
+    const titleGender = detectGender(titleSearchText);
+
+    const colors = toDistinctList([
+        ...verifiedColors,
+        titleColor,
+    ]);
+    const sizes = toDistinctList([
+        ...verifiedSizes,
+        titleSize,
+    ]);
+    const genders = toDistinctGenders([
+        ...verifiedGenders,
+        titleGender,
+    ]);
 
     return {
-        color: detectColor(text),
-        size: detectSize(text),
-        gender: detectGender(text),
+        color: colors[0],
+        size: sizes[0],
+        gender: genders[0],
+        colors,
+        sizes,
+        genders,
+        optionValues: toDistinctList(verifiedTexts),
+        hasVerifiedOptions,
+        detectionSource: hasVerifiedOptions ? (titleTexts.length > 0 ? 'mixed' : 'pdp') : 'title',
     };
 }
 
@@ -191,19 +371,43 @@ export function analyzeVariantAlignment(products: UnifiedProduct[]): VariantAlig
     }, {});
 
     const signals = Object.values(signalsByKey);
-    const distinctColors = toDistinctList(signals.map((signal) => signal.color));
-    const distinctSizes = toDistinctList(signals.map((signal) => signal.size));
-    const distinctGenders = toDistinctList(signals.map((signal) => signal.gender));
-    const mismatchReasons = buildMismatchReasons(distinctColors, distinctSizes, distinctGenders);
+    const distinctColors = toDistinctList(signals.flatMap((signal) => signal.colors));
+    const distinctSizes = toDistinctList(signals.flatMap((signal) => signal.sizes));
+    const distinctGenders = toDistinctGenders(signals.flatMap((signal) => signal.genders));
+    const verifiedOptionCount = signals.filter((signal) => signal.hasVerifiedOptions).length;
+    const sharedColors = intersectLists(
+        signals
+            .filter((signal) => signal.hasVerifiedOptions)
+            .map((signal) => signal.colors)
+    );
+    const sharedSizes = intersectLists(
+        signals
+            .filter((signal) => signal.hasVerifiedOptions)
+            .map((signal) => signal.sizes)
+    );
+    const overlapLevel = buildOverlapLevel(verifiedOptionCount, sharedColors, sharedSizes);
+    const overlapLabel = buildOverlapLabel(overlapLevel, sharedColors, sharedSizes, verifiedOptionCount);
+    const mismatchReasons = buildMismatchReasons(
+        distinctColors,
+        distinctSizes,
+        distinctGenders,
+        verifiedOptionCount,
+        overlapLevel
+    );
 
     return {
-        hasMismatchRisk: mismatchReasons.length > 0,
-        riskLevel: getRiskLevel(mismatchReasons),
-        summaryLabel: buildSummaryLabel(mismatchReasons),
+        hasMismatchRisk: mismatchReasons.length > 0 || overlapLevel === 'none',
+        riskLevel: getRiskLevel(mismatchReasons, overlapLevel),
+        summaryLabel: buildSummaryLabel(mismatchReasons, overlapLevel, overlapLabel),
         mismatchReasons,
         distinctColors,
         distinctSizes,
         distinctGenders,
+        sharedColors,
+        sharedSizes,
+        verifiedOptionCount,
+        overlapLevel,
+        overlapLabel,
         signalsByKey,
     };
 }

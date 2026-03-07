@@ -23,6 +23,11 @@ function product(overrides: Partial<UnifiedProduct>): UnifiedProduct {
         benefitText: overrides.benefitText,
         stockStatus: overrides.stockStatus,
         stockText: overrides.stockText,
+        optionSummary: overrides.optionSummary,
+        optionValues: overrides.optionValues,
+        sizeOptions: overrides.sizeOptions,
+        colorOptions: overrides.colorOptions,
+        detailCollectedAt: overrides.detailCollectedAt,
     };
 }
 
@@ -35,6 +40,9 @@ test('detects color and size signals from title and category text', () => {
 
     assert.equal(signal.color, '화이트');
     assert.equal(signal.size, '245');
+    assert.deepEqual(signal.colors, ['화이트']);
+    assert.deepEqual(signal.sizes, ['245']);
+    assert.equal(signal.hasVerifiedOptions, false);
 });
 
 test('color-only mismatch is treated as medium risk', () => {
@@ -113,4 +121,59 @@ test('matching titles without option differences stay low risk', () => {
     assert.equal(summary.hasMismatchRisk, false);
     assert.equal(summary.riskLevel, 'low');
     assert.equal(summary.summaryLabel, '옵션 차이 신호 없음');
+});
+
+test('verified PDP options surface shared size overlap', () => {
+    const summary = analyzeVariantAlignment([
+        product({
+            id: 'item-1',
+            title: '무신사 스탠다드 트랙 자켓 블랙',
+            source: 'MUSINSA',
+            colorOptions: ['블랙'],
+            sizeOptions: ['M', 'L'],
+            optionSummary: '색상 블랙 · 사이즈 M, L',
+        }),
+        product({
+            id: 'item-2',
+            title: '무신사 스탠다드 트랙 자켓 black',
+            source: '29CM',
+            colorOptions: ['블랙'],
+            sizeOptions: ['L', 'XL'],
+            optionSummary: '색상 블랙 · 사이즈 L, XL',
+        }),
+    ]);
+
+    assert.equal(summary.hasMismatchRisk, true);
+    assert.equal(summary.riskLevel, 'high');
+    assert.equal(summary.overlapLevel, 'high');
+    assert.deepEqual(summary.sharedColors, ['블랙']);
+    assert.deepEqual(summary.sharedSizes, ['L']);
+    assert.equal(summary.overlapLabel, '공통 옵션 색상 블랙 · 사이즈 L');
+});
+
+test('verified PDP options with no overlap are flagged as no common option', () => {
+    const summary = analyzeVariantAlignment([
+        product({
+            id: 'item-1',
+            title: '아디다스 삼바 OG 블랙',
+            source: 'MUSINSA',
+            colorOptions: ['블랙'],
+            sizeOptions: ['240'],
+            optionSummary: '색상 블랙 · 사이즈 240',
+        }),
+        product({
+            id: 'item-2',
+            title: '아디다스 삼바 OG 화이트',
+            source: 'W_CONCEPT',
+            colorOptions: ['화이트'],
+            sizeOptions: ['260'],
+            optionSummary: '색상 화이트 · 사이즈 260',
+        }),
+    ]);
+
+    assert.equal(summary.hasMismatchRisk, true);
+    assert.equal(summary.riskLevel, 'high');
+    assert.equal(summary.overlapLevel, 'none');
+    assert.equal(summary.summaryLabel, '공통 옵션 미확인');
+    assert.ok(summary.mismatchReasons.includes('공통 옵션 미확인'));
 });

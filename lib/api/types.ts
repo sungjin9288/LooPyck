@@ -31,6 +31,16 @@ export function isProductSource(value: string): value is ProductSource {
     return ALLOWED_PRODUCT_SOURCES.includes(value as ProductSource);
 }
 
+export interface ProductVariantCandidate {
+    label: string;
+    variantId?: string;
+    variantSku?: string;
+    color?: string;
+    size?: string;
+    price?: number;
+    stockStatus?: ProductStockStatus;
+}
+
 export interface UnifiedProduct {
     id: string;
     title: string;
@@ -50,10 +60,13 @@ export interface UnifiedProduct {
     benefitText?: string;
     stockStatus?: ProductStockStatus;
     stockText?: string;
+    variantId?: string;
+    variantSku?: string;
     optionSummary?: string;
     optionValues?: string[];
     sizeOptions?: string[];
     colorOptions?: string[];
+    variantCandidates?: ProductVariantCandidate[];
     detailCollectedAt?: string;
 }
 

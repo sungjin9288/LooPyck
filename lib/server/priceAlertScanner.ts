@@ -1,21 +1,35 @@
 import { DocumentData, FieldValue, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { aggregateRealtimeSearch } from '@/lib/api/realtimeAggregator';
+import { buildCanonicalProductDetailHref } from '@/lib/api/productSnapshot';
 import {
     detectMarketplaceSource,
     getSourceDisplayName,
     stripSourceIdPrefix,
 } from '@/lib/api/sourceCatalog';
+import { isProductSource, type ProductSource, type UnifiedProduct } from '@/lib/api/types';
 import { normalizeTitle } from '@/lib/core/dataNormalizer';
+import { comparePurchaseOffers, inferStockStatus } from '@/lib/product/purchasePricing';
+import { applyVariantSelectionToProducts, findSelectedVariantOption, listVariantSelectionOptions } from '@/lib/product/variantSelection';
+import { deriveAlertPriority, isFavoriteAlertSnoozed } from '@/lib/favorites/alertState';
 import { getAdminDb, getAdminMessaging } from '@/lib/server/firebaseAdmin';
-import { markAlertDelivery } from '@/lib/server/priceHistoryStore';
+import { markAlertDelivery, readComparableGroup, readTrackedProduct } from '@/lib/server/priceHistoryStore';
 
 type FavoriteDoc = {
+    favoriteId?: string;
     title?: string;
     lprice?: string;
     productId?: string;
     mallName?: string;
+    source?: string;
+    variantKey?: string;
+    variantLabel?: string;
+    variantId?: string;
+    variantSku?: string;
+    optionKey?: string;
     targetPrice?: number;
+    alertSnoozedUntil?: number;
     link?: string;
+    deepLink?: string;
     lastAlertedPrice?: number;
 };
 
@@ -27,6 +41,12 @@ function parseCurrentPrice(raw: unknown): number {
 }
 
 type CheapestResult = { price: number; mallName: string; link: string } | null;
+type ResolvedFavoriteContext = {
+    currentPrice: number;
+    currentAvailable: boolean;
+    deepLink: string;
+    cheapest: CheapestResult;
+};
 
 function findCheapestCrossMall(
     results: Awaited<ReturnType<typeof aggregateRealtimeSearch>>
@@ -47,8 +67,84 @@ function normalizeSourceFromMall(mallName: string, link?: string): string {
     return detectMarketplaceSource(mallName, link || '');
 }
 
+function resolveFavoriteSource(favorite: FavoriteDoc): ProductSource | null {
+    if (favorite.source && isProductSource(favorite.source)) {
+        return favorite.source;
+    }
+
+    const detected = normalizeSourceFromMall(favorite.mallName || '', favorite.link);
+    return isProductSource(detected) ? detected : null;
+}
+
 function normalizeId(value: string): string {
     return stripSourceIdPrefix(value);
+}
+
+function findCheapestProduct(products: UnifiedProduct[]): CheapestResult {
+    if (products.length === 0) {
+        return null;
+    }
+
+    const offers = comparePurchaseOffers(products);
+    const availableProducts = offers.filter((offer) => offer.isAvailable).map((offer) => offer.product);
+    const pool = availableProducts.length > 0 ? availableProducts : products;
+    const cheapest = [...pool]
+        .filter((product) => product.price > 0)
+        .sort((left, right) => left.price - right.price)[0];
+
+    if (!cheapest) {
+        return null;
+    }
+
+    return {
+        price: cheapest.price,
+        mallName: getSourceDisplayName(cheapest.source, cheapest.mallName),
+        link: cheapest.link || '',
+    };
+}
+
+async function resolveFavoriteCompareContext(favorite: FavoriteDoc): Promise<ResolvedFavoriteContext | null> {
+    const source = resolveFavoriteSource(favorite);
+    const productId = favorite.productId ? normalizeId(favorite.productId) : '';
+    if (!source || !productId) {
+        return null;
+    }
+
+    const seedProduct = await readTrackedProduct(source, productId);
+    if (!seedProduct) {
+        return null;
+    }
+
+    const compareGroup = await readComparableGroup(seedProduct);
+    const baseProducts = compareGroup?.variants || [seedProduct];
+    const variantOptions = listVariantSelectionOptions(baseProducts, seedProduct);
+    const selectedVariant = favorite.variantKey
+        ? findSelectedVariantOption(variantOptions, favorite.variantKey)
+        : variantOptions.find((option) => favorite.variantLabel && option.label === favorite.variantLabel);
+
+    if ((favorite.variantKey || favorite.variantLabel) && variantOptions.length > 0 && !selectedVariant) {
+        return {
+            currentPrice: seedProduct.price,
+            currentAvailable: false,
+            deepLink: favorite.deepLink || buildCanonicalProductDetailHref(seedProduct, { variantKey: favorite.variantKey }),
+            cheapest: null,
+        };
+    }
+
+    const scopedProducts = applyVariantSelectionToProducts(baseProducts, selectedVariant);
+    const currentProduct = scopedProducts.find((product) =>
+        product.source === source && normalizeId(product.id) === productId
+    ) || scopedProducts.find((product) => product.source === source) || scopedProducts[0] || seedProduct;
+    const currentAvailable = comparePurchaseOffers([currentProduct])[0]?.isAvailable ?? inferStockStatus(currentProduct) !== 'sold_out';
+    const deepLink = favorite.deepLink
+        || buildCanonicalProductDetailHref(seedProduct, { variantKey: favorite.variantKey || selectedVariant?.key });
+
+    return {
+        currentPrice: currentProduct.price,
+        currentAvailable,
+        deepLink,
+        cheapest: findCheapestProduct(scopedProducts),
+    };
 }
 
 function pickCurrentPrice(
@@ -157,6 +253,10 @@ export async function scanAndDispatchPriceAlerts(): Promise<{
                 continue;
             }
 
+            if (isFavoriteAlertSnoozed(favorite)) {
+                continue;
+            }
+
             checked += 1;
             const query = sanitizeQuery(favorite.title || '');
             if (!query) {
@@ -174,8 +274,26 @@ export async function scanAndDispatchPriceAlerts(): Promise<{
                 queryCache.set(query, results);
             }
 
-            const currentPrice = pickCurrentPrice(results, favorite);
-            const shouldTrigger = currentPrice <= targetPrice && currentPrice !== favorite.lastAlertedPrice;
+            let currentPrice = pickCurrentPrice(results, favorite);
+            let currentAvailable = true;
+            let cheapest = findCheapestCrossMall(results ?? []);
+            let deepLink = favorite.deepLink || favorite.link || '/';
+
+            try {
+                const compareContext = await resolveFavoriteCompareContext(favorite);
+                if (compareContext) {
+                    currentPrice = compareContext.currentPrice;
+                    currentAvailable = compareContext.currentAvailable;
+                    cheapest = compareContext.cheapest;
+                    deepLink = compareContext.deepLink || deepLink;
+                }
+            } catch (error) {
+                console.warn('[PriceAlertScanner] compare context resolution failed:', error);
+            }
+
+            const shouldTrigger = currentAvailable
+                && currentPrice <= targetPrice
+                && currentPrice !== favorite.lastAlertedPrice;
 
             if (!shouldTrigger) {
                 await markAlertDelivery(doc.ref.path, currentPrice);
@@ -190,25 +308,32 @@ export async function scanAndDispatchPriceAlerts(): Promise<{
                 continue;
             }
 
-            // 크로스몰 최저가 탐색
-            const cheapest = findCheapestCrossMall(results ?? []);
             const cheapestIsOtherMall = cheapest && cheapest.price < currentPrice;
-
-            const deepLink = (cheapestIsOtherMall ? cheapest.link : favorite.link) || '/';
             const alertTitle = '목표가 도달 🎉';
             const priceText = currentPrice.toLocaleString();
             const crossMallNote = cheapestIsOtherMall
                 ? ` 💡 ${cheapest.mallName}에서 ${cheapest.price.toLocaleString()}원으로 더 저렴!`
                 : '';
-            const alertMessage = `${favorite.title || '관심 상품'}이(가) ${priceText}원으로 내려왔습니다.${crossMallNote}`;
+            const variantSuffix = favorite.variantLabel ? ` (${favorite.variantLabel})` : '';
+            const alertMessage = `${favorite.title || '관심 상품'}${variantSuffix}이(가) ${priceText}원으로 내려왔습니다.${crossMallNote}`;
+            const priority = deriveAlertPriority({
+                currentPrice,
+                targetPrice,
+                cheapestPrice: cheapest?.price,
+            });
 
             const alertRef = db.collection(`artifacts/${appId}/users/${userId}/alerts`).doc();
             await alertRef.set({
                 type: 'alert',
                 title: alertTitle,
                 message: alertMessage,
+                priority,
+                favoriteId: favorite.favoriteId || null,
                 productId: favorite.productId || '',
                 mallName: favorite.mallName || '',
+                source: favorite.source || resolveFavoriteSource(favorite),
+                variantKey: favorite.variantKey || null,
+                variantLabel: favorite.variantLabel || null,
                 link: favorite.link || '',
                 deepLink,
                 currentPrice,

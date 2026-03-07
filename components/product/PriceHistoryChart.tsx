@@ -7,12 +7,18 @@ interface PricePoint {
     date: string;
     price: number;
     capturedAt: number;
+    stockStatus?: 'in_stock' | 'low_stock' | 'sold_out' | 'unknown';
+    stockText?: string;
 }
 
 interface PriceHistoryChartProps {
     source: string;
     productId: string;
     currentPrice: number;
+    variantKey?: string;
+    variantLabel?: string;
+    optionKey?: string;
+    optionLabel?: string;
 }
 
 function formatLabel(capturedAt: number): string {
@@ -42,10 +48,52 @@ function getInsight(
     return { text: '최근 수집 구간에서는 큰 변동이 없습니다', color: 'text-slate-500' };
 }
 
-export default function PriceHistoryChart({ source, productId, currentPrice }: PriceHistoryChartProps) {
+function resolveScopeHeading(scope: 'product' | 'option' | 'variant'): string {
+    if (scope === 'variant') return '실제 SKU 기준 가격 흐름';
+    if (scope === 'option') return '옵션 기준 가격 흐름';
+    return '최근 수집된 가격 흐름';
+}
+
+function resolveScopeCaption(
+    scope: 'product' | 'option' | 'variant',
+    variantLabel?: string,
+    optionLabel?: string
+): string | null {
+    if (scope === 'variant') {
+        return variantLabel || optionLabel || null;
+    }
+
+    if (scope === 'option') {
+        if (variantLabel && optionLabel) {
+            return `실제 SKU 이력 미수집으로 옵션 기준 표시 · ${optionLabel}`;
+        }
+        return optionLabel || variantLabel || null;
+    }
+
+    if (variantLabel) {
+        return `실제 SKU 이력 미수집으로 상품 기준 표시 · ${variantLabel}`;
+    }
+
+    if (optionLabel) {
+        return `옵션 이력 미수집으로 상품 기준 표시 · ${optionLabel}`;
+    }
+
+    return null;
+}
+
+export default function PriceHistoryChart({
+    source,
+    productId,
+    currentPrice,
+    variantKey,
+    variantLabel,
+    optionKey,
+    optionLabel,
+}: PriceHistoryChartProps) {
     const [data, setData] = useState<PricePoint[]>([]);
     const [loading, setLoading] = useState(true);
     const [enabled, setEnabled] = useState(true);
+    const [scope, setScope] = useState<'product' | 'option' | 'variant'>('product');
 
     useEffect(() => {
         if (!source || !productId) return;
@@ -55,20 +103,36 @@ export default function PriceHistoryChart({ source, productId, currentPrice }: P
         async function loadHistory() {
             setLoading(true);
             try {
-                const res = await fetch(
-                    `/api/price-history?source=${encodeURIComponent(source)}&id=${encodeURIComponent(productId)}&limit=24`,
-                    { signal: controller.signal }
-                );
+                const params = new URLSearchParams({
+                    source,
+                    id: productId,
+                    limit: '24',
+                });
+                if (variantKey) {
+                    params.set('variantKey', variantKey);
+                }
+                if (optionKey) {
+                    params.set('optionKey', optionKey);
+                }
+
+                const res = await fetch(`/api/price-history?${params.toString()}`, { signal: controller.signal });
                 if (!res.ok) {
                     throw new Error(`history request failed: ${res.status}`);
                 }
 
                 const payload = await res.json() as {
                     enabled?: boolean;
-                    points?: Array<{ price: number; capturedAt: number }>;
+                    points?: Array<{
+                        price: number;
+                        capturedAt: number;
+                        stockStatus?: 'in_stock' | 'low_stock' | 'sold_out' | 'unknown';
+                        stockText?: string;
+                    }>;
+                    scope?: 'product' | 'option' | 'variant';
                 };
 
                 setEnabled(payload.enabled !== false);
+                setScope(payload.scope === 'variant' ? 'variant' : payload.scope === 'option' ? 'option' : 'product');
                 const points = Array.isArray(payload.points) ? payload.points : [];
                 const normalized = points
                     .filter((point) => Number.isFinite(point.price) && Number.isFinite(point.capturedAt))
@@ -76,6 +140,8 @@ export default function PriceHistoryChart({ source, productId, currentPrice }: P
                         price: Math.round(point.price),
                         capturedAt: point.capturedAt,
                         date: formatLabel(point.capturedAt),
+                        stockStatus: point.stockStatus,
+                        stockText: point.stockText,
                     }))
                     .sort((a, b) => a.capturedAt - b.capturedAt)
                     .slice(-7);
@@ -106,16 +172,28 @@ export default function PriceHistoryChart({ source, productId, currentPrice }: P
 
         void loadHistory();
         return () => controller.abort();
-    }, [source, productId, currentPrice]);
+    }, [source, productId, currentPrice, variantKey, optionKey]);
+
+    const scopeCaption = useMemo(
+        () => resolveScopeCaption(scope, variantLabel, optionLabel),
+        [scope, variantLabel, optionLabel]
+    );
 
     const insight = useMemo(() => getInsight(data, enabled), [data, enabled]);
 
     return (
         <div className="w-full bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    최근 수집된 가격 흐름
-                </h3>
+                <div>
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        {resolveScopeHeading(scope)}
+                    </h3>
+                    {scopeCaption && (
+                        <p className="mt-1 text-[11px] text-slate-400">
+                            {scopeCaption}
+                        </p>
+                    )}
+                </div>
                 <span className={`text-[11px] font-medium ${insight.color}`}>
                     {insight.text}
                 </span>
@@ -151,7 +229,16 @@ export default function PriceHistoryChart({ source, productId, currentPrice }: P
                                     fontSize: '12px'
                                 }}
                                 itemStyle={{ color: '#fff' }}
-                                formatter={(value: number) => [`${value.toLocaleString()}원`, '가격']}
+                                formatter={(value: number, _name, item) => {
+                                    const payload = item.payload as PricePoint | undefined;
+                                    const lines = [`${value.toLocaleString()}원`];
+                                    if (payload?.stockStatus === 'sold_out') {
+                                        lines.push('품절');
+                                    } else if (payload?.stockStatus === 'low_stock') {
+                                        lines.push('재고 적음');
+                                    }
+                                    return [lines.join(' · '), '가격'];
+                                }}
                             />
                             <Area
                                 type="monotone"

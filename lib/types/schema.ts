@@ -6,6 +6,16 @@
 import { z } from 'zod';
 import { ALLOWED_PRODUCT_SOURCES, ALLOWED_PRODUCT_STOCK_STATUSES } from '@/lib/api/types';
 
+const ProductVariantCandidateSchema = z.object({
+    label: z.string(),
+    variantId: z.string().optional(),
+    variantSku: z.string().optional(),
+    color: z.string().optional(),
+    size: z.string().optional(),
+    price: z.number().nonnegative().optional(),
+    stockStatus: z.enum(ALLOWED_PRODUCT_STOCK_STATUSES).optional(),
+});
+
 // Product Schema Validation
 export const UnifiedProductSchema = z.object({
     id: z.string(),
@@ -25,10 +35,13 @@ export const UnifiedProductSchema = z.object({
     benefitText: z.string().optional(),
     stockStatus: z.enum(ALLOWED_PRODUCT_STOCK_STATUSES).optional(),
     stockText: z.string().optional(),
+    variantId: z.string().optional(),
+    variantSku: z.string().optional(),
     optionSummary: z.string().optional(),
     optionValues: z.array(z.string()).optional(),
     sizeOptions: z.array(z.string()).optional(),
     colorOptions: z.array(z.string()).optional(),
+    variantCandidates: z.array(ProductVariantCandidateSchema).optional(),
     detailCollectedAt: z.string().optional(),
 });
 

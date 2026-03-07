@@ -3,9 +3,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppNotificationType, subscribeAppNotifications } from '@/lib/core/notifications';
-import { collection, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { useUser } from '@/contexts/UserContext';
 import { db } from '@/lib/firebase';
+import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
+import { buildAlertDetailHref } from '@/lib/favorites/alertLinks';
 
 export interface Notification {
     id: string;
@@ -13,11 +15,13 @@ export interface Notification {
     message: string;
     type: AppNotificationType;
     timestamp: number;
+    link?: string;
 }
 
 export default function NotificationSystem() {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const seenAlertIds = useRef(new Set<string>());
+    const alertsHydrated = useRef(false);
     const { userId, appId, isAuthenticated } = useUser();
 
     useEffect(() => {
@@ -29,10 +33,21 @@ export default function NotificationSystem() {
     useEffect(() => {
         if (!db || !isAuthenticated || !userId) return;
 
+        seenAlertIds.current.clear();
+        alertsHydrated.current = false;
+
         const alertsRef = collection(db, `artifacts/${appId}/users/${userId}/alerts`);
         const alertsQuery = query(alertsRef, orderBy('createdAt', 'desc'), limit(20));
 
         return onSnapshot(alertsQuery, (snapshot) => {
+            if (!alertsHydrated.current) {
+                snapshot.docs.forEach((doc) => {
+                    seenAlertIds.current.add(doc.id);
+                });
+                alertsHydrated.current = true;
+                return;
+            }
+
             snapshot.docChanges().forEach((change) => {
                 if (change.type !== 'added') return;
 
@@ -45,20 +60,17 @@ export default function NotificationSystem() {
                     title?: string;
                     message?: string;
                     read?: boolean;
+                    archivedAt?: unknown;
+                    deepLink?: string;
+                    link?: string;
                 };
-                if (data.read) return;
+                if (data.read || data.archivedAt) return;
 
                 addNotification({
                     title: data.title || '가격 알림',
                     message: data.message || '가격이 목표가에 도달했습니다.',
                     type: data.type || 'alert',
-                });
-
-                updateDoc(change.doc.ref, {
-                    read: true,
-                    readAt: serverTimestamp(),
-                }).catch((error) => {
-                    console.error('[NotificationSystem] failed to mark alert read:', error);
+                    link: buildAlertDetailHref(id),
                 });
             });
         });
@@ -82,6 +94,22 @@ export default function NotificationSystem() {
         setNotifications(prev => prev.filter(n => n.id !== id));
     };
 
+    const handleNotificationLink = (link?: string) => {
+        if (!link) {
+            return;
+        }
+
+        if (link.startsWith('/')) {
+            window.location.assign(link);
+            return;
+        }
+
+        const safeLink = sanitizeExternalUrl(link);
+        if (safeLink) {
+            window.open(safeLink, '_blank', 'noopener,noreferrer');
+        }
+    };
+
     return (
         <div className="fixed top-20 right-4 z-[9999] flex flex-col gap-3 pointer-events-none">
             <AnimatePresence>
@@ -100,6 +128,15 @@ export default function NotificationSystem() {
                         <div className="flex-1">
                             <h4 className="text-sm font-bold text-black">{n.title}</h4>
                             <p className="text-xs text-gray-500 mt-1 leading-relaxed">{n.message}</p>
+                            {n.link && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleNotificationLink(n.link)}
+                                    className="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-800"
+                                >
+                                    비교 페이지 보기 →
+                                </button>
+                            )}
                         </div>
                         <button
                             onClick={() => removeNotification(n.id)}

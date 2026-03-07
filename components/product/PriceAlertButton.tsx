@@ -2,12 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Product } from '@/types/product';
+import { useAlertInbox } from '@/hooks/useAlertInbox';
+import { useAlertPersona } from '@/hooks/useAlertPersona';
 import { useCloudStorage } from '@/hooks/useCloudStorage';
 import { parsePrice } from '@/lib/api';
 import { triggerHaptic } from '@/lib/native/bridge';
 import { pushAppNotification } from '@/lib/core/notifications';
 import { registerPushToken } from '@/lib/native/pushRegistration';
 import { useUser } from '@/contexts/UserContext';
+import { buildFavoriteDocId } from '@/lib/favorites/favoriteProduct';
+import { applyAlertTuningOverrideToProfile, buildPersonalizedTargetSuggestion } from '@/lib/favorites/alertPersonalization';
 
 interface PriceAlertButtonProps {
     product: Product;
@@ -21,11 +25,23 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
 
     // Use cloud storage hook
     const { favorites, addFavorite, loading } = useCloudStorage();
+    const { alerts: recentAlerts } = useAlertInbox(30, { includeArchived: true });
     const { userId, appId } = useUser();
+    const favoriteId = buildFavoriteDocId(product);
 
     const currentPrice = parsePrice(product.lprice);
-    const favoriteItem = favorites.find(f => f.productId === product.productId);
+    const favoriteItem = favorites.find((f) => buildFavoriteDocId(f) === favoriteId);
     const existingTargetPrice = favoriteItem?.targetPrice;
+    const { alertProfile, status: alertProfileStatus, tuningConfig } = useAlertPersona({
+        alerts: recentAlerts,
+        favorites,
+    });
+    const effectiveAlertProfile = applyAlertTuningOverrideToProfile(alertProfile, tuningConfig, product.source, userId);
+    const targetSuggestion = buildPersonalizedTargetSuggestion({
+        currentPrice,
+        targetPrice: existingTargetPrice,
+        profile: effectiveAlertProfile,
+    });
 
     // Focus trap + Escape to close
     useEffect(() => {
@@ -64,7 +80,7 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
             return;
         }
 
-        const updatedProduct = { ...product, targetPrice: target };
+        const updatedProduct = { ...product, favoriteId, targetPrice: target };
         await addFavorite(updatedProduct);
 
         triggerHaptic('success');
@@ -73,6 +89,14 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
             message: `${target.toLocaleString()}원 이하 도달 시 확인할 수 있도록 저장되었습니다.`,
             type: 'success',
         });
+
+        if (!existingTargetPrice && targetSuggestion.suggestedPrice === target) {
+            pushAppNotification({
+                title: '개인화 추천가 적용',
+                message: `${effectiveAlertProfile.summary} 기준 추천 목표가로 저장했습니다.`,
+                type: 'info',
+            });
+        }
 
         if (userId) {
             const pushStatus = await registerPushToken(appId, userId);
@@ -119,7 +143,13 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                     e.preventDefault();
                     e.stopPropagation();
                     triggerHaptic('light');
-                    setTargetPrice(existingTargetPrice ? String(existingTargetPrice) : '');
+                    setTargetPrice(
+                        existingTargetPrice
+                            ? String(existingTargetPrice)
+                            : targetSuggestion.suggestedPrice
+                                ? String(targetSuggestion.suggestedPrice)
+                                : ''
+                    );
                     setShowModal(true);
                 }}
                 className={`absolute top-16 right-3 w-10 h-10 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all flex items-center justify-center z-10 hover:scale-110 active:scale-95 ${hasAlert
@@ -185,6 +215,29 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border border-gray-100 dark:border-gray-600">
                                     현재 가격: <span className="font-bold text-accent">{currentPrice.toLocaleString()}원</span>
                                 </p>
+                                {product.variantLabel && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                                        선택 variant: {product.variantLabel}
+                                    </p>
+                                )}
+                                <div className="mb-4 rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div>
+                                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Alert Persona</p>
+                                            <p className="mt-1 text-sm font-bold text-gray-900 dark:text-white">{effectiveAlertProfile.summary}</p>
+                                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{effectiveAlertProfile.detail}</p>
+                                        </div>
+                                        <span className={`rounded-full px-3 py-1.5 text-[11px] font-bold ${
+                                            alertProfileStatus === 'synced'
+                                                ? 'bg-emerald-100 text-emerald-700'
+                                                : alertProfileStatus === 'syncing'
+                                                    ? 'bg-amber-100 text-amber-700'
+                                                    : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                                        }`}>
+                                            {alertProfileStatus === 'synced' ? 'Cloud Synced' : alertProfileStatus === 'syncing' ? 'Syncing' : 'Local Persona'}
+                                        </span>
+                                    </div>
+                                </div>
                                 <form onSubmit={handleSubmit} className="space-y-4">
                                     <div>
                                         <label htmlFor="target-price-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -203,6 +256,26 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                                             이 가격 이하로 떨어지면 알림을 받습니다
                                         </p>
                                     </div>
+                                    {targetSuggestion.suggestedPrice && (
+                                        <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700">
+                                            <div className="flex flex-wrap items-start justify-between gap-2">
+                                                <div>
+                                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Recommended Target</p>
+                                                    <p className="mt-1 text-sm font-bold text-gray-900 dark:text-white">
+                                                        {targetSuggestion.label} · {targetSuggestion.suggestedPrice.toLocaleString()}원
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{targetSuggestion.reason}</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTargetPrice(String(targetSuggestion.suggestedPrice))}
+                                                    className="rounded-full border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 dark:border-gray-500 dark:bg-gray-800 dark:text-gray-200"
+                                                >
+                                                    추천가 적용
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="flex gap-3">
                                         <button
                                             type="submit"

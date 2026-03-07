@@ -1,4 +1,4 @@
-import { isProductSource, type ProductSource, type UnifiedProduct } from '@/lib/api/types';
+import { isProductSource, type ProductSource, type ProductVariantCandidate, type UnifiedProduct } from '@/lib/api/types';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 
 const MAX_SNAPSHOT_CHARS = 12_000;
@@ -31,6 +31,38 @@ function normalizeOptionalStringArray(value: unknown, maxItems: number, maxLengt
     return normalized.length > 0 ? normalized : undefined;
 }
 
+function normalizeOptionalVariantCandidates(value: unknown, maxItems: number = 24): ProductVariantCandidate[] | undefined {
+    if (!Array.isArray(value)) return undefined;
+
+    const normalized = value.flatMap((entry) => {
+        if (!entry || typeof entry !== 'object') {
+            return [];
+        }
+
+        const candidate = entry as Record<string, unknown>;
+        const label = normalizeOptionalText(candidate.label, 120);
+        if (!label) {
+            return [];
+        }
+
+        const normalizedCandidate: ProductVariantCandidate = {
+            label,
+            variantId: normalizeOptionalText(candidate.variantId, 120),
+            variantSku: normalizeOptionalText(candidate.variantSku, 120),
+            color: normalizeOptionalText(candidate.color, 60),
+            size: normalizeOptionalText(candidate.size, 40),
+            price: normalizeOptionalMoney(candidate.price),
+            stockStatus: candidate.stockStatus === 'in_stock' || candidate.stockStatus === 'low_stock' || candidate.stockStatus === 'sold_out' || candidate.stockStatus === 'unknown'
+                ? candidate.stockStatus
+                : undefined,
+        };
+
+        return [normalizedCandidate];
+    }).slice(0, maxItems);
+
+    return normalized.length > 0 ? normalized : undefined;
+}
+
 function toBase64(input: string): string {
     if (typeof window !== 'undefined') {
         return btoa(unescape(encodeURIComponent(input)));
@@ -48,7 +80,10 @@ function fromBase64(input: string): string {
 }
 
 export function encodeProductSnapshot(product: UnifiedProduct): string {
-    return toBase64(JSON.stringify(product));
+    return toBase64(JSON.stringify({
+        ...product,
+        variantCandidates: product.variantCandidates?.slice(0, 8),
+    }));
 }
 
 export function decodeProductSnapshot(snapshot: string): UnifiedProduct | null {
@@ -95,10 +130,13 @@ export function decodeProductSnapshot(snapshot: string): UnifiedProduct | null {
                 ? parsed.stockStatus
                 : undefined,
             stockText: normalizeOptionalText(parsed.stockText, 120),
+            variantId: normalizeOptionalText(parsed.variantId, 120),
+            variantSku: normalizeOptionalText(parsed.variantSku, 120),
             optionSummary: normalizeOptionalText(parsed.optionSummary, 200),
             optionValues: normalizeOptionalStringArray(parsed.optionValues, 12, 60),
             sizeOptions: normalizeOptionalStringArray(parsed.sizeOptions, 12, 40),
             colorOptions: normalizeOptionalStringArray(parsed.colorOptions, 12, 40),
+            variantCandidates: normalizeOptionalVariantCandidates(parsed.variantCandidates, 8),
             detailCollectedAt: normalizeOptionalText(parsed.detailCollectedAt, 64),
         };
     } catch {
@@ -110,16 +148,28 @@ export function normalizeProductSource(value: unknown): ProductSource | null {
     return typeof value === 'string' && isProductSource(value) ? value : null;
 }
 
-export function buildCanonicalProductDetailHref(product: Pick<UnifiedProduct, 'id' | 'source'>): string {
+export function buildCanonicalProductDetailHref(
+    product: Pick<UnifiedProduct, 'id' | 'source'>,
+    options?: { variantKey?: string }
+): string {
     const params = new URLSearchParams({ source: product.source });
+    if (options?.variantKey) {
+        params.set('variantKey', options.variantKey);
+    }
     return `/product/${encodeURIComponent(product.id)}?${params.toString()}`;
 }
 
-export function buildProductDetailHref(product: UnifiedProduct): string {
+export function buildProductDetailHref(
+    product: UnifiedProduct,
+    options?: { variantKey?: string }
+): string {
     const snapshot = encodeProductSnapshot(product);
     const params = new URLSearchParams({
         source: product.source,
         snapshot,
     });
+    if (options?.variantKey) {
+        params.set('variantKey', options.variantKey);
+    }
     return `/product/${encodeURIComponent(product.id)}?${params.toString()}`;
 }

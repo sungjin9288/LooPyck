@@ -37,6 +37,7 @@ export default function ComparisonHighlights({ groups, onProductClick }: Compari
                     const spread = metrics.highestCheckoutPrice - metrics.lowestCheckoutPrice;
                     const confidence = Math.round(group.matchConfidence * 100);
                     const verifiedCount = group.variants.filter((variant) => hasPdpDetailData(variant)).length;
+                    const variantCandidateCount = product.variantCandidates?.length || 0;
 
                     return (
                         <motion.button
@@ -81,6 +82,11 @@ export default function ComparisonHighlights({ groups, onProductClick }: Compari
                                 {product.optionSummary && (
                                     <p className="mb-3 text-xs text-slate-500 line-clamp-2">
                                         {product.optionSummary}
+                                    </p>
+                                )}
+                                {variantCandidateCount > 0 && (
+                                    <p className="mb-3 text-xs text-slate-500 line-clamp-2">
+                                        선택 가능 variant {variantCandidateCount}개
                                     </p>
                                 )}
                                 <div className="flex items-end justify-between gap-3">

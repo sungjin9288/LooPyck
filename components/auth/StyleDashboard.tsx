@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { InteractionNarrative } from '@/lib/ux/interactionNarrative';
 import { useCloudStorage } from '@/hooks/useCloudStorage';
 import { Product } from '@/types/product';
+import { dedupeFavoritesForInsights } from '@/lib/favorites/favoriteProduct';
 
 const DNA_CONFIG: { label: string; color: string; keywords: string[] }[] = [
     { label: 'Minimal',  color: 'bg-stone-800',  keywords: ['uniqlo', '유니클로', 'cos ', 'muji', '무신사 스탠다드', '무지', 'lemaire'] },
@@ -42,11 +43,12 @@ const FALLBACK_DNA = [
 
 export default function StyleDashboard() {
     const { favorites, loading } = useCloudStorage();
+    const uniqueFavorites = useMemo(() => dedupeFavoritesForInsights(favorites), [favorites]);
 
     const styleDNA = useMemo(() => {
-        if (favorites.length === 0) return FALLBACK_DNA;
-        return scoreFavorites(favorites);
-    }, [favorites]);
+        if (uniqueFavorites.length === 0) return FALLBACK_DNA;
+        return scoreFavorites(uniqueFavorites);
+    }, [uniqueFavorites]);
 
     const topTwo = styleDNA.slice(0, 2).map(d => d.label);
     const headline = topTwo.length >= 2

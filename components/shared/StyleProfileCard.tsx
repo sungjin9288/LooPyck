@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Product } from '@/types/product';
+import { dedupeFavoritesForInsights } from '@/lib/favorites/favoriteProduct';
 
 interface StyleProfileCardProps {
     favorites: Product[];
@@ -72,11 +73,12 @@ function getTopBrands(favorites: Product[]): string[] {
 }
 
 export function StyleProfileCard({ favorites }: StyleProfileCardProps) {
-    if (favorites.length < 3) return null;
+    const uniqueFavorites = dedupeFavoritesForInsights(favorites);
+    if (uniqueFavorites.length < 3) return null;
 
-    const persona = detectPersona(favorites);
-    const priceProfile = getPriceProfile(favorites);
-    const topBrands = getTopBrands(favorites);
+    const persona = detectPersona(uniqueFavorites);
+    const priceProfile = getPriceProfile(uniqueFavorites);
+    const topBrands = getTopBrands(uniqueFavorites);
 
     return (
         <motion.div
@@ -100,7 +102,7 @@ export function StyleProfileCard({ favorites }: StyleProfileCardProps) {
             <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-slate-700 px-1 py-3">
                 {/* Total Favorites */}
                 <div className="text-center px-3">
-                    <p className="text-2xl font-black text-slate-900 dark:text-white">{favorites.length}</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-white">{uniqueFavorites.length}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5 uppercase font-semibold">찜 상품</p>
                 </div>
 

@@ -10,6 +10,8 @@ export const dynamic = 'force-dynamic';
 const HistoryQuerySchema = z.object({
     source: z.enum(ALLOWED_PRODUCT_SOURCES),
     id: z.string().trim().min(1).max(160),
+    variantKey: z.string().trim().min(1).max(120).optional(),
+    optionKey: z.string().trim().min(1).max(120).optional(),
     limit: z.coerce.number().int().min(1).max(120).optional().default(24),
 });
 
@@ -31,6 +33,8 @@ export async function GET(request: NextRequest) {
     const parsed = HistoryQuerySchema.safeParse({
         source: request.nextUrl.searchParams.get('source'),
         id: request.nextUrl.searchParams.get('id'),
+        variantKey: request.nextUrl.searchParams.get('variantKey') || undefined,
+        optionKey: request.nextUrl.searchParams.get('optionKey') || undefined,
         limit: request.nextUrl.searchParams.get('limit') || '24',
     });
 
@@ -41,13 +45,14 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    const { source, id, limit } = parsed.data;
+    const { source, id, limit, optionKey, variantKey } = parsed.data;
     try {
-        const result = await readPriceHistory(source, id, limit);
+        const result = await readPriceHistory(source, id, limit, { optionKey, variantKey });
         return NextResponse.json(
             {
                 points: result.points,
                 enabled: result.enabled,
+                scope: result.scope,
             },
             {
                 headers: {

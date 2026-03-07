@@ -5,6 +5,7 @@ import { useUser } from '@/contexts/UserContext';
 import { db } from '@/lib/firebase';
 import { collection, doc, onSnapshot, query, getDocs, writeBatch, runTransaction } from 'firebase/firestore';
 import { Product } from '@/types/product';
+import { buildFavoriteDocId } from '@/lib/favorites/favoriteProduct';
 
 function isProduct(data: unknown): data is Product {
     if (!data || typeof data !== 'object') return false;
@@ -49,7 +50,7 @@ export function useCloudStorage() {
             const cloudData: Product[] = [];
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                if (isProduct(data)) cloudData.push(data);
+                if (isProduct(data)) cloudData.push({ ...data, favoriteId: doc.id });
             });
             setFavorites(cloudData);
             setLoading(false);
@@ -86,8 +87,8 @@ export function useCloudStorage() {
                     const batch = writeBatch(db);
 
                     localData.forEach(item => {
-                        const docRef = doc(db, path, item.productId);
-                        batch.set(docRef, item);
+                        const docRef = doc(db, path, buildFavoriteDocId(item));
+                        batch.set(docRef, { ...item, favoriteId: buildFavoriteDocId(item) });
                     });
 
                     await batch.commit();
@@ -111,20 +112,22 @@ export function useCloudStorage() {
         if (!userPath) return;
 
         const globalPath = getProductStatsPath(product.productId);
+        const favoriteId = buildFavoriteDocId(product);
+        const alreadyTrackedProduct = favorites.some((item) => item.productId === product.productId);
 
         try {
             await runTransaction(db, async (transaction) => {
                 // READ FIRST: Global Watch Count
                 const globalDocRef = doc(db, globalPath);
                 const globalDoc = await transaction.get(globalDocRef);
-                const userDocRef = doc(db, userPath, product.productId);
+                const userDocRef = doc(db, userPath, favoriteId);
                 const userDoc = await transaction.get(userDocRef);
 
                 // THEN WRITE: User Favorite (upsert)
-                transaction.set(userDocRef, product);
+                transaction.set(userDocRef, { ...product, favoriteId });
 
                 // Increment only when user favorites this product for the first time.
-                if (!userDoc.exists()) {
+                if (!userDoc.exists() && !alreadyTrackedProduct) {
                     if (!globalDoc.exists()) {
                         transaction.set(globalDocRef, { watchCount: 1 });
                     } else {
@@ -143,37 +146,54 @@ export function useCloudStorage() {
         const userPath = getCollectionPath();
         if (!userPath) return;
 
-        const globalPath = getProductStatsPath(productId);
+        const matchingFavorites = favorites.filter((item) => {
+            const favoriteId = buildFavoriteDocId(item);
+            return favoriteId === productId || item.productId === productId;
+        });
+
+        if (matchingFavorites.length === 0) {
+            return;
+        }
 
         try {
-            await runTransaction(db, async (transaction) => {
-                // READ FIRST
-                const globalDocRef = doc(db, globalPath);
-                const globalDoc = await transaction.get(globalDocRef);
-                const userDocRef = doc(db, userPath, productId);
-                const userDoc = await transaction.get(userDocRef);
-
-                if (!userDoc.exists()) {
-                    return;
-                }
-
-                // THEN WRITE
-                transaction.delete(userDocRef);
-
-                if (globalDoc.exists()) {
-                    const current = globalDoc.data().watchCount || 0;
-                    if (current > 0) {
-                        transaction.update(globalDocRef, { watchCount: current - 1 });
-                    }
-                }
+            const batch = writeBatch(db);
+            matchingFavorites.forEach((item) => {
+                batch.delete(doc(db, userPath, buildFavoriteDocId(item)));
             });
+            await batch.commit();
+
+            const removedProductIds = Array.from(new Set(matchingFavorites.map((item) => item.productId)));
+            const remainingProductIds = new Set(
+                favorites
+                    .filter((item) => !matchingFavorites.some((match) => buildFavoriteDocId(match) === buildFavoriteDocId(item)))
+                    .map((item) => item.productId)
+            );
+
+            for (const removedProductId of removedProductIds) {
+                if (remainingProductIds.has(removedProductId)) {
+                    continue;
+                }
+
+                const globalPath = getProductStatsPath(removedProductId);
+                await runTransaction(db, async (transaction) => {
+                    const globalDocRef = doc(db, globalPath);
+                    const globalDoc = await transaction.get(globalDocRef);
+
+                    if (globalDoc.exists()) {
+                        const current = globalDoc.data().watchCount || 0;
+                        if (current > 0) {
+                            transaction.update(globalDocRef, { watchCount: current - 1 });
+                        }
+                    }
+                });
+            }
         } catch (e) {
             console.error("Remove Failed:", e);
         }
     };
 
     const isFavorite = (productId: string) => {
-        return favorites.some(p => p.productId === productId);
+        return favorites.some((item) => buildFavoriteDocId(item) === productId || item.productId === productId);
     };
 
     return {

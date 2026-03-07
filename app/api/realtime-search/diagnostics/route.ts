@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadPdpDiagnostics } from '@/lib/api/pdpDiagnostics';
 import { loadSearchDiagnostics } from '@/lib/api/searchDiagnostics';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
+import { loadAlertDiagnostics } from '@/lib/server/alertDiagnostics';
 import { requireAdminRequest } from '@/lib/server/adminAccess';
+import { loadAlertTuningConfigRecord } from '@/lib/server/alertTuningStore';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,10 +40,12 @@ export async function GET(request: NextRequest) {
     const limitRaw = Number.parseInt(request.nextUrl.searchParams.get('limit') || '10', 10);
     const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(limitRaw, 120)) : 10;
     const includeRecent = request.nextUrl.searchParams.get('include') === 'recent';
-    const [diagnostics, pdpDiagnostics] = await Promise.all([
+    const [diagnostics, pdpDiagnostics, alertTuning] = await Promise.all([
         loadSearchDiagnostics(limit),
         loadPdpDiagnostics(limit),
+        loadAlertTuningConfigRecord(),
     ]);
+    const alertDiagnostics = await loadAlertDiagnostics(limit, alertTuning.config);
 
     return NextResponse.json(
         {
@@ -56,6 +60,16 @@ export async function GET(request: NextRequest) {
                 recent: includeRecent ? pdpDiagnostics.recent : [],
                 storage: pdpDiagnostics.storage,
             },
+            alerts: {
+                summary: alertDiagnostics.summary,
+                recent: includeRecent ? alertDiagnostics.recent : [],
+                drilldown: alertDiagnostics.drilldown,
+                personas: alertDiagnostics.personas,
+                rollout: alertDiagnostics.rollout,
+                rolloutTrends: alertDiagnostics.rolloutTrends,
+                storage: alertDiagnostics.storage,
+            },
+            alertTuning,
         },
         {
             headers: {

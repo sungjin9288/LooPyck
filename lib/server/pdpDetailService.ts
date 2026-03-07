@@ -144,10 +144,13 @@ export async function enrichProductsWithPdpDetails(products: UnifiedProduct[]): 
             benefitText: cached.benefitText,
             stockStatus: cached.stockStatus,
             stockText: cached.stockText,
+            variantId: cached.variantId,
+            variantSku: cached.variantSku,
             optionSummary: cached.optionSummary,
             optionValues: cached.optionValues,
             sizeOptions: cached.sizeOptions,
             colorOptions: cached.colorOptions,
+            variantCandidates: cached.variantCandidates,
             detailCollectedAt: cached.detailCollectedAt,
         });
     });

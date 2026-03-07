@@ -1,7 +1,6 @@
 import type { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
-import PurchaseComparisonTable from '@/components/product/PurchaseComparisonTable';
-import PriceHistoryChart from '@/components/product/PriceHistoryChart';
+import VariantScopedCompareSections from '@/components/product/VariantScopedCompareSections';
 import { buildCanonicalProductDetailHref, decodeProductSnapshot, normalizeProductSource } from '@/lib/api/productSnapshot';
 import type { UnifiedProduct } from '@/lib/api/types';
 import { comparePurchaseOffers } from '@/lib/product/purchasePricing';
@@ -31,6 +30,11 @@ function extractSource(searchParams: Props['searchParams']) {
     return normalizeProductSource(extractSingleValue(searchParams?.source));
 }
 
+function extractVariantKey(searchParams: Props['searchParams']): string | null {
+    const value = extractSingleValue(searchParams?.variantKey);
+    return value?.trim() ? value.trim() : null;
+}
+
 function hasActualCommerceData(product: UnifiedProduct): boolean {
     return typeof product.shippingFee === 'number'
         || typeof product.shippingFreeThreshold === 'number'
@@ -44,10 +48,13 @@ function hasActualCommerceData(product: UnifiedProduct): boolean {
 function hasPdpDetailData(product: UnifiedProduct): boolean {
     return Boolean(
         product.detailCollectedAt
+        || product.variantId
+        || product.variantSku
         || product.optionSummary
         || product.optionValues?.length
         || product.sizeOptions?.length
         || product.colorOptions?.length
+        || product.variantCandidates?.length
     );
 }
 
@@ -135,6 +142,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
     const safeStoreUrl = sanitizeExternalUrl(resolvedProduct.link);
     const canonicalUrl = new URL(buildCanonicalProductDetailHref(resolvedProduct), SITE_URL).toString();
     const maxCheckoutSpread = Math.max(0, compareMetrics.highestCheckoutPrice - compareMetrics.lowestCheckoutPrice);
+    const initialVariantKey = extractVariantKey(searchParams);
 
     const jsonLd = {
         '@context': 'https://schema.org',
@@ -230,6 +238,21 @@ export default async function ProductPage({ params, searchParams }: Props) {
                                         상세 옵션 확인: {resolvedProduct.optionSummary}
                                     </p>
                                 )}
+                                {resolvedProduct.variantCandidates && resolvedProduct.variantCandidates.length > 0 && (
+                                    <p className="mt-2 text-sm text-slate-600">
+                                        선택 가능 variant {resolvedProduct.variantCandidates.length}개
+                                        {resolvedProduct.variantCandidates[0]?.label
+                                            ? ` · ${resolvedProduct.variantCandidates.slice(0, 3).map((candidate) => candidate.label).join(', ')}`
+                                            : ''}
+                                    </p>
+                                )}
+                                {(resolvedProduct.variantSku || resolvedProduct.variantId) && (
+                                    <p className="mt-2 text-sm text-slate-600">
+                                        {resolvedProduct.variantSku ? `SKU ${resolvedProduct.variantSku}` : ''}
+                                        {resolvedProduct.variantSku && resolvedProduct.variantId ? ' · ' : ''}
+                                        {resolvedProduct.variantId ? `Variant ${resolvedProduct.variantId}` : ''}
+                                    </p>
+                                )}
 
                                 <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                     <div className="rounded-2xl bg-[#f5f1ea] p-4">
@@ -261,6 +284,11 @@ export default async function ProductPage({ params, searchParams }: Props) {
                                         <p className="mt-1 text-xs text-slate-500">{optionAlignment.summaryLabel}</p>
                                     </div>
                                 </div>
+                                {optionAlignment.verifiedOptionCount >= 2 && (
+                                    <p className="mt-4 text-sm text-slate-600">
+                                        검증 옵션 기준 정렬: {optionAlignment.overlapLabel}
+                                    </p>
+                                )}
 
                                 <div className="mt-6 flex flex-wrap items-center gap-3">
                                     {safeStoreUrl ? (
@@ -287,47 +315,12 @@ export default async function ProductPage({ params, searchParams }: Props) {
                             </div>
                         </section>
 
-                        <section className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)]">
-                            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-                                <div>
-                                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Compare Page</p>
-                                    <h2 className="mt-2 text-2xl font-black text-slate-950">쇼핑몰별 결제가 비교</h2>
-                                </div>
-                                <p className="max-w-xl text-sm text-slate-500">
-                                    결제가를 우선 정렬하고, 혜택 적용시 최저가와 실데이터 보유 여부를 함께 보여줍니다.
-                                </p>
-                            </div>
-                            {optionAlignment.hasMismatchRisk && (
-                                <div className={`mb-5 rounded-2xl border px-4 py-3 ${
-                                    optionAlignment.riskLevel === 'high'
-                                        ? 'border-amber-300 bg-amber-50'
-                                        : 'border-sky-200 bg-sky-50'
-                                }`}>
-                                    <p className="text-sm font-bold text-slate-900">
-                                        옵션 정렬 경고: {optionAlignment.summaryLabel}
-                                    </p>
-                                    <p className="mt-1 text-xs text-slate-600">
-                                        동일 모델로 묶였더라도 색상, 사이즈, 성별 신호가 다를 수 있습니다. 대표 비교 전 반드시 옵션명을 다시 확인하세요.
-                                    </p>
-                                </div>
-                            )}
-                            <PurchaseComparisonTable offers={compareOffers} selectedProductId={resolvedProduct.id} />
-                        </section>
-
-                        <section className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)]">
-                            <div className="mb-5">
-                                <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Price History</p>
-                                <h2 className="mt-2 text-2xl font-black text-slate-950">가격 흐름</h2>
-                                <p className="mt-2 text-sm text-slate-500">
-                                    현재 상품 기준으로 저장된 가격 스냅샷을 확인합니다. 데이터가 적으면 현재가 중심으로 단순화해 표시됩니다.
-                                </p>
-                            </div>
-                            <PriceHistoryChart
-                                source={resolvedProduct.source}
-                                productId={resolvedProduct.id}
-                                currentPrice={resolvedProduct.price}
-                            />
-                        </section>
+                        <VariantScopedCompareSections
+                            products={comparedProducts}
+                            primaryProductId={resolvedProduct.id}
+                            primaryProductSource={resolvedProduct.source}
+                            initialVariantKey={initialVariantKey}
+                        />
                     </div>
 
                     <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start">
@@ -359,6 +352,12 @@ export default async function ProductPage({ params, searchParams }: Props) {
                                     <p className="text-xs uppercase tracking-[0.18em] text-white/55">Variant Risk</p>
                                     <p className="mt-1 text-2xl font-black">{optionAlignment.summaryLabel}</p>
                                 </div>
+                                {optionAlignment.verifiedOptionCount >= 2 && (
+                                    <div>
+                                        <p className="text-xs uppercase tracking-[0.18em] text-white/55">Shared Options</p>
+                                        <p className="mt-1 text-2xl font-black">{optionAlignment.overlapLabel}</p>
+                                    </div>
+                                )}
                             </div>
                         </section>
 
