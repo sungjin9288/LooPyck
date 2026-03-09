@@ -5,12 +5,23 @@
 
 import {
     GoogleAuthProvider,
+    signInWithPopup,
     signInWithRedirect,
     signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 const googleProvider = new GoogleAuthProvider();
+
+function shouldFallbackToRedirect(error: unknown) {
+    if (!error || typeof error !== 'object') return false;
+    const code = (error as { code?: unknown }).code;
+    if (typeof code !== 'string') return false;
+    return [
+        'auth/popup-blocked',
+        'auth/operation-not-supported-in-this-environment',
+    ].includes(code);
+}
 
 function getAuthOrThrow() {
     if (!auth) {
@@ -22,10 +33,13 @@ function getAuthOrThrow() {
 export const signInWithGoogle = async () => {
     const firebaseAuth = getAuthOrThrow();
     try {
-        // Redirect flow is more reliable than popup flow on deployed web surfaces.
-        await signInWithRedirect(firebaseAuth, googleProvider);
+        await signInWithPopup(firebaseAuth, googleProvider);
         return null;
     } catch (error) {
+        if (shouldFallbackToRedirect(error)) {
+            await signInWithRedirect(firebaseAuth, googleProvider);
+            return null;
+        }
         console.error('Google Sign-In Error:', error);
         throw error;
     }

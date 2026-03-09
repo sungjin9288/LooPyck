@@ -18,7 +18,7 @@ function normalizeNext(nextParam: string | null) {
 export default function LoginPage() {
     const router = useRouter();
     const { user, loading } = useUser();
-    const [status, setStatus] = useState<'preparing' | 'redirecting' | 'failed'>('preparing');
+    const [status, setStatus] = useState<'ready' | 'redirecting' | 'failed'>('ready');
     const [error, setError] = useState<string | null>(null);
     const [nextPath, setNextPath] = useState('/');
 
@@ -78,14 +78,8 @@ export default function LoginPage() {
                     return;
                 }
 
-                setStatus('redirecting');
+                setStatus('ready');
                 setError(null);
-
-                if (typeof window !== 'undefined') {
-                    window.sessionStorage.setItem(REDIRECT_PENDING_KEY, '1');
-                }
-
-                await signInWithGoogle();
             } catch (redirectError) {
                 if (cancelled) return;
                 console.error('Dedicated login route error:', redirectError);
@@ -112,13 +106,15 @@ export default function LoginPage() {
                 <p className="mt-3 text-sm leading-6 text-slate-600">
                     {status === 'failed'
                         ? '로그인 흐름이 중간에 완료되지 않았습니다. 아래 메시지를 확인한 뒤 다시 시도하세요.'
-                        : 'Google 인증 페이지로 이동 중입니다. 잠시 후 자동으로 연결됩니다.'}
+                        : '브라우저에서 Google 로그인 창을 열어 인증을 시작합니다. 팝업이 막히면 redirect fallback이 동작합니다.'}
                 </p>
 
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                     {status === 'failed'
                         ? `로그인 실패: ${error ?? '원인을 확인하지 못했습니다.'}`
-                        : '리디렉트 로그인 준비 중...'}
+                        : status === 'redirecting'
+                            ? 'Google 로그인 창 또는 인증 페이지로 이동 중...'
+                            : 'Google 로그인 시작 버튼을 눌러 인증을 진행하세요.'}
                 </div>
 
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
