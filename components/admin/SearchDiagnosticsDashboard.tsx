@@ -856,7 +856,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const auditFeedHydrated = useRef(false);
 
     useEffect(() => {
-        if (!user) {
+        if (!user || user.isAnonymous) {
             setData(null);
             setError(null);
             setIsAdminAuthorized(null);
@@ -996,13 +996,17 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         return <div className="min-h-screen bg-slate-950 text-slate-200 p-8">Loading...</div>;
     }
 
-    if (!user) {
+    if (!user || user.isAnonymous) {
         return (
             <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center p-8">
                 <div className="max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-8 text-center">
                     <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Admin Only</p>
                     <h1 className="mt-3 text-3xl font-black tracking-tight text-white">Sign In Required</h1>
-                    <p className="mt-3 text-sm text-slate-400">관리자 진단 화면을 보려면 먼저 로그인해야 합니다.</p>
+                    <p className="mt-3 text-sm text-slate-400">
+                        {user?.isAnonymous
+                            ? '현재 익명 로그인 상태입니다. 홈 화면에서 Google 로그인 후 다시 시도하세요.'
+                            : '관리자 진단 화면을 보려면 먼저 로그인해야 합니다.'}
+                    </p>
                 </div>
             </div>
         );

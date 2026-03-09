@@ -37,6 +37,9 @@ export async function requireAdminRequest(request: NextRequest): Promise<{
 
     try {
         const decoded = await adminAuth.verifyIdToken(token);
+        if (decoded.firebase?.sign_in_provider === 'anonymous') {
+            return { ok: false, status: 401, error: '익명 로그인 상태입니다. Google 로그인 후 다시 시도하세요.' };
+        }
         if (!isAdminUid(decoded.uid)) {
             return { ok: false, status: 403, error: '관리자 권한이 필요합니다.' };
         }
