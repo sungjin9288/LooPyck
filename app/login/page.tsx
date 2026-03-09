@@ -27,7 +27,7 @@ export default function LoginPage() {
             const params = new URLSearchParams(window.location.search);
             const resolvedNext = normalizeNext(params.get('next'));
             setNextPath(resolvedNext);
-            window.sessionStorage.setItem(POST_LOGIN_NEXT_KEY, nextPath);
+            window.sessionStorage.setItem(POST_LOGIN_NEXT_KEY, resolvedNext);
         }
     }, []);
 
@@ -55,6 +55,8 @@ export default function LoginPage() {
 
         const start = async () => {
             try {
+                const hadPendingRedirect = typeof window !== 'undefined'
+                    && window.sessionStorage.getItem(REDIRECT_PENDING_KEY) === '1';
                 const result = await getRedirectResult(auth);
 
                 if (cancelled) return;
@@ -64,6 +66,15 @@ export default function LoginPage() {
                         window.sessionStorage.removeItem(REDIRECT_PENDING_KEY);
                     }
                     router.replace(nextPath);
+                    return;
+                }
+
+                if (hadPendingRedirect) {
+                    if (typeof window !== 'undefined') {
+                        window.sessionStorage.removeItem(REDIRECT_PENDING_KEY);
+                    }
+                    setStatus('failed');
+                    setError('Google 인증이 완료되지 않았습니다. 브라우저 쿠키 차단 또는 Firebase 인증 설정을 다시 확인하세요.');
                     return;
                 }
 
@@ -121,6 +132,9 @@ export default function LoginPage() {
                             }
                             void signInWithGoogle().catch((retryError) => {
                                 console.error('Retry Google Sign-In Error:', retryError);
+                                if (typeof window !== 'undefined') {
+                                    window.sessionStorage.removeItem(REDIRECT_PENDING_KEY);
+                                }
                                 setStatus('failed');
                                 setError(retryError instanceof Error ? retryError.message : 'Google 로그인 재시도에 실패했습니다.');
                             });

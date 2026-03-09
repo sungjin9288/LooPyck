@@ -16,7 +16,7 @@ interface NavbarProps {
 export default function Navbar({ currentView, setCurrentView, onLogoClick, onNotificationClick }: NavbarProps) {
     const [scrolled, setScrolled] = useState(false);
     const { t, locale, setLocale } = useLanguage();
-    const { user, authError } = useUser();
+    const { user } = useUser();
 
     const toggleLanguage = () => {
         setLocale(locale === 'ko' ? 'en' : 'ko');
@@ -110,11 +110,6 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
                         </button>
                     </div>
                 </div>
-                {authError && (
-                    <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                        로그인 실패: {authError}
-                    </div>
-                )}
             </div>
         </header>
     );
