@@ -13,8 +13,42 @@ interface LoginModalProps {
     onClose: () => void;
 }
 
+function getReadableAuthMessage(error: unknown): string {
+    if (!error || typeof error !== 'object') {
+        return '로그인에 실패했습니다.';
+    }
+
+    const code = typeof (error as { code?: unknown }).code === 'string'
+        ? (error as { code: string }).code
+        : '';
+
+    switch (code) {
+        case 'auth/unauthorized-domain':
+            return 'Firebase Authentication의 Authorized domains에 현재 도메인을 추가해야 합니다.';
+        case 'auth/popup-blocked':
+            return '브라우저가 로그인 팝업을 차단했습니다. 팝업 차단을 해제하고 다시 시도하세요.';
+        case 'auth/popup-closed-by-user':
+            return '로그인 팝업이 닫혔습니다. 다시 시도하세요.';
+        case 'auth/operation-not-allowed':
+            return 'Firebase Authentication에서 Google 로그인이 활성화되지 않았습니다.';
+        case 'auth/network-request-failed':
+            return '네트워크 문제로 로그인에 실패했습니다.';
+        default:
+            return error instanceof Error ? error.message : '로그인에 실패했습니다.';
+    }
+}
+
 export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     const { user, linkAccount } = useUser();
+    const [loginError, setLoginError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setLoginError(null);
+            setIsSubmitting(false);
+        }
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -54,6 +88,8 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 <button
                     onClick={async () => {
                         try {
+                            setIsSubmitting(true);
+                            setLoginError(null);
                             if (user?.isAnonymous) {
                                 await linkAccount();
                             } else {
@@ -62,10 +98,14 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                             onClose();
                         } catch (e: unknown) {
                             console.error('Login error:', e);
-                            const message = e instanceof Error ? e.message : 'Unknown error';
-                            pushAppNotification({ title: '로그인 실패', message: `${message}. 네트워크를 확인해주세요.`, type: 'alert' });
+                            const message = getReadableAuthMessage(e);
+                            setLoginError(message);
+                            pushAppNotification({ title: '로그인 실패', message, type: 'alert' });
+                        } finally {
+                            setIsSubmitting(false);
                         }
                     }}
+                    disabled={isSubmitting}
                     className="w-full relative z-10 flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-black font-bold py-4 px-6 rounded-2xl transition-all transform hover:scale-[1.02] shadow-lg group"
                 >
                     <img
@@ -73,8 +113,14 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                         alt="Google"
                         className="w-5 h-5 group-hover:rotate-12 transition-transform"
                     />
-                    <span className="tracking-wide">Continue with Google</span>
+                    <span className="tracking-wide">{isSubmitting ? 'Signing in...' : 'Continue with Google'}</span>
                 </button>
+
+                {loginError && (
+                    <p className="mt-4 text-center text-sm text-rose-200 relative z-10">
+                        {loginError}
+                    </p>
+                )}
 
                 <p className="text-center text-white/40 text-xs mt-6 relative z-10">
                     By continuing, you agree to our Terms & Privacy.

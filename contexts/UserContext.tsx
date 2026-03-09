@@ -145,7 +145,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             userId: user?.uid || null,
             appId,
             loading,
-            isAuthenticated: !!user,
+            isAuthenticated: !!user && !user.isAnonymous,
             linkAccount
         }}>
             {children}
