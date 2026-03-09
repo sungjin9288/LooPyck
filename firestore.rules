@@ -33,6 +33,11 @@ service cloud.firestore {
         allow read, write: if isAuthenticated() && isOwner(userId);
       }
 
+      // User personalization/preferences
+      match /users/{userId}/preferences/{preferenceId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+
       // Global Product Statistics (Social Counters): Public Read, Authenticated Increment
       match /products/{productId} {
         allow read: if true; 

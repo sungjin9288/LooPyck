@@ -9,6 +9,7 @@ import {
     GoogleAuthProvider,
     linkWithPopup,
     linkWithRedirect,
+    signInWithCredential,
 } from 'firebase/auth';
 
 declare global {
@@ -34,6 +35,17 @@ function isPopupFlowError(error: unknown): boolean {
         'auth/popup-blocked',
         'auth/popup-closed-by-user',
         'auth/operation-not-supported-in-this-environment',
+    ].includes(code);
+}
+
+function isCredentialConflictError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const code = (error as { code?: unknown }).code;
+    if (typeof code !== 'string') return false;
+    return [
+        'auth/credential-already-in-use',
+        'auth/email-already-in-use',
+        'auth/account-exists-with-different-credential',
     ].includes(code);
 }
 
@@ -78,6 +90,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 await linkWithRedirect(auth.currentUser, provider);
                 return;
             }
+
+            if (isCredentialConflictError(error)) {
+                const credential = GoogleAuthProvider.credentialFromError(error);
+                if (credential) {
+                    await signInWithCredential(auth, credential);
+                    return;
+                }
+            }
+
             console.error('Link account error:', error);
             throw error;
         }
