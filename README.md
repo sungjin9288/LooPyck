@@ -148,6 +148,9 @@ cp .env.local.example .env.local
 # 4. Run
 npm run dev
 
+# Fixed local port
+# http://localhost:3000
+
 # 5. Type Check
 npm run typecheck
 

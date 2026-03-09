@@ -29,6 +29,7 @@ cp .env.local.example .env.local
 
 # 4. Run development server
 npm run dev
+# Local app: http://localhost:3000
 ```
 
 ### Production Deployment
