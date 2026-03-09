@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { DEFAULT_ALERT_TUNING_CONFIG, type AlertBehaviorMode, type AlertTuningConfig } from '@/lib/favorites/alertPersonalization';
 import { buildAlertRolloutRecommendations, buildAlertTuningSuggestions } from '@/lib/favorites/alertRecommendations';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
+import { pushAppNotification } from '@/lib/core/notifications';
 
 type SourceSummary = {
     source: string;
@@ -224,6 +225,96 @@ type AlertTuningHistoryEntry = {
     restorable: boolean;
 };
 
+type AlertTuningApprovalRequest = {
+    id: string;
+    source: string;
+    currentRolloutPercentage: number;
+    proposedRolloutPercentage: number;
+    title: string;
+    description: string;
+    status: 'pending' | 'pending_second_approval' | 'approved' | 'rejected' | 'expired';
+    requiredApprovals: number;
+    approvalCount: number;
+    approvals: Array<{
+        uid: string;
+        note: string | null;
+        approvedAt: string | null;
+    }>;
+    createdAt: string | null;
+    createdBy: string | null;
+    requestNote: string | null;
+    resolvedAt: string | null;
+    resolvedBy: string | null;
+    resolutionNote: string | null;
+};
+
+type ApprovalQueueSummary = {
+    openCount: number;
+    pendingCount: number;
+    secondApprovalCount: number;
+    approvedCount: number;
+    rejectedCount: number;
+    expiredCount: number;
+    overdueCount: number;
+    expiringSoonCount: number;
+    avgOpenAgeHours: number;
+    maxOpenAgeHours: number;
+    avgResolutionHours: number;
+    withinSlaRate: number;
+    oldestOpenAt: string | null;
+};
+
+type AlertTuningAuditEvent = {
+    id: string;
+    type: 'request_created' | 'approval_recorded' | 'second_approval_required' | 'request_approved' | 'request_rejected' | 'request_expired' | 'config_saved' | 'config_rolled_back' | 'sla_digest' | 'webhook_dispatched' | 'webhook_failed';
+    level: 'info' | 'success' | 'warning' | 'critical';
+    title: string;
+    message: string;
+    createdAt: string | null;
+    source: string | null;
+    requestId: string | null;
+    actorUid: string | null;
+    note: string | null;
+    historyId: string | null;
+    read: boolean;
+    readAt: string | null;
+};
+
+type AlertTuningReminderDigestItem = {
+    requestId: string;
+    source: string;
+    title: string;
+    status: AlertTuningApprovalRequest['status'];
+    createdAt: string | null;
+    expiresAt: string | null;
+    ageHours: number;
+    proposedRolloutPercentage: number;
+};
+
+type AlertTuningReminderDigest = {
+    generatedAt: string;
+    openCount: number;
+    overdueCount: number;
+    expiringSoonCount: number;
+    expiredCount: number;
+    oldestOpenAt: string | null;
+    overdueRequests: AlertTuningReminderDigestItem[];
+    expiringSoonRequests: AlertTuningReminderDigestItem[];
+};
+
+type AlertTuningAuditInboxSummary = {
+    total: number;
+    unreadCount: number;
+    criticalUnreadCount: number;
+    warningUnreadCount: number;
+};
+
+type AlertTuningWebhookConfig = {
+    configured: boolean;
+    format: 'generic' | 'slack' | 'discord' | null;
+    targetLabel: string | null;
+};
+
 type DiagnosticsResponse = {
     summary: {
         trackedSearches: number;
@@ -299,7 +390,16 @@ type DiagnosticsResponse = {
         storage: 'firestore' | 'default';
         history: AlertTuningHistoryEntry[];
     };
+    alertTuningRequests: AlertTuningApprovalRequest[];
+    alertTuningAudit: AlertTuningAuditEvent[];
+    alertTuningAuditInbox: AlertTuningAuditInboxSummary;
+    alertTuningDigest: AlertTuningReminderDigest;
+    alertTuningWebhook: AlertTuningWebhookConfig;
     error?: string;
+};
+
+type SearchDiagnosticsDashboardProps = {
+    scope?: 'full' | 'ops';
 };
 
 function buildLowFitQueries(recent: RecentSnapshot[]): Array<{ query: string; quality: string; generatedAt: string; suggestedQueries: string[]; totalProducts: number }> {
@@ -485,6 +585,167 @@ function rolloutActionLabel(action: 'increase' | 'hold' | 'decrease' | 'collect_
     }
 }
 
+function approvalStatusClass(status: AlertTuningApprovalRequest['status']): string {
+    switch (status) {
+        case 'approved':
+            return 'bg-emerald-500/15 text-emerald-200';
+        case 'rejected':
+            return 'bg-rose-500/15 text-rose-200';
+        case 'expired':
+            return 'bg-slate-500/20 text-slate-300';
+        case 'pending_second_approval':
+            return 'bg-sky-500/15 text-sky-200';
+        default:
+            return 'bg-amber-500/15 text-amber-200';
+    }
+}
+
+function approvalStatusLabel(status: AlertTuningApprovalRequest['status']): string {
+    switch (status) {
+        case 'approved':
+            return 'APPROVED';
+        case 'rejected':
+            return 'REJECTED';
+        case 'expired':
+            return 'EXPIRED';
+        case 'pending_second_approval':
+            return 'SECOND APPROVAL';
+        default:
+            return 'PENDING';
+    }
+}
+
+function auditLevelClass(level: AlertTuningAuditEvent['level']): string {
+    switch (level) {
+        case 'success':
+            return 'bg-emerald-500/15 text-emerald-200';
+        case 'warning':
+            return 'bg-amber-500/15 text-amber-200';
+        case 'critical':
+            return 'bg-rose-500/15 text-rose-200';
+        default:
+            return 'bg-slate-500/20 text-slate-300';
+    }
+}
+
+function auditTypeLabel(type: AlertTuningAuditEvent['type']): string {
+    switch (type) {
+        case 'request_created':
+            return 'REQUEST';
+        case 'approval_recorded':
+            return 'APPROVAL';
+        case 'second_approval_required':
+            return 'SECOND APPROVAL';
+        case 'request_approved':
+            return 'APPROVED';
+        case 'request_rejected':
+            return 'REJECTED';
+        case 'request_expired':
+            return 'EXPIRED';
+        case 'config_saved':
+            return 'CONFIG SAVE';
+        case 'config_rolled_back':
+            return 'ROLLBACK';
+        case 'sla_digest':
+            return 'DIGEST';
+        case 'webhook_dispatched':
+            return 'WEBHOOK OK';
+        case 'webhook_failed':
+            return 'WEBHOOK FAIL';
+        default:
+            return 'AUDIT';
+    }
+}
+
+function notificationTypeForAudit(level: AlertTuningAuditEvent['level']): 'info' | 'success' | 'alert' {
+    if (level === 'success') return 'success';
+    if (level === 'warning' || level === 'critical') return 'alert';
+    return 'info';
+}
+
+function webhookFormatLabel(format: AlertTuningWebhookConfig['format']): string {
+    switch (format) {
+        case 'slack':
+            return 'Slack';
+        case 'discord':
+            return 'Discord';
+        case 'generic':
+            return 'Generic JSON';
+        default:
+            return 'Not Configured';
+    }
+}
+
+function buildClientAuditInboxSummary(events: AlertTuningAuditEvent[]): AlertTuningAuditInboxSummary {
+    const unread = events.filter((event) => !event.read);
+    return {
+        total: events.length,
+        unreadCount: unread.length,
+        criticalUnreadCount: unread.filter((event) => event.level === 'critical').length,
+        warningUnreadCount: unread.filter((event) => event.level === 'warning').length,
+    };
+}
+
+function toMillisFromIso(value: string | null | undefined): number | null {
+    if (!value) return null;
+    const millis = Date.parse(value);
+    return Number.isFinite(millis) ? millis : null;
+}
+
+function requestAgeHours(createdAt: string | null | undefined): number | null {
+    const createdAtMs = toMillisFromIso(createdAt);
+    if (createdAtMs === null) return null;
+    return Math.max(0, (Date.now() - createdAtMs) / 3_600_000);
+}
+
+function requestExpiresAt(createdAt: string | null | undefined): string | null {
+    const createdAtMs = toMillisFromIso(createdAt);
+    if (createdAtMs === null) return null;
+    return new Date(createdAtMs + 48 * 3_600_000).toISOString();
+}
+
+function formatHours(value: number): string {
+    if (!Number.isFinite(value)) return '-';
+    if (value >= 10) return `${Math.round(value)}h`;
+    return `${value.toFixed(1)}h`;
+}
+
+function buildApprovalQueueSummary(requests: AlertTuningApprovalRequest[]): ApprovalQueueSummary {
+    const openRequests = requests.filter((request) => request.status === 'pending' || request.status === 'pending_second_approval');
+    const openAges = openRequests
+        .map((request) => requestAgeHours(request.createdAt))
+        .filter((value): value is number => value !== null);
+    const resolutionHours = requests
+        .filter((request) => request.status === 'approved' || request.status === 'rejected' || request.status === 'expired')
+        .map((request) => {
+            const createdAtMs = toMillisFromIso(request.createdAt);
+            const resolvedAtMs = toMillisFromIso(request.resolvedAt);
+            if (createdAtMs === null || resolvedAtMs === null) return null;
+            return Math.max(0, (resolvedAtMs - createdAtMs) / 3_600_000);
+        })
+        .filter((value): value is number => value !== null);
+    const withinSlaResolvedCount = resolutionHours.filter((hours) => hours <= 24).length;
+
+    return {
+        openCount: openRequests.length,
+        pendingCount: requests.filter((request) => request.status === 'pending').length,
+        secondApprovalCount: requests.filter((request) => request.status === 'pending_second_approval').length,
+        approvedCount: requests.filter((request) => request.status === 'approved').length,
+        rejectedCount: requests.filter((request) => request.status === 'rejected').length,
+        expiredCount: requests.filter((request) => request.status === 'expired').length,
+        overdueCount: openAges.filter((hours) => hours >= 24).length,
+        expiringSoonCount: openAges.filter((hours) => hours >= 18 && hours < 48).length,
+        avgOpenAgeHours: openAges.length > 0 ? Number((openAges.reduce((sum, hours) => sum + hours, 0) / openAges.length).toFixed(1)) : 0,
+        maxOpenAgeHours: openAges.length > 0 ? Number(Math.max(...openAges).toFixed(1)) : 0,
+        avgResolutionHours: resolutionHours.length > 0 ? Number((resolutionHours.reduce((sum, hours) => sum + hours, 0) / resolutionHours.length).toFixed(1)) : 0,
+        withinSlaRate: resolutionHours.length > 0 ? Number(((withinSlaResolvedCount / resolutionHours.length) * 100).toFixed(1)) : 0,
+        oldestOpenAt: openRequests
+            .map((request) => request.createdAt)
+            .filter((value): value is string => Boolean(value))
+            .sort((left, right) => left.localeCompare(right))[0] || null,
+    };
+}
+
 function isFailureStrategy(strategy: string): boolean {
     return strategy === 'empty' || strategy === 'naver_classified_fallback' || strategy === 'classified_naver';
 }
@@ -573,7 +834,7 @@ function buildSourceTrend(recent: RecentSnapshot[], source: string): SourceTrend
         .slice(-7);
 }
 
-export default function SearchDiagnosticsDashboard() {
+export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDiagnosticsDashboardProps) {
     const { user, loading } = useUser();
     const [data, setData] = useState<DiagnosticsResponse | null>(null);
     const [isFetching, setIsFetching] = useState(false);
@@ -584,8 +845,15 @@ export default function SearchDiagnosticsDashboard() {
     const [isTuningDirty, setIsTuningDirty] = useState(false);
     const [isSavingTuning, setIsSavingTuning] = useState(false);
     const [rollbackingHistoryId, setRollbackingHistoryId] = useState<string | null>(null);
+    const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
     const [tuningMessage, setTuningMessage] = useState<string | null>(null);
     const [selectedOverrideSource, setSelectedOverrideSource] = useState<string | null>(null);
+    const [queuedRequestNotes, setQueuedRequestNotes] = useState<Record<string, string>>({});
+    const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({});
+    const [markingAuditId, setMarkingAuditId] = useState<string | null>(null);
+    const [runningReminderDigest, setRunningReminderDigest] = useState(false);
+    const seenAuditEventIds = useRef<Set<string>>(new Set());
+    const auditFeedHydrated = useRef(false);
 
     useEffect(() => {
         if (!user) {
@@ -668,6 +936,43 @@ export default function SearchDiagnosticsDashboard() {
             setAlertTuningDraft(data.alertTuning.config);
         }
     }, [data?.alertTuning, isTuningDirty]);
+
+    useEffect(() => {
+        if (!user) {
+            seenAuditEventIds.current.clear();
+            auditFeedHydrated.current = false;
+            return;
+        }
+
+        const auditEvents = data?.alertTuningAudit || [];
+        if (!auditFeedHydrated.current) {
+            auditEvents.forEach((event) => {
+                seenAuditEventIds.current.add(event.id);
+            });
+            auditFeedHydrated.current = true;
+            return;
+        }
+
+        auditEvents
+            .slice()
+            .reverse()
+            .forEach((event) => {
+                if (seenAuditEventIds.current.has(event.id)) {
+                    return;
+                }
+
+                seenAuditEventIds.current.add(event.id);
+                if (event.level === 'info') {
+                    return;
+                }
+
+                pushAppNotification({
+                    title: event.title,
+                    message: event.message,
+                    type: notificationTypeForAudit(event.level),
+                });
+            });
+    }, [data?.alertTuningAudit, user]);
 
     const availableOverrideSources = Array.from(new Set([
         ...(data?.summary.sources.map((entry) => entry.source) || []),
@@ -755,6 +1060,25 @@ export default function SearchDiagnosticsDashboard() {
     const alertRolloutTrends = data?.alerts.rolloutTrends || [];
     const rolloutRecommendations = buildAlertRolloutRecommendations(alertRollout);
     const alertTuning = data?.alertTuning;
+    const alertTuningRequests = data?.alertTuningRequests || [];
+    const alertTuningAudit = data?.alertTuningAudit || [];
+    const alertTuningAuditInbox = data?.alertTuningAuditInbox || buildClientAuditInboxSummary(alertTuningAudit);
+    const alertTuningDigest = data?.alertTuningDigest || {
+        generatedAt: new Date(0).toISOString(),
+        openCount: 0,
+        overdueCount: 0,
+        expiringSoonCount: 0,
+        expiredCount: 0,
+        oldestOpenAt: null,
+        overdueRequests: [],
+        expiringSoonRequests: [],
+    };
+    const alertTuningWebhook = data?.alertTuningWebhook || {
+        configured: false,
+        format: null,
+        targetLabel: null,
+    };
+    const approvalQueueSummary = buildApprovalQueueSummary(alertTuningRequests);
     const draftTuning = alertTuningDraft || alertTuning?.config || DEFAULT_ALERT_TUNING_CONFIG;
     const currentOverrideSource = selectedOverrideSource || availableOverrideSources[0] || null;
     const currentSourceOverride = currentOverrideSource
@@ -763,6 +1087,9 @@ export default function SearchDiagnosticsDashboard() {
     const currentSourceRollout = currentOverrideSource
         ? draftTuning.sourceRollouts?.[currentOverrideSource] ?? 100
         : 100;
+    const openApprovalRequests = alertTuningRequests.filter((entry) => entry.status === 'pending' || entry.status === 'pending_second_approval');
+    const quickRollbackEntries = (alertTuning?.history || []).filter((entry) => entry.restorable).slice(0, 3);
+    const isOpsOnly = scope === 'ops';
 
     function updateAlertTuningMode(
         mode: AlertBehaviorMode,
@@ -851,10 +1178,178 @@ export default function SearchDiagnosticsDashboard() {
         setTuningMessage(null);
     }
 
-    function applyRecommendedSourceRollout(source: string, rolloutPercentage: number) {
-        setSelectedOverrideSource(source);
-        updateSourceRolloutPercentage(source, rolloutPercentage);
-        setTuningMessage(`${source} rollout 추천값 ${rolloutPercentage}%를 draft에 반영했습니다. 저장하면 적용됩니다.`);
+    async function queueRecommendedSourceRolloutRequest(recommendation: {
+        source: string;
+        currentRolloutPercentage: number;
+        recommendedRolloutPercentage: number;
+        title: string;
+        description: string;
+    }) {
+        if (!user) {
+            return;
+        }
+
+        setProcessingRequestId(recommendation.source);
+        setTuningMessage(null);
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/alert-tuning/requests', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    source: recommendation.source,
+                    currentRolloutPercentage: recommendation.currentRolloutPercentage,
+                    proposedRolloutPercentage: recommendation.recommendedRolloutPercentage,
+                    title: recommendation.title,
+                    description: recommendation.description,
+                    requestNote: queuedRequestNotes[recommendation.source] || '',
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'approval request 생성에 실패했습니다.');
+            }
+
+            setData((current) => current ? {
+                ...current,
+                alertTuningRequests: payload.requests || [],
+            } : current);
+            setQueuedRequestNotes((current) => {
+                const next = { ...current };
+                delete next[recommendation.source];
+                return next;
+            });
+            setTuningMessage(`${recommendation.source} rollout approval request를 생성했습니다.`);
+        } catch (requestError) {
+            setTuningMessage(requestError instanceof Error ? requestError.message : 'approval request 생성에 실패했습니다.');
+        } finally {
+            setProcessingRequestId(null);
+        }
+    }
+
+    async function handleResolveApprovalRequest(requestId: string, action: 'approve' | 'reject') {
+        if (!user) {
+            return;
+        }
+
+        setProcessingRequestId(requestId);
+        setTuningMessage(null);
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/alert-tuning/requests', {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    requestId,
+                    action,
+                    resolutionNote: resolutionNotes[requestId] || '',
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'approval request 처리에 실패했습니다.');
+            }
+
+            if (payload.alertTuning) {
+                primeAlertTuningSettings(payload.alertTuning);
+            }
+            setData((current) => current ? {
+                ...current,
+                alertTuning: payload.alertTuning || current.alertTuning,
+                alertTuningRequests: payload.requests || [],
+            } : current);
+            if (payload.alertTuning && !isTuningDirty) {
+                setAlertTuningDraft(payload.alertTuning.config);
+            }
+            setResolutionNotes((current) => {
+                const next = { ...current };
+                delete next[requestId];
+                return next;
+            });
+            setTuningMessage(action === 'approve' ? 'approval request를 승인해 rollout 설정에 반영했습니다.' : 'approval request를 거절했습니다.');
+        } catch (resolveError) {
+            setTuningMessage(resolveError instanceof Error ? resolveError.message : 'approval request 처리에 실패했습니다.');
+        } finally {
+            setProcessingRequestId(null);
+        }
+    }
+
+    async function handleMarkAuditEventsRead(eventIds: string[], markAll = false) {
+        if (!user || (eventIds.length === 0 && !markAll)) {
+            return;
+        }
+
+        setMarkingAuditId(markAll ? '__all__' : eventIds[0] || null);
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/alert-tuning/audit', {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(markAll ? { markAll: true } : { eventIds }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'audit inbox 업데이트에 실패했습니다.');
+            }
+
+            setData((current) => current ? {
+                ...current,
+                alertTuningAudit: payload.events || [],
+                alertTuningAuditInbox: payload.inbox || current.alertTuningAuditInbox,
+            } : current);
+        } catch (auditError) {
+            setTuningMessage(auditError instanceof Error ? auditError.message : 'audit inbox 업데이트에 실패했습니다.');
+        } finally {
+            setMarkingAuditId(null);
+        }
+    }
+
+    async function handleRunReminderDigest() {
+        if (!user) {
+            return;
+        }
+
+        setRunningReminderDigest(true);
+        setTuningMessage(null);
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/alert-tuning/reminders', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'approval reminder digest 실행에 실패했습니다.');
+            }
+
+            setData((current) => current ? {
+                ...current,
+                alertTuningDigest: payload.digest || current.alertTuningDigest,
+                alertTuningAudit: payload.auditEvents || current.alertTuningAudit,
+                alertTuningAuditInbox: buildClientAuditInboxSummary(payload.auditEvents || current.alertTuningAudit),
+            } : current);
+            const formatLabel = webhookFormatLabel(payload.dispatch?.format || alertTuningWebhook.format);
+            setTuningMessage(payload.dispatch?.configured
+                ? payload.dispatch?.delivered
+                    ? `approval reminder digest를 생성하고 ${formatLabel} webhook으로 dispatch했습니다.`
+                    : `approval reminder digest를 생성했지만 ${formatLabel} webhook delivery는 실패했습니다.`
+                : 'approval reminder digest를 생성했습니다. webhook은 아직 설정되지 않았습니다.');
+        } catch (digestError) {
+            setTuningMessage(digestError instanceof Error ? digestError.message : 'approval reminder digest 실행에 실패했습니다.');
+        } finally {
+            setRunningReminderDigest(false);
+        }
     }
 
     function handleRemoveSourceOverride(source: string) {
@@ -961,16 +1456,46 @@ export default function SearchDiagnosticsDashboard() {
             <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
                 <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                     <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.24em] text-sky-300">Search Ops</p>
-                        <h1 className="mt-2 text-4xl font-black tracking-tight text-white">Realtime Search Diagnostics</h1>
-                        <p className="mt-3 text-sm text-slate-400">
-                            소스별 직접 수집 성공률과 Naver fallback 상태를 추적합니다.
+                        <p className="text-xs font-bold uppercase tracking-[0.24em] text-sky-300">
+                            {isOpsOnly ? 'Alert Ops' : 'Search Ops'}
                         </p>
+                        <h1 className="mt-2 text-4xl font-black tracking-tight text-white">
+                            {isOpsOnly ? 'Alert Ops Control Tower' : 'Realtime Search Diagnostics'}
+                        </h1>
+                        <p className="mt-3 text-sm text-slate-400">
+                            {isOpsOnly
+                                ? 'approval queue, audit inbox, rollout tuning, webhook reminder 상태를 운영 기준으로 추적합니다.'
+                                : '소스별 직접 수집 성공률과 Naver fallback 상태를 추적합니다.'}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                            <a
+                                href="/admin"
+                                className={`rounded-full px-4 py-2 font-bold ${!isOpsOnly ? 'bg-slate-100 text-slate-950' : 'border border-slate-700 text-slate-300'}`}
+                            >
+                                Full Diagnostics
+                            </a>
+                            <a
+                                href="/admin/ops"
+                                className={`rounded-full px-4 py-2 font-bold ${isOpsOnly ? 'bg-slate-100 text-slate-950' : 'border border-slate-700 text-slate-300'}`}
+                            >
+                                Ops Console
+                            </a>
+                        </div>
                     </div>
                     <div className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-xs text-slate-400">
-                        <div>Search storage: <span className="font-semibold text-slate-200">{data?.storage || 'memory'}</span></div>
-                        <div className="mt-1">PDP storage: <span className="font-semibold text-slate-200">{data?.pdp.storage || 'memory'}</span></div>
+                        {!isOpsOnly && (
+                            <>
+                                <div>Search storage: <span className="font-semibold text-slate-200">{data?.storage || 'memory'}</span></div>
+                                <div className="mt-1">PDP storage: <span className="font-semibold text-slate-200">{data?.pdp.storage || 'memory'}</span></div>
+                            </>
+                        )}
                         <div className="mt-1">Alert storage: <span className="font-semibold text-slate-200">{data?.alerts.storage || 'unavailable'}</span></div>
+                        <div className="mt-1">
+                            Webhook: <span className="font-semibold text-slate-200">{webhookFormatLabel(alertTuningWebhook.format)}</span>
+                        </div>
+                        {alertTuningWebhook.targetLabel && (
+                            <div className="mt-1">Target: <span className="font-semibold text-slate-200">{alertTuningWebhook.targetLabel}</span></div>
+                        )}
                         <div className="mt-1">Last updated: <span className="font-semibold text-slate-200">{formatTime(summary?.lastUpdatedAt)}</span></div>
                         <div className="mt-1">{isFetching ? 'Refreshing...' : 'Auto refresh 15s'}</div>
                     </div>
@@ -982,45 +1507,70 @@ export default function SearchDiagnosticsDashboard() {
                     </div>
                 )}
 
-                <section className="grid gap-4 md:grid-cols-4">
-                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Tracked Searches</p>
-                        <p className="mt-2 text-4xl font-black tracking-tight text-white">{summary?.trackedSearches ?? 0}</p>
-                    </div>
-                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Observed Sources</p>
-                        <p className="mt-2 text-4xl font-black tracking-tight text-white">{totalSources}</p>
-                    </div>
-                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Direct-capable Sources</p>
-                        <p className="mt-2 text-4xl font-black tracking-tight text-emerald-300">{directSources}</p>
-                    </div>
-                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Fallback Sources</p>
-                        <p className="mt-2 text-4xl font-black tracking-tight text-amber-300">{fallbackSources}</p>
-                    </div>
-                </section>
+                {isOpsOnly ? (
+                    <section className="grid gap-4 md:grid-cols-4">
+                        <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Open Requests</p>
+                            <p className="mt-2 text-4xl font-black tracking-tight text-white">{approvalQueueSummary.openCount}</p>
+                        </div>
+                        <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Audit Unread</p>
+                            <p className="mt-2 text-4xl font-black tracking-tight text-amber-300">{alertTuningAuditInbox.unreadCount}</p>
+                        </div>
+                        <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Over SLA</p>
+                            <p className="mt-2 text-4xl font-black tracking-tight text-rose-300">{approvalQueueSummary.overdueCount}</p>
+                        </div>
+                        <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Rollout Sources</p>
+                            <p className="mt-2 text-4xl font-black tracking-tight text-sky-300">{alertRollout.length}</p>
+                        </div>
+                    </section>
+                ) : (
+                    <>
+                        <section className="grid gap-4 md:grid-cols-4">
+                            <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Tracked Searches</p>
+                                <p className="mt-2 text-4xl font-black tracking-tight text-white">{summary?.trackedSearches ?? 0}</p>
+                            </div>
+                            <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Observed Sources</p>
+                                <p className="mt-2 text-4xl font-black tracking-tight text-white">{totalSources}</p>
+                            </div>
+                            <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Direct-capable Sources</p>
+                                <p className="mt-2 text-4xl font-black tracking-tight text-emerald-300">{directSources}</p>
+                            </div>
+                            <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Fallback Sources</p>
+                                <p className="mt-2 text-4xl font-black tracking-tight text-amber-300">{fallbackSources}</p>
+                            </div>
+                        </section>
 
-                <section className="mt-8 grid gap-4 lg:grid-cols-4">
-                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Strong Fit</p>
-                        <p className="mt-2 text-4xl font-black tracking-tight text-emerald-300">{data?.quality.strong ?? 0}</p>
-                    </div>
-                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Low-fit Share</p>
-                        <p className="mt-2 text-4xl font-black tracking-tight text-amber-300">{data?.quality.lowFitShare ?? 0}%</p>
-                    </div>
-                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Suggestion Clicks</p>
-                        <p className="mt-2 text-4xl font-black tracking-tight text-sky-300">{data?.interactionSummary.suggestionClicks ?? 0}</p>
-                    </div>
-                    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Product Opens</p>
-                        <p className="mt-2 text-4xl font-black tracking-tight text-violet-300">{data?.interactionSummary.productOpens ?? 0}</p>
-                    </div>
-                </section>
+                        <section className="mt-8 grid gap-4 lg:grid-cols-4">
+                            <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Strong Fit</p>
+                                <p className="mt-2 text-4xl font-black tracking-tight text-emerald-300">{data?.quality.strong ?? 0}</p>
+                            </div>
+                            <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Low-fit Share</p>
+                                <p className="mt-2 text-4xl font-black tracking-tight text-amber-300">{data?.quality.lowFitShare ?? 0}%</p>
+                            </div>
+                            <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Suggestion Clicks</p>
+                                <p className="mt-2 text-4xl font-black tracking-tight text-sky-300">{data?.interactionSummary.suggestionClicks ?? 0}</p>
+                            </div>
+                            <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Product Opens</p>
+                                <p className="mt-2 text-4xl font-black tracking-tight text-violet-300">{data?.interactionSummary.productOpens ?? 0}</p>
+                            </div>
+                        </section>
+                    </>
+                )}
 
-                <section className="mt-8 grid gap-4 lg:grid-cols-4">
+                {!isOpsOnly && (
+                    <>
+                        <section className="mt-8 grid gap-4 lg:grid-cols-4">
                     <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
                         <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">PDP Events</p>
                         <p className="mt-2 text-4xl font-black tracking-tight text-white">{pdpSummary?.trackedEvents ?? 0}</p>
@@ -1037,9 +1587,9 @@ export default function SearchDiagnosticsDashboard() {
                         <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">PDP Parse Success</p>
                         <p className="mt-2 text-4xl font-black tracking-tight text-violet-300">{pdpSummary?.parseSuccessRate ?? 0}%</p>
                     </div>
-                </section>
+                        </section>
 
-                <section className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
+                        <section className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
                     <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
                         <div className="flex items-start justify-between gap-4">
                             <div>
@@ -1146,7 +1696,9 @@ export default function SearchDiagnosticsDashboard() {
                             )}
                         </div>
                     </div>
-                </section>
+                        </section>
+                    </>
+                )}
 
                 <section className="mt-8 grid gap-4 lg:grid-cols-4">
                     <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
@@ -1289,8 +1841,10 @@ export default function SearchDiagnosticsDashboard() {
 
                     <div className="mt-4 grid gap-3 lg:grid-cols-3">
                         {rolloutRecommendations.map((recommendation) => {
-                            const currentDraftRollout = draftTuning.sourceRollouts?.[recommendation.source] ?? 100;
-                            const canApply = currentDraftRollout !== recommendation.recommendedRolloutPercentage;
+                            const pendingRequest = openApprovalRequests.find((entry) =>
+                                entry.source === recommendation.source
+                                && entry.proposedRolloutPercentage === recommendation.recommendedRolloutPercentage
+                            );
                             return (
                                 <div key={`rollout_recommendation_${recommendation.source}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
                                     <div className="flex items-start justify-between gap-3">
@@ -1320,14 +1874,31 @@ export default function SearchDiagnosticsDashboard() {
                                         </span>
                                     </div>
 
-                                    <div className="mt-4">
+                                    <div className="mt-4 space-y-3">
+                                        <label className="block">
+                                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Request Note</span>
+                                            <textarea
+                                                value={queuedRequestNotes[recommendation.source] || ''}
+                                                onChange={(event) => setQueuedRequestNotes((current) => ({
+                                                    ...current,
+                                                    [recommendation.source]: event.target.value,
+                                                }))}
+                                                maxLength={280}
+                                                placeholder="왜 이 rollout 변경이 필요한지 남겨두면 approval queue에서 바로 볼 수 있습니다."
+                                                className="mt-2 min-h-[84px] w-full rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-3 text-sm text-slate-200 outline-none placeholder:text-slate-600"
+                                            />
+                                        </label>
                                         <button
                                             type="button"
-                                            onClick={() => applyRecommendedSourceRollout(recommendation.source, recommendation.recommendedRolloutPercentage)}
-                                            disabled={!canApply}
+                                            onClick={() => void queueRecommendedSourceRolloutRequest(recommendation)}
+                                            disabled={Boolean(pendingRequest) || processingRequestId === recommendation.source}
                                             className="rounded-full border border-slate-700 px-4 py-2 text-xs font-bold text-slate-200 disabled:opacity-40"
                                         >
-                                            {canApply ? '추천 rollout 적용' : '이미 draft 반영됨'}
+                                            {pendingRequest
+                                                ? '이미 pending queue'
+                                                : processingRequestId === recommendation.source
+                                                    ? '요청 생성 중...'
+                                                    : 'approval queue에 추가'}
                                         </button>
                                     </div>
                                 </div>
@@ -1338,6 +1909,418 @@ export default function SearchDiagnosticsDashboard() {
                                 rollout recommendation을 계산할 source override 데이터가 없습니다.
                             </div>
                         )}
+                    </div>
+                </section>
+
+                <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                        <div>
+                            <h2 className="text-lg font-bold text-white">Rollout Approval Queue</h2>
+                            <p className="mt-2 text-sm text-slate-400">
+                                추천 rollout 변경을 queue에 쌓고, 24h SLA와 48h auto-expire 정책 아래에서 approve/reject로 운영 반영 여부를 결정합니다.
+                            </p>
+                        </div>
+                        <div className="text-right text-xs text-slate-400">
+                            <div>Open: <span className="font-semibold text-slate-200">{approvalQueueSummary.openCount}</span></div>
+                            <div className="mt-1">Recent requests: <span className="font-semibold text-slate-200">{alertTuningRequests.length}</span></div>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Pending</p>
+                            <p className="mt-2 text-2xl font-black text-white">{approvalQueueSummary.pendingCount}</p>
+                            <p className="mt-2 text-xs text-slate-400">1st approval 대기</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Second Approval</p>
+                            <p className="mt-2 text-2xl font-black text-sky-200">{approvalQueueSummary.secondApprovalCount}</p>
+                            <p className="mt-2 text-xs text-slate-400">2nd approver 대기</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Over SLA</p>
+                            <p className="mt-2 text-2xl font-black text-amber-200">{approvalQueueSummary.overdueCount}</p>
+                            <p className="mt-2 text-xs text-slate-400">24h 초과 open request</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Expiring Soon</p>
+                            <p className="mt-2 text-2xl font-black text-orange-200">{approvalQueueSummary.expiringSoonCount}</p>
+                            <p className="mt-2 text-xs text-slate-400">48h auto-expire 임박</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Avg Resolve</p>
+                            <p className="mt-2 text-2xl font-black text-white">{formatHours(approvalQueueSummary.avgResolutionHours)}</p>
+                            <p className="mt-2 text-xs text-slate-400">resolved mean turnaround</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Within SLA</p>
+                            <p className="mt-2 text-2xl font-black text-emerald-200">{approvalQueueSummary.withinSlaRate}%</p>
+                            <p className="mt-2 text-xs text-slate-400">resolved within 24h</p>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                        {approvalQueueSummary.oldestOpenAt && (
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-xs text-slate-400">
+                                Oldest open request: <span className="font-semibold text-slate-200">{formatTime(approvalQueueSummary.oldestOpenAt)}</span>
+                                <span className="ml-3">Max open age: <span className="font-semibold text-slate-200">{formatHours(approvalQueueSummary.maxOpenAgeHours)}</span></span>
+                                <span className="ml-3">Expired total: <span className="font-semibold text-slate-200">{approvalQueueSummary.expiredCount}</span></span>
+                            </div>
+                        )}
+                        {alertTuningRequests.map((request) => (
+                            <div key={`approval_request_${request.id}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-semibold text-white">{request.source}</p>
+                                        <p className="mt-2 text-sm text-slate-200">{request.title}</p>
+                                        <p className="mt-2 text-xs leading-6 text-slate-400">{request.description}</p>
+                                    </div>
+                                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${approvalStatusClass(request.status)}`}>
+                                        {approvalStatusLabel(request.status)}
+                                    </span>
+                                </div>
+
+                                <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-slate-400">
+                                    <span className="rounded-full border border-slate-800 px-2 py-1">
+                                        current {request.currentRolloutPercentage}%
+                                    </span>
+                                    <span className="rounded-full border border-slate-800 px-2 py-1 text-slate-200">
+                                        proposed {request.proposedRolloutPercentage}%
+                                    </span>
+                                    <span className="rounded-full border border-slate-800 px-2 py-1">
+                                        approvals {request.approvalCount}/{request.requiredApprovals}
+                                    </span>
+                                    {requestAgeHours(request.createdAt) !== null && (
+                                        <span className="rounded-full border border-slate-800 px-2 py-1">
+                                            age {formatHours(requestAgeHours(request.createdAt) || 0)}
+                                        </span>
+                                    )}
+                                    {request.status === 'pending' || request.status === 'pending_second_approval' ? (
+                                        <span className="rounded-full border border-slate-800 px-2 py-1">
+                                            expires {formatTime(requestExpiresAt(request.createdAt))}
+                                        </span>
+                                    ) : null}
+                                    <span className="rounded-full border border-slate-800 px-2 py-1">
+                                        created {formatTime(request.createdAt)}
+                                    </span>
+                                    <span className="rounded-full border border-slate-800 px-2 py-1">
+                                        by {request.createdBy || 'system'}
+                                    </span>
+                                    {request.resolvedAt && (
+                                        <span className="rounded-full border border-slate-800 px-2 py-1">
+                                            resolved {formatTime(request.resolvedAt)}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {(request.status === 'pending' || request.status === 'pending_second_approval') && (requestAgeHours(request.createdAt) || 0) >= 24 && (
+                                    <div className="mt-4 rounded-2xl border border-amber-700/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+                                        SLA 초과 request입니다. 48h를 넘기면 system이 auto-expire 처리합니다.
+                                    </div>
+                                )}
+
+                                {request.requestNote && (
+                                    <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-3 text-xs leading-6 text-slate-300">
+                                        <p className="font-semibold uppercase tracking-[0.14em] text-slate-500">Request Note</p>
+                                        <p className="mt-2">{request.requestNote}</p>
+                                    </div>
+                                )}
+
+                                {request.approvals.length > 0 && (
+                                    <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-3 text-xs leading-6 text-slate-300">
+                                        <p className="font-semibold uppercase tracking-[0.14em] text-slate-500">Approval Trail</p>
+                                        <div className="mt-2 space-y-2">
+                                            {request.approvals.map((approval, index) => (
+                                                <div key={`${request.id}_approval_${approval.uid}_${index}`} className="rounded-xl border border-slate-800/80 bg-slate-950/60 px-3 py-2">
+                                                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-400">
+                                                        <span className="text-slate-200">{approval.uid}</span>
+                                                        <span>{formatTime(approval.approvedAt)}</span>
+                                                    </div>
+                                                    {approval.note && (
+                                                        <p className="mt-2 text-xs text-slate-300">{approval.note}</p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {request.resolutionNote && (
+                                    <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-3 text-xs leading-6 text-slate-300">
+                                        <p className="font-semibold uppercase tracking-[0.14em] text-slate-500">Resolution Note</p>
+                                        <p className="mt-2">{request.resolutionNote}</p>
+                                    </div>
+                                )}
+
+                                {request.status === 'pending' || request.status === 'pending_second_approval' ? (
+                                    <div className="mt-4 space-y-3">
+                                        <label className="block">
+                                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Decision Note</span>
+                                            <textarea
+                                                value={resolutionNotes[request.id] || ''}
+                                                onChange={(event) => setResolutionNotes((current) => ({
+                                                    ...current,
+                                                    [request.id]: event.target.value,
+                                                }))}
+                                                maxLength={280}
+                                                placeholder="approve note는 approval trail에 남고, reject note는 필수입니다."
+                                                className="mt-2 min-h-[84px] w-full rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-3 text-sm text-slate-200 outline-none placeholder:text-slate-600"
+                                            />
+                                        </label>
+                                        {request.status === 'pending_second_approval' && (
+                                            <p className="text-[11px] text-sky-300">
+                                                1차 승인이 완료됐습니다. 다른 approver의 second approval이 들어와야 rollout이 실제 적용됩니다.
+                                            </p>
+                                        )}
+                                        {request.createdBy === user.uid && (
+                                            <p className="text-[11px] text-amber-300">
+                                                다중 admin 설정이면 request 생성자는 self-approve가 차단됩니다.
+                                            </p>
+                                        )}
+                                        {request.approvals.some((approval) => approval.uid === user.uid) && (
+                                            <p className="text-[11px] text-amber-300">
+                                                이미 approve한 request입니다. 같은 관리자는 두 번 approve할 수 없습니다.
+                                            </p>
+                                        )}
+                                        <div className="flex flex-wrap gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleResolveApprovalRequest(request.id, 'approve')}
+                                                disabled={Boolean(processingRequestId)}
+                                                className="rounded-full border border-emerald-700/40 px-4 py-2 text-xs font-bold text-emerald-200 disabled:opacity-40"
+                                            >
+                                                {processingRequestId === request.id
+                                                    ? '처리 중...'
+                                                    : request.status === 'pending_second_approval'
+                                                        ? 'Second Approve'
+                                                        : 'Approve'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleResolveApprovalRequest(request.id, 'reject')}
+                                                disabled={Boolean(processingRequestId)}
+                                                className="rounded-full border border-rose-700/40 px-4 py-2 text-xs font-bold text-rose-200 disabled:opacity-40"
+                                            >
+                                                {processingRequestId === request.id ? '처리 중...' : 'Reject'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mt-4 text-xs text-slate-500">
+                                        {request.resolvedBy ? `resolved by ${request.resolvedBy}` : 'resolved'}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {alertTuningRequests.length === 0 && (
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                아직 생성된 rollout approval request가 없습니다.
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+                <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                        <div>
+                            <h2 className="text-lg font-bold text-white">Queue Ops Feed</h2>
+                            <p className="mt-2 text-sm text-slate-400">
+                                audit trail, reminder digest, quick rollback CTA를 한 화면에서 봅니다.
+                            </p>
+                        </div>
+                        <div className="text-right text-xs text-slate-400">
+                            <div>Audit events: <span className="font-semibold text-slate-200">{alertTuningAudit.length}</span></div>
+                            <div className="mt-1">Unread: <span className="font-semibold text-amber-200">{alertTuningAuditInbox.unreadCount}</span></div>
+                            <div className="mt-1">Digest: <span className="font-semibold text-slate-200">{formatTime(alertTuningDigest.generatedAt)}</span></div>
+                            <div className="mt-1">Webhook: <span className="font-semibold text-slate-200">{webhookFormatLabel(alertTuningWebhook.format)}</span></div>
+                            {alertTuningWebhook.targetLabel && (
+                                <div className="mt-1">Target: <span className="font-semibold text-slate-200">{alertTuningWebhook.targetLabel}</span></div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-3">
+                        <button
+                            type="button"
+                            onClick={() => void handleMarkAuditEventsRead([], true)}
+                            disabled={alertTuningAuditInbox.unreadCount === 0 || Boolean(markingAuditId)}
+                            className="rounded-full border border-slate-700 px-4 py-2 text-xs font-bold text-slate-200 disabled:opacity-40"
+                        >
+                            {markingAuditId === '__all__' ? '처리 중...' : 'Mark All Read'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void handleRunReminderDigest()}
+                            disabled={runningReminderDigest}
+                            className="rounded-full border border-sky-700/40 px-4 py-2 text-xs font-bold text-sky-200 disabled:opacity-40"
+                        >
+                            {runningReminderDigest ? 'Digest 실행 중...' : 'Run Digest Now'}
+                        </button>
+                        <div className="rounded-full border border-slate-800 px-4 py-2 text-xs text-slate-400">
+                            critical unread <span className="font-semibold text-rose-200">{alertTuningAuditInbox.criticalUnreadCount}</span>
+                        </div>
+                        <div className="rounded-full border border-slate-800 px-4 py-2 text-xs text-slate-400">
+                            warning unread <span className="font-semibold text-amber-200">{alertTuningAuditInbox.warningUnreadCount}</span>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+                        <div className="space-y-4">
+                            <div className="grid gap-3 md:grid-cols-3">
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Digest Open</p>
+                                    <p className="mt-2 text-2xl font-black text-white">{alertTuningDigest.openCount}</p>
+                                    <p className="mt-2 text-xs text-slate-400">current open approval requests</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Digest Overdue</p>
+                                    <p className="mt-2 text-2xl font-black text-amber-200">{alertTuningDigest.overdueCount}</p>
+                                    <p className="mt-2 text-xs text-slate-400">SLA를 넘긴 request</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Expired</p>
+                                    <p className="mt-2 text-2xl font-black text-rose-200">{alertTuningDigest.expiredCount}</p>
+                                    <p className="mt-2 text-xs text-slate-400">auto-expire 누적</p>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 lg:grid-cols-2">
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-semibold text-white">Overdue Requests</p>
+                                            <p className="mt-2 text-xs text-slate-400">24h를 초과한 open request</p>
+                                        </div>
+                                        <span className="rounded-full border border-amber-700/30 bg-amber-500/10 px-3 py-1 text-[11px] font-bold text-amber-200">
+                                            {alertTuningDigest.overdueRequests.length}
+                                        </span>
+                                    </div>
+                                    <div className="mt-4 space-y-3">
+                                        {alertTuningDigest.overdueRequests.map((entry) => (
+                                            <div key={`digest_overdue_${entry.requestId}`} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3 text-xs text-slate-300">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <p className="font-semibold text-white">{entry.source}</p>
+                                                    <span className="rounded-full border border-slate-800 px-2 py-1 text-[10px] text-slate-300">
+                                                        {approvalStatusLabel(entry.status)}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-2 text-slate-400">{entry.title}</p>
+                                                <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                                                    <span>age {formatHours(entry.ageHours)}</span>
+                                                    <span>expires {formatTime(entry.expiresAt)}</span>
+                                                    <span>rollout {entry.proposedRolloutPercentage}%</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {alertTuningDigest.overdueRequests.length === 0 && (
+                                            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500">
+                                                현재 overdue approval request가 없습니다.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-semibold text-white">Quick Rollback CTA</p>
+                                            <p className="mt-2 text-xs text-slate-400">최근 restorable tuning history를 바로 복원합니다.</p>
+                                        </div>
+                                        <span className="rounded-full border border-slate-800 px-3 py-1 text-[11px] font-bold text-slate-300">
+                                            {quickRollbackEntries.length} ready
+                                        </span>
+                                    </div>
+                                    <div className="mt-4 space-y-3">
+                                        {quickRollbackEntries.map((entry) => (
+                                            <div key={`quick_rollback_${entry.id}`} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{formatTime(entry.updatedAt)}</p>
+                                                        <p className="mt-2 text-sm text-slate-200">{entry.summary}</p>
+                                                        {entry.updatedBy && (
+                                                            <p className="mt-1 text-xs text-slate-500">{entry.updatedBy}</p>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void handleRollbackAlertTuning(entry.id)}
+                                                        disabled={isSavingTuning || Boolean(rollbackingHistoryId)}
+                                                        className="rounded-full border border-amber-700/40 px-3 py-2 text-[11px] font-bold text-amber-200 disabled:opacity-40"
+                                                    >
+                                                        {rollbackingHistoryId === entry.id ? '복원 중...' : 'Quick Rollback'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {quickRollbackEntries.length === 0 && (
+                                            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500">
+                                                즉시 복원 가능한 tuning history가 아직 없습니다.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-sm font-semibold text-white">Recent Audit Feed</p>
+                                    <p className="mt-2 text-xs text-slate-400">approval lifecycle, digest, rollback 이벤트를 추적합니다.</p>
+                                </div>
+                            </div>
+                            <div className="mt-4 space-y-3">
+                                {alertTuningAudit.map((event) => (
+                                    <div key={`audit_event_${event.id}`} className={`rounded-2xl border p-3 ${event.read ? 'border-slate-800 bg-slate-950/70' : 'border-sky-700/30 bg-sky-500/5'}`}>
+                                        <div className="flex flex-wrap items-start justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-semibold text-white">{event.title}</p>
+                                                <p className="mt-2 text-xs leading-6 text-slate-400">{event.message}</p>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {!event.read && (
+                                                    <span className="rounded-full border border-sky-700/30 bg-sky-500/10 px-2 py-1 text-[10px] font-bold text-sky-200">
+                                                        UNREAD
+                                                    </span>
+                                                )}
+                                                <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${auditLevelClass(event.level)}`}>
+                                                    {auditTypeLabel(event.type)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                                            <span>{formatTime(event.createdAt)}</span>
+                                            {event.source && <span>{event.source}</span>}
+                                            {event.actorUid && <span>{event.actorUid}</span>}
+                                            {event.requestId && <span>request {event.requestId.slice(0, 8)}</span>}
+                                            {event.readAt && <span>read {formatTime(event.readAt)}</span>}
+                                        </div>
+                                        {event.note && (
+                                            <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-300">
+                                                {event.note}
+                                            </div>
+                                        )}
+                                        {!event.read && (
+                                            <div className="mt-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleMarkAuditEventsRead([event.id])}
+                                                    disabled={Boolean(markingAuditId)}
+                                                    className="rounded-full border border-slate-700 px-3 py-2 text-[11px] font-bold text-slate-200 disabled:opacity-40"
+                                                >
+                                                    {markingAuditId === event.id ? '처리 중...' : 'Mark Read'}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                {alertTuningAudit.length === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500">
+                                        아직 기록된 approval audit event가 없습니다.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -2073,7 +3056,9 @@ export default function SearchDiagnosticsDashboard() {
                     </div>
                 </section>
 
-                <section className="mt-8 grid gap-4 lg:grid-cols-2">
+                {!isOpsOnly && (
+                    <>
+                        <section className="mt-8 grid gap-4 lg:grid-cols-2">
                     <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
                         <h2 className="text-lg font-bold text-white">Low-fit Queries</h2>
                         <div className="mt-4 space-y-3">
@@ -2168,9 +3153,9 @@ export default function SearchDiagnosticsDashboard() {
                             )}
                         </div>
                     </div>
-                </section>
+                        </section>
 
-                <section className="mt-8 overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/60">
+                        <section className="mt-8 overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/60">
                     <div className="border-b border-slate-800 px-5 py-4">
                         <h2 className="text-lg font-bold text-white">Source Summary</h2>
                     </div>
@@ -2232,9 +3217,9 @@ export default function SearchDiagnosticsDashboard() {
                             </tbody>
                         </table>
                     </div>
-                </section>
+                        </section>
 
-                <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60">
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60">
                     <div className="border-b border-slate-800 px-5 py-4">
                         <h2 className="text-lg font-bold text-white">Source Drill-down</h2>
                     </div>
@@ -2387,9 +3372,9 @@ export default function SearchDiagnosticsDashboard() {
                     ) : (
                         <div className="p-5 text-sm text-slate-500">선택된 소스가 없습니다.</div>
                     )}
-                </section>
+                        </section>
 
-                <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60">
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60">
                     <div className="border-b border-slate-800 px-5 py-4">
                         <h2 className="text-lg font-bold text-white">Recent Searches</h2>
                     </div>
@@ -2430,7 +3415,9 @@ export default function SearchDiagnosticsDashboard() {
                             </div>
                         )}
                     </div>
-                </section>
+                        </section>
+                    </>
+                )}
             </div>
         </main>
     );

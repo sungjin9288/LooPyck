@@ -4,7 +4,14 @@ import { loadSearchDiagnostics } from '@/lib/api/searchDiagnostics';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 import { loadAlertDiagnostics } from '@/lib/server/alertDiagnostics';
 import { requireAdminRequest } from '@/lib/server/adminAccess';
-import { loadAlertTuningConfigRecord } from '@/lib/server/alertTuningStore';
+import {
+    buildAlertTuningAuditInboxSummary,
+    buildAlertTuningReminderDigest,
+    getAlertTuningWebhookConfig,
+    loadAlertTuningApprovalRequests,
+    loadAlertTuningAuditEvents,
+    loadAlertTuningConfigRecord,
+} from '@/lib/server/alertTuningStore';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,12 +47,17 @@ export async function GET(request: NextRequest) {
     const limitRaw = Number.parseInt(request.nextUrl.searchParams.get('limit') || '10', 10);
     const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(limitRaw, 120)) : 10;
     const includeRecent = request.nextUrl.searchParams.get('include') === 'recent';
-    const [diagnostics, pdpDiagnostics, alertTuning] = await Promise.all([
+    const [diagnostics, pdpDiagnostics, alertTuning, alertTuningRequests, alertTuningAudit] = await Promise.all([
         loadSearchDiagnostics(limit),
         loadPdpDiagnostics(limit),
         loadAlertTuningConfigRecord(),
+        loadAlertTuningApprovalRequests(),
+        loadAlertTuningAuditEvents(undefined, adminCheck.uid),
     ]);
     const alertDiagnostics = await loadAlertDiagnostics(limit, alertTuning.config);
+    const alertTuningDigest = buildAlertTuningReminderDigest(alertTuningRequests);
+    const alertTuningAuditInbox = buildAlertTuningAuditInboxSummary(alertTuningAudit);
+    const alertTuningWebhook = getAlertTuningWebhookConfig();
 
     return NextResponse.json(
         {
@@ -70,6 +82,11 @@ export async function GET(request: NextRequest) {
                 storage: alertDiagnostics.storage,
             },
             alertTuning,
+            alertTuningRequests,
+            alertTuningAudit,
+            alertTuningAuditInbox,
+            alertTuningDigest,
+            alertTuningWebhook,
         },
         {
             headers: {

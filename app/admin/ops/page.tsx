@@ -2,6 +2,6 @@ import SearchDiagnosticsDashboard from '@/components/admin/SearchDiagnosticsDash
 
 export const dynamic = 'force-dynamic';
 
-export default function AdminPage() {
-    return <SearchDiagnosticsDashboard scope="full" />;
+export default function AdminOpsPage() {
+    return <SearchDiagnosticsDashboard scope="ops" />;
 }

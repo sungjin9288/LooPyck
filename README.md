@@ -150,6 +150,9 @@ npm run dev
 
 # 5. Type Check
 npm run typecheck
+
+# 6. Env Validation
+npm run env:check
 ```
 
 ### 환경 변수
@@ -174,6 +177,9 @@ npm run typecheck
 | `FIREBASE_ADMIN_PRIVATE_KEY` | ✅(운영) | Firebase Admin SDK Private Key (`\n` 이스케이프 필요) |
 | `ADMIN_UIDS` | ✅(`/admin` 사용 시) | Admin API 접근 UID 목록(쉼표 구분) |
 | `CRON_SECRET` | ✅(운영) | `/api/jobs/scan-price-alerts` 보호용 시크릿 |
+| `ALERT_TUNING_WEBHOOK_URL` | 선택 | approval reminder digest를 보낼 external ops webhook URL |
+| `ALERT_TUNING_WEBHOOK_FORMAT` | 선택 | `generic`, `slack`, `discord` 중 webhook payload format (미입력 시 URL 기반 auto-detect) |
+| `ALERT_TUNING_WEBHOOK_BEARER` | 선택 | 위 webhook 호출 시 붙일 Bearer token |
 | `CAPACITOR_APP_ID` | 선택 | Capacitor 네이티브 앱 식별자 |
 | `CAPACITOR_APP_NAME` | 선택 | Capacitor 앱 이름 |
 | `CAPACITOR_SERVER_URL` | 선택 | Capacitor가 로드할 원격 웹앱 URL |

@@ -1,7 +1,7 @@
-import { NextRequest } from 'next/server';
-import { getAdminAuth } from '@/lib/server/firebaseAdmin';
+import type { NextRequest } from 'next/server';
+import { getAdminAuth } from './firebaseAdmin.ts';
 
-function getConfiguredAdminUids(): string[] {
+export function getConfiguredAdminUids(): string[] {
     return (process.env.ADMIN_UIDS || process.env.NEXT_PUBLIC_ADMIN_UIDS || '')
         .split(',')
         .map((uid) => uid.trim())
