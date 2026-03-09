@@ -3,13 +3,10 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import {
-    signInAnonymously,
     onAuthStateChanged,
     User,
     GoogleAuthProvider,
-    linkWithPopup,
     linkWithRedirect,
-    signInWithPopup,
     signInWithRedirect,
     signOut,
 } from 'firebase/auth';
@@ -72,44 +69,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
 
     const linkAccount = async () => {
-        if (!auth || !auth.currentUser) {
+        if (!auth) {
             throw new Error('Authentication is not initialized.');
         }
 
-        if (!auth.currentUser.isAnonymous) {
+        if (auth.currentUser && !auth.currentUser.isAnonymous) {
             return;
         }
 
         const provider = new GoogleAuthProvider();
         try {
-            if (typeof window !== 'undefined' && /iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
-                await linkWithRedirect(auth.currentUser, provider);
-                return;
-            }
-            await linkWithPopup(auth.currentUser, provider);
+            await signInWithRedirect(auth, provider);
         } catch (error) {
-            if (isPopupFlowError(error)) {
-                await linkWithRedirect(auth.currentUser, provider);
-                return;
-            }
-
             if (isCredentialConflictError(error)) {
                 await signOut(auth);
-                if (typeof window !== 'undefined' && /iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
-                    await signInWithRedirect(auth, provider);
-                    return;
-                }
-                try {
-                    await signInWithPopup(auth, provider);
-                    return;
-                } catch (signInError) {
-                    if (isPopupFlowError(signInError)) {
-                        await signInWithRedirect(auth, provider);
-                        return;
-                    }
-                    console.error('Google sign-in fallback error:', signInError);
-                    throw signInError;
-                }
+                await signInWithRedirect(auth, provider);
+                return;
             }
 
             console.error('Link account error:', error);
@@ -127,15 +102,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             setUser(currentUser);
             setLoading(false);
         });
-
-        // Initialize Anonymous Auth if not already signed in
-        if (!auth.currentUser) {
-            signInAnonymously(auth).catch((error) => {
-                console.error("Auth Error:", error);
-                setLoading(false);
-            });
-        }
-
         return () => unsubscribe();
     }, []);
 
