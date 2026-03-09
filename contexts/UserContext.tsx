@@ -9,7 +9,9 @@ import {
     GoogleAuthProvider,
     linkWithPopup,
     linkWithRedirect,
-    signInWithCredential,
+    signInWithPopup,
+    signInWithRedirect,
+    signOut,
 } from 'firebase/auth';
 
 declare global {
@@ -92,10 +94,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (isCredentialConflictError(error)) {
-                const credential = GoogleAuthProvider.credentialFromError(error);
-                if (credential) {
-                    await signInWithCredential(auth, credential);
+                await signOut(auth);
+                if (typeof window !== 'undefined' && /iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
+                    await signInWithRedirect(auth, provider);
                     return;
+                }
+                try {
+                    await signInWithPopup(auth, provider);
+                    return;
+                } catch (signInError) {
+                    if (isPopupFlowError(signInError)) {
+                        await signInWithRedirect(auth, provider);
+                        return;
+                    }
+                    console.error('Google sign-in fallback error:', signInError);
+                    throw signInError;
                 }
             }
 
