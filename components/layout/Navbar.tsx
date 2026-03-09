@@ -20,7 +20,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [loginError, setLoginError] = useState<string | null>(null);
     const { t, locale, setLocale } = useLanguage();
-    const { user, linkAccount } = useUser();
+    const { user, linkAccount, authError, clearAuthError } = useUser();
 
     const toggleLanguage = () => {
         setLocale(locale === 'ko' ? 'en' : 'ko');
@@ -36,6 +36,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
         try {
             setIsLoggingIn(true);
             setLoginError(null);
+            clearAuthError();
             if (user?.isAnonymous) {
                 await linkAccount();
             } else {
@@ -137,9 +138,9 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
                         </button>
                     </div>
                 </div>
-                {loginError && (
+                {(loginError || authError) && (
                     <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                        로그인 실패: {loginError}
+                        로그인 실패: {loginError || authError}
                     </div>
                 )}
             </div>
