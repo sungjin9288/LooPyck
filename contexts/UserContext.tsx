@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import {
+    getRedirectResult,
     onAuthStateChanged,
     User,
     GoogleAuthProvider,
@@ -10,6 +11,7 @@ import {
     signInWithRedirect,
     signOut,
 } from 'firebase/auth';
+import { pushAppNotification } from '@/lib/core/notifications';
 
 declare global {
     interface Window {
@@ -98,11 +100,28 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
+        let cancelled = false;
+
+        getRedirectResult(auth).catch((error) => {
+            if (cancelled) return;
+            console.error('Redirect auth error:', error);
+            const message = error instanceof Error ? error.message : '리디렉트 로그인에 실패했습니다.';
+            pushAppNotification({
+                title: '로그인 실패',
+                message,
+                type: 'alert',
+            });
+        });
+
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             setUser(currentUser);
             setLoading(false);
         });
-        return () => unsubscribe();
+
+        return () => {
+            cancelled = true;
+            unsubscribe();
+        };
     }, []);
 
     return (
