@@ -2,11 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '@/components/auth/LoginModal';
-import { signInWithGoogle } from '@/lib/auth/firebase';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import BrandTicker from '@/components/layout/BrandTicker'; // Phase 39 Ticker
 import { useUser } from '@/contexts/UserContext';
-import { pushAppNotification } from '@/lib/core/notifications';
 
 interface NavbarProps {
     currentView: 'search' | 'favorites' | 'recommend';
@@ -17,10 +15,8 @@ interface NavbarProps {
 
 export default function Navbar({ currentView, setCurrentView, onLogoClick, onNotificationClick }: NavbarProps) {
     const [scrolled, setScrolled] = useState(false);
-    const [isLoggingIn, setIsLoggingIn] = useState(false);
-    const [loginError, setLoginError] = useState<string | null>(null);
     const { t, locale, setLocale } = useLanguage();
-    const { user, linkAccount, authError, clearAuthError } = useUser();
+    const { user, authError } = useUser();
 
     const toggleLanguage = () => {
         setLocale(locale === 'ko' ? 'en' : 'ko');
@@ -31,29 +27,6 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
-
-    const handleLogin = async () => {
-        try {
-            setIsLoggingIn(true);
-            setLoginError(null);
-            clearAuthError();
-            if (user?.isAnonymous) {
-                await linkAccount();
-            } else {
-                await signInWithGoogle();
-            }
-        } catch (error) {
-            const message = error instanceof Error ? error.message : '로그인에 실패했습니다.';
-            setLoginError(message);
-            pushAppNotification({
-                title: '로그인 실패',
-                message,
-                type: 'alert',
-            });
-        } finally {
-            setIsLoggingIn(false);
-        }
-    };
 
     return (
         <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled
@@ -120,13 +93,12 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
                         {user && !user.isAnonymous ? (
                             <UserProfile user={user} />
                         ) : (
-                            <button
-                                onClick={handleLogin}
-                                disabled={isLoggingIn}
+                            <a
+                                href="/login"
                                 className="px-4 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 transition-colors"
                             >
-                                {isLoggingIn ? '로그인 중...' : t('nav.login')}
-                            </button>
+                                {t('nav.login')}
+                            </a>
                         )}
 
                         {/* Language Toggle */}
@@ -138,9 +110,9 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
                         </button>
                     </div>
                 </div>
-                {(loginError || authError) && (
+                {authError && (
                     <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                        로그인 실패: {loginError || authError}
+                        로그인 실패: {authError}
                     </div>
                 )}
             </div>
