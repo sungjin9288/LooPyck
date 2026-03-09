@@ -402,6 +402,19 @@ type SearchDiagnosticsDashboardProps = {
     scope?: 'full' | 'ops';
 };
 
+async function parseJsonResponseSafely(response: Response) {
+    const raw = await response.text();
+    if (!raw.trim()) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(raw) as DiagnosticsResponse | { error?: string };
+    } catch {
+        throw new Error(`진단 API 응답을 해석하지 못했습니다. status=${response.status}`);
+    }
+}
+
 function buildLowFitQueries(recent: RecentSnapshot[]): Array<{ query: string; quality: string; generatedAt: string; suggestedQueries: string[]; totalProducts: number }> {
     return recent
         .filter((snapshot) => snapshot.resultQuality === 'weak' || snapshot.resultQuality === 'mixed')
@@ -876,7 +889,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                     },
                     cache: 'no-store',
                 });
-                const payload = await response.json();
+                const payload = await parseJsonResponseSafely(response);
 
                 if (!response.ok) {
                     if (response.status === 401 || response.status === 403 || response.status === 503) {
@@ -885,12 +898,19 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                             setData(null);
                         }
                     }
-                    throw new Error(payload.error || '진단 데이터를 불러오지 못했습니다.');
+                    const message = payload && typeof payload === 'object' && typeof payload.error === 'string'
+                        ? payload.error
+                        : `진단 데이터를 불러오지 못했습니다. status=${response.status}`;
+                    throw new Error(message);
+                }
+
+                if (!payload) {
+                    throw new Error('진단 API가 비어 있는 응답을 반환했습니다.');
                 }
 
                 if (!cancelled) {
                     setIsAdminAuthorized(true);
-                    setData(payload);
+                    setData(payload as DiagnosticsResponse);
                     setError(null);
                 }
                 return true;
