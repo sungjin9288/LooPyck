@@ -18,6 +18,7 @@ interface NavbarProps {
 export default function Navbar({ currentView, setCurrentView, onLogoClick, onNotificationClick }: NavbarProps) {
     const [scrolled, setScrolled] = useState(false);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [loginError, setLoginError] = useState<string | null>(null);
     const { t, locale, setLocale } = useLanguage();
     const { user, linkAccount } = useUser();
 
@@ -34,6 +35,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
     const handleLogin = async () => {
         try {
             setIsLoggingIn(true);
+            setLoginError(null);
             if (user?.isAnonymous) {
                 await linkAccount();
             } else {
@@ -41,6 +43,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : '로그인에 실패했습니다.';
+            setLoginError(message);
             pushAppNotification({
                 title: '로그인 실패',
                 message,
@@ -134,6 +137,11 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
                         </button>
                     </div>
                 </div>
+                {loginError && (
+                    <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                        로그인 실패: {loginError}
+                    </div>
+                )}
             </div>
         </header>
     );
