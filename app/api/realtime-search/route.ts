@@ -8,6 +8,7 @@ import { persistPriceHistorySnapshot } from '@/lib/server/priceHistoryStore';
 
 export const runtime = 'nodejs';
 const SEARCH_AGGREGATION_TIMEOUT_MS = 12_000;
+const SEARCH_SIDE_EFFECT_TIMEOUT_MS = 1_500;
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -25,6 +26,14 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
         if (timer) {
             clearTimeout(timer);
         }
+    }
+}
+
+async function withSoftTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+    try {
+        return await withTimeout(promise, timeoutMs);
+    } catch {
+        return null;
     }
 }
 
@@ -121,25 +130,35 @@ export async function GET(request: NextRequest) {
             totalProducts: reranked.products.length,
         };
         recordSearchDiagnostics(diagnosticsPayload);
-        try {
-            await persistSearchDiagnostics(diagnosticsPayload);
-        } catch (persistError) {
-            console.warn('[SearchDiagnostics] persist failed:', persistError);
-        }
 
         let historyEnabled = false;
         let comparisonGroupsPersisted = 0;
         let optionHistoriesPersisted = 0;
         let variantHistoriesPersisted = 0;
-        try {
-            const historyResult = await persistPriceHistorySnapshot(reranked.products, effectiveQuery);
+        const searchDiagnosticsPersistPromise = withSoftTimeout(
+            persistSearchDiagnostics(diagnosticsPayload).catch((persistError) => {
+                console.warn('[SearchDiagnostics] persist failed:', persistError);
+                return null;
+            }),
+            SEARCH_SIDE_EFFECT_TIMEOUT_MS
+        );
+
+        const historyPersistPromise = withSoftTimeout(
+            persistPriceHistorySnapshot(reranked.products, effectiveQuery).catch((ingestError) => {
+                console.warn('[PriceHistory] ingest failed:', ingestError);
+                return null;
+            }),
+            SEARCH_SIDE_EFFECT_TIMEOUT_MS
+        );
+
+        const historyResult = await historyPersistPromise;
+        if (historyResult) {
             historyEnabled = historyResult.enabled;
             comparisonGroupsPersisted = historyResult.comparisonGroupsPersisted;
             optionHistoriesPersisted = historyResult.optionHistoriesPersisted;
             variantHistoriesPersisted = historyResult.variantHistoriesPersisted;
-        } catch (ingestError) {
-            console.warn('[PriceHistory] ingest failed:', ingestError);
         }
+        void searchDiagnosticsPersistPromise;
 
         const fallbackSources = diagnosticsPayload.sources.filter(
             (entry) => entry.strategy === 'naver_classified_fallback' || entry.strategy === 'classified_naver'
