@@ -143,7 +143,7 @@ const CATEGORY_QUERY_VARIANTS: Record<string, { local: string[]; global: string[
     '패딩': { local: ['패딩', '숏패딩', '다운 자켓'], global: ['puffer jacket', 'down jacket', 'puffer coat'] },
     '가디건': { local: ['가디건', '니트 가디건'], global: ['cardigan', 'knit cardigan'] },
     '맨투맨': { local: ['맨투맨', '스웨트셔츠'], global: ['sweatshirt', 'crewneck sweatshirt'] },
-    '후드집업': { local: ['후드집업', '후드 집업'], global: ['zip hoodie', 'hooded zip-up', 'hoodie'] },
+    '후드집업': { local: ['후드집업', '후드 집업', '후드', '후디'], global: ['zip hoodie', 'hooded zip-up', 'hoodie'] },
     '셔츠': { local: ['셔츠', '옥스포드 셔츠'], global: ['shirt', 'oxford shirt'] },
     '니트': { local: ['니트', '크루넥 니트'], global: ['knit', 'sweater', 'crewneck knit'] },
     '티셔츠': { local: ['티셔츠', '반팔 티셔츠'], global: ['t-shirt', 'tee', 'graphic tee'] },
@@ -424,7 +424,7 @@ export function buildSourceAwareQueryCandidates(
 
 export function buildSourceAwareSearchPlan(analysis: FashionQueryAnalysis): SearchQueryCandidatePlan {
     const plan: SearchQueryCandidatePlan = {
-        NAVER: uniqueOrdered([analysis.normalizedQuery || analysis.originalQuery, analysis.originalQuery]).slice(0, 2),
+        NAVER: buildSourceAwareQueryCandidates(analysis, 'NAVER'),
     };
 
     DIRECT_QUERY_EXPANSION_SOURCES.forEach((source) => {

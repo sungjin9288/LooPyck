@@ -91,6 +91,17 @@ test('source-aware query plan adds english fashion variants for global sources',
     assert.ok(plan.SSENSE?.includes('zip hoodie'));
     assert.ok(plan.SSENSE?.includes('nike'));
     assert.ok(plan.MUSINSA?.includes('후드집업'));
+    assert.ok(plan.NAVER?.includes('후드집업'));
+});
+
+test('naver query plan broadens generic hoodie searches', () => {
+    const analysis = analyzeFashionQuery('남자 후드');
+    const plan = buildSourceAwareSearchPlan(analysis);
+
+    assert.equal(analysis.allowed, true);
+    assert.ok(plan.NAVER?.includes('남자 후드'));
+    assert.ok(plan.NAVER?.includes('후드집업'));
+    assert.ok(plan.NAVER?.includes('후드'));
 });
 
 test('weak-result search meta exposes refinement suggestions', () => {
