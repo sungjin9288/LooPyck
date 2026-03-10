@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadPdpDiagnostics } from '@/lib/api/pdpDiagnostics';
 import { loadSearchDiagnostics } from '@/lib/api/searchDiagnostics';
+import { buildSearchQualityCoverageSummary } from '@/lib/search/searchQualityCoverage';
 import { loadSearchLearningQueue } from '@/lib/search/queryLearning';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 import { loadAlertDiagnostics } from '@/lib/server/alertDiagnostics';
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
             loadAlertTuningAuditEvents(undefined, adminCheck.uid),
         ]);
         const alertDiagnostics = await loadAlertDiagnostics(limit, alertTuning.config);
+        const searchQualityCoverage = buildSearchQualityCoverageSummary();
         const alertTuningDigest = buildAlertTuningReminderDigest(alertTuningRequests);
         const alertTuningAuditInbox = buildAlertTuningAuditInboxSummary(alertTuningAudit);
         const alertTuningWebhook = getAlertTuningWebhookConfig();
@@ -71,6 +73,7 @@ export async function GET(request: NextRequest) {
                 interactionSummary: diagnostics.interactionSummary,
                 storage: diagnostics.storage,
                 searchLearning,
+                searchQualityCoverage,
                 pdp: {
                     summary: pdpDiagnostics.summary,
                     recent: includeRecent ? pdpDiagnostics.recent : [],

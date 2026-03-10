@@ -382,6 +382,23 @@ type DiagnosticsResponse = {
         };
         storage: 'memory' | 'firestore';
     };
+    searchQualityCoverage: {
+        totalQueries: number;
+        globalTargetQueries: number;
+        naverCovered: number;
+        globalCovered: number;
+        fullyCovered: number;
+        naverCoverageRate: number;
+        globalCoverageRate: number;
+        fullCoverageRate: number;
+        uncoveredQueries: Array<{
+            query: string;
+            naverMatched: string[];
+            naverMissing: string[];
+            globalMatched: string[];
+            globalMissing: string[];
+        }>;
+    };
     pdp: {
         summary: {
             trackedEvents: number;
@@ -1590,6 +1607,56 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             setSearchLearningMessage('AI 검색어 제안을 생성했습니다.');
         } catch (suggestionError) {
             setSearchLearningMessage(suggestionError instanceof Error ? suggestionError.message : 'AI 검색 제안 생성에 실패했습니다.');
+        } finally {
+            setProcessingSearchLearningId(null);
+        }
+    }
+
+    async function handleBulkGenerateSearchLearningSuggestions() {
+        if (!user || selectedSearchLearningIds.length === 0) {
+            return;
+        }
+
+        setProcessingSearchLearningId('bulk_generate');
+        setSearchLearningMessage(null);
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/search-learning', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'bulk_generate',
+                    entryIds: selectedSearchLearningIds,
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || '검색 학습 AI 제안을 일괄 생성하지 못했습니다.');
+            }
+
+            const updatedEntries = Array.isArray(payload.entries) ? payload.entries as SearchLearningEntry[] : [];
+            setData((current) => {
+                if (!current) {
+                    return current;
+                }
+
+                const updatedMap = new Map(updatedEntries.map((entry) => [entry.id, entry]));
+                const entries = current.searchLearning.entries.map((entry) => updatedMap.get(entry.id) || entry);
+                return {
+                    ...current,
+                    searchLearning: {
+                        ...current.searchLearning,
+                        entries,
+                        summary: summarizeSearchLearningEntries(entries),
+                    },
+                };
+            });
+            setSearchLearningMessage(`${updatedEntries.length}개의 학습 query에 AI 제안을 생성했습니다.`);
+        } catch (bulkError) {
+            setSearchLearningMessage(bulkError instanceof Error ? bulkError.message : '검색 학습 AI 제안을 일괄 생성하지 못했습니다.');
         } finally {
             setProcessingSearchLearningId(null);
         }
@@ -3341,6 +3408,101 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                         <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                 <div>
+                                    <h2 className="text-lg font-bold text-white">Search Quality Coverage</h2>
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        curated 패션 검색어 평가셋 기준으로 rewrite/semantic expansion이 얼마나 커버되는지 요약합니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        total {data?.searchQualityCoverage.totalQueries ?? 0}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+                                        NAVER {Math.round((data?.searchQualityCoverage.naverCoverageRate ?? 0) * 100)}%
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">NAVER Coverage</p>
+                                    <p className="mt-3 text-3xl font-black text-emerald-300">
+                                        {Math.round((data?.searchQualityCoverage.naverCoverageRate ?? 0) * 100)}%
+                                    </p>
+                                    <p className="mt-1 text-xs text-slate-400">
+                                        {data?.searchQualityCoverage.naverCovered ?? 0}/{data?.searchQualityCoverage.totalQueries ?? 0}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Global Coverage</p>
+                                    <p className="mt-3 text-3xl font-black text-sky-300">
+                                        {Math.round((data?.searchQualityCoverage.globalCoverageRate ?? 0) * 100)}%
+                                    </p>
+                                    <p className="mt-1 text-xs text-slate-400">
+                                        {data?.searchQualityCoverage.globalCovered ?? 0}/{data?.searchQualityCoverage.globalTargetQueries ?? 0}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Full Coverage</p>
+                                    <p className="mt-3 text-3xl font-black text-violet-300">
+                                        {Math.round((data?.searchQualityCoverage.fullCoverageRate ?? 0) * 100)}%
+                                    </p>
+                                    <p className="mt-1 text-xs text-slate-400">
+                                        {data?.searchQualityCoverage.fullyCovered ?? 0}/{data?.searchQualityCoverage.totalQueries ?? 0}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Needs Review</p>
+                                    <p className="mt-3 text-3xl font-black text-amber-300">
+                                        {data?.searchQualityCoverage.uncoveredQueries.length ?? 0}
+                                    </p>
+                                    <p className="mt-1 text-xs text-slate-400">
+                                        uncovered curated queries
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                {(data?.searchQualityCoverage.uncoveredQueries || []).slice(0, 6).map((entry) => (
+                                    <div key={entry.query} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-sm font-semibold text-white">{entry.query}</p>
+                                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                            <div>
+                                                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">NAVER Missing</p>
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {entry.naverMissing.length > 0 ? entry.naverMissing.map((query) => (
+                                                        <span key={`${entry.query}_naver_${query}`} className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-100">
+                                                            {query}
+                                                        </span>
+                                                    )) : (
+                                                        <span className="text-xs text-slate-500">none</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Global Missing</p>
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {entry.globalMissing.length > 0 ? entry.globalMissing.map((query) => (
+                                                        <span key={`${entry.query}_global_${query}`} className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-100">
+                                                            {query}
+                                                        </span>
+                                                    )) : (
+                                                        <span className="text-xs text-slate-500">none</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {(data?.searchQualityCoverage.uncoveredQueries || []).length === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                        현재 curated 검색어 평가셋은 모두 커버되고 있습니다.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
                                     <h2 className="text-lg font-bold text-white">Search Learning Queue</h2>
                                     <p className="mt-2 text-sm text-slate-400">
                                         low-fit 또는 0건 검색어를 저장하고, AI 제안 후 승인된 검색어를 다음 검색부터 확장어로 사용합니다.
@@ -3388,6 +3550,14 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {processingSearchLearningId === 'bulk_approve' ? '승인 중...' : `선택 승인 (${selectedSearchLearningIds.length})`}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleBulkGenerateSearchLearningSuggestions}
+                                    disabled={selectedSearchLearningIds.length === 0 || processingSearchLearningId === 'bulk_generate'}
+                                    className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs font-bold text-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {processingSearchLearningId === 'bulk_generate' ? '생성 중...' : `선택 AI 제안 (${selectedSearchLearningIds.length})`}
                                 </button>
                                 <button
                                     type="button"

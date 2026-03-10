@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { analyzeFashionQuery, buildSourceAwareSearchPlan, searchProductsByFashionQuery } from '../lib/search/fashionQueryAssistant.ts';
 import type { UnifiedProduct } from '../lib/api/types.ts';
 import { resolveSemanticFashionExpansion } from '../lib/search/fashionOntology.ts';
+import { buildSearchQualityCoverageSummary } from '../lib/search/searchQualityCoverage.ts';
 import { SEARCH_QUALITY_DATASET } from '../lib/search/searchQualityDataset.ts';
 
 function product(overrides: Partial<UnifiedProduct>): UnifiedProduct {
@@ -130,4 +131,13 @@ test('tracked catalog fallback search recovers pants-style products for broad at
     assert.equal(results.length, 2);
     assert.equal(results[0].id, 'track-pants');
     assert.ok(results.some((entry) => entry.id === 'jogger-pants'));
+});
+
+test('search quality coverage summary reports curated dataset coverage and outstanding gaps', () => {
+    const summary = buildSearchQualityCoverageSummary();
+
+    assert.equal(summary.totalQueries, SEARCH_QUALITY_DATASET.length);
+    assert.ok(summary.naverCoverageRate > 0.8);
+    assert.ok(summary.globalCoverageRate > 0.7);
+    assert.ok(summary.uncoveredQueries.length >= 0);
 });

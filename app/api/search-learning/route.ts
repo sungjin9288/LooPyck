@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 import { requireAdminRequest } from '@/lib/server/adminAccess';
 import {
+    generateSearchLearningSuggestions,
     generateSearchLearningSuggestion,
     loadSearchLearningEntry,
     reviewSearchLearningEntry,
@@ -16,6 +17,11 @@ export const dynamic = 'force-dynamic';
 const GenerateSuggestionSchema = z.object({
     action: z.literal('generate'),
     entryId: z.string().trim().min(1).max(180),
+});
+
+const BulkGenerateSuggestionSchema = z.object({
+    action: z.literal('bulk_generate'),
+    entryIds: z.array(z.string().trim().min(1).max(180)).min(1).max(12),
 });
 
 const ReviewEntrySchema = z.object({
@@ -44,7 +50,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
         }
 
-        const payload = GenerateSuggestionSchema.safeParse(await request.json());
+        const raw = await request.json();
+        const bulkPayload = BulkGenerateSuggestionSchema.safeParse(raw);
+        if (bulkPayload.success) {
+            const entries = await generateSearchLearningSuggestions(bulkPayload.data.entryIds);
+            return NextResponse.json({ entries });
+        }
+
+        const payload = GenerateSuggestionSchema.safeParse(raw);
         if (!payload.success) {
             return NextResponse.json({ error: payload.error.issues[0]?.message || '요청 형식이 올바르지 않습니다.' }, { status: 400 });
         }

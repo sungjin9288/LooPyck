@@ -495,6 +495,27 @@ ${entry.suggestedQueries.join(', ') || '없음'}
     }
 }
 
+export async function generateSearchLearningSuggestions(entryIds: string[]): Promise<SearchLearningEntry[]> {
+    const normalizedIds = uniqueOrdered(entryIds.map((entryId) => entryId.trim()).filter(Boolean)).slice(0, 12);
+    if (normalizedIds.length === 0) {
+        return [];
+    }
+
+    const updatedEntries = await Promise.all(
+        normalizedIds.map(async (entryId) => {
+            const entry = await loadSearchLearningEntry(entryId);
+            if (!entry) {
+                return null;
+            }
+
+            const suggestion = await generateSearchLearningSuggestion(entry);
+            return await saveSearchLearningSuggestion(entryId, suggestion);
+        })
+    );
+
+    return updatedEntries.filter((entry): entry is SearchLearningEntry => Boolean(entry));
+}
+
 export async function saveSearchLearningSuggestion(entryId: string, suggestion: SearchLearningSuggestion): Promise<SearchLearningEntry | null> {
     const entries = getMemoryEntries();
     const memoryEntry = entries.get(entryId);

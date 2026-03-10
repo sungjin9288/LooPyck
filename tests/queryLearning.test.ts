@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     buildFallbackSearchLearningSuggestion,
+    generateSearchLearningSuggestions,
     mergeLearnedQueriesIntoPlan,
     recordSearchLearningCandidate,
     reviewSearchLearningEntries,
@@ -91,4 +92,35 @@ test('bulk review approves queued search learning entries with learned queries',
     assert.equal(reviewed[0]?.reviewedBy, 'admin-user');
     assert.ok(reviewed[0]?.approvedQueries.includes('후드집업'));
     assert.ok(reviewed[0]?.approvedQueries.includes('트레이닝 후드집업'));
+});
+
+test('bulk suggestion generation attaches AI or heuristic suggestions to selected queue entries', async () => {
+    resetSearchLearningEntries();
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T12:20:00.000Z',
+        effectiveQuery: '운동용 후드',
+        queryIntent: 'fashion',
+        resultQuality: 'weak',
+        exactMatchCount: 0,
+        strongMatchCount: 0,
+        suggestedQueries: [],
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const queue = await loadSearchLearningQueue(10);
+    const entry = queue.entries[0];
+
+    assert.ok(entry);
+
+    const updated = await generateSearchLearningSuggestions([entry.id]);
+    assert.equal(updated.length, 1);
+    assert.ok(updated[0]?.aiSuggestion);
+    assert.ok(updated[0]?.aiSuggestion?.suggestedQueries.includes('후드집업'));
 });
