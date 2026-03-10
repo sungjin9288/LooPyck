@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analyzeFashionQuery, buildSourceAwareSearchPlan, searchProductsByFashionQuery } from '../lib/search/fashionQueryAssistant.ts';
 import type { UnifiedProduct } from '../lib/api/types.ts';
+import { resolveSemanticFashionExpansion } from '../lib/search/fashionOntology.ts';
 
 function product(overrides: Partial<UnifiedProduct>): UnifiedProduct {
     return {
@@ -55,6 +56,16 @@ test('fashion search regression plan covers common hoodie and training variants'
             );
         });
     });
+});
+
+test('semantic ontology expands broad fashion slang into canonical search candidates', () => {
+    const hoodieExpansion = resolveSemanticFashionExpansion('짐웨어 후디');
+    assert.ok(hoodieExpansion.matchedClusterIds.includes('hoodie_training'));
+    assert.ok(hoodieExpansion.queries.includes('트레이닝 후드집업'));
+
+    const runningExpansion = resolveSemanticFashionExpansion('러닝 슈즈');
+    assert.ok(runningExpansion.matchedClusterIds.includes('running_shoes'));
+    assert.ok(runningExpansion.queries.includes('러닝 슈즈'));
 });
 
 test('tracked catalog fallback search can recover hoodie-style products from generic fashion queries', () => {

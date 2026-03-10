@@ -492,6 +492,16 @@ function searchLearningStatusClass(status: SearchLearningEntry['status']): strin
     }
 }
 
+function summarizeSearchLearningEntries(entries: SearchLearningEntry[]): DiagnosticsResponse['searchLearning']['summary'] {
+    return {
+        total: entries.length,
+        pending: entries.filter((entry) => entry.status === 'pending').length,
+        approved: entries.filter((entry) => entry.status === 'approved').length,
+        ignored: entries.filter((entry) => entry.status === 'ignored').length,
+        zeroResult: entries.filter((entry) => entry.zeroResultCount > 0).length,
+    };
+}
+
 function formatTime(value: string | null | undefined): string {
     if (!value) return '-';
     return new Date(value).toLocaleString('ko-KR', {
@@ -931,6 +941,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const [runningReminderDigest, setRunningReminderDigest] = useState(false);
     const [processingSearchLearningId, setProcessingSearchLearningId] = useState<string | null>(null);
     const [searchLearningMessage, setSearchLearningMessage] = useState<string | null>(null);
+    const [selectedSearchLearningIds, setSelectedSearchLearningIds] = useState<string[]>([]);
     const seenAuditEventIds = useRef<Set<string>>(new Set());
     const auditFeedHydrated = useRef(false);
 
@@ -1569,6 +1580,11 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                     entries: current.searchLearning.entries.map((entry) => (
                         entry.id === entryId ? (payload.entry || entry) : entry
                     )),
+                    summary: summarizeSearchLearningEntries(
+                        current.searchLearning.entries.map((entry) => (
+                            entry.id === entryId ? (payload.entry || entry) : entry
+                        ))
+                    ),
                 },
             } : current);
             setSearchLearningMessage('AI 검색어 제안을 생성했습니다.');
@@ -1577,6 +1593,25 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         } finally {
             setProcessingSearchLearningId(null);
         }
+    }
+
+    function toggleSearchLearningSelection(entryId: string) {
+        setSelectedSearchLearningIds((current) => (
+            current.includes(entryId)
+                ? current.filter((id) => id !== entryId)
+                : [...current, entryId]
+        ));
+    }
+
+    function selectPendingSearchLearningEntries() {
+        setSelectedSearchLearningIds(searchLearningEntries
+            .filter((entry) => entry.status === 'pending')
+            .map((entry) => entry.id)
+            .slice(0, 24));
+    }
+
+    function clearSearchLearningSelection() {
+        setSelectedSearchLearningIds([]);
     }
 
     async function handleReviewSearchLearningEntry(entry: SearchLearningEntry, action: 'approve' | 'ignore') {
@@ -1610,18 +1645,81 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                 throw new Error(payload.error || '검색 학습 검토 저장에 실패했습니다.');
             }
 
-            setData((current) => current ? {
-                ...current,
-                searchLearning: {
-                    ...current.searchLearning,
-                    entries: current.searchLearning.entries.map((currentEntry) => (
-                        currentEntry.id === entry.id ? (payload.entry || currentEntry) : currentEntry
-                    )),
-                },
-            } : current);
+            setData((current) => {
+                if (!current) {
+                    return current;
+                }
+
+                const entries = current.searchLearning.entries.map((currentEntry) => (
+                    currentEntry.id === entry.id ? (payload.entry || currentEntry) : currentEntry
+                ));
+
+                return {
+                    ...current,
+                    searchLearning: {
+                        ...current.searchLearning,
+                        entries,
+                        summary: summarizeSearchLearningEntries(entries),
+                    },
+                };
+            });
+            setSelectedSearchLearningIds((current) => current.filter((id) => id !== entry.id));
             setSearchLearningMessage(action === 'approve' ? '학습 query를 승인했습니다.' : '학습 query를 보류 처리했습니다.');
         } catch (reviewError) {
             setSearchLearningMessage(reviewError instanceof Error ? reviewError.message : '검색 학습 검토 저장에 실패했습니다.');
+        } finally {
+            setProcessingSearchLearningId(null);
+        }
+    }
+
+    async function handleBulkReviewSearchLearning(action: 'bulk_approve' | 'bulk_ignore') {
+        if (!user || selectedSearchLearningIds.length === 0) {
+            return;
+        }
+
+        setProcessingSearchLearningId(action);
+        setSearchLearningMessage(null);
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/search-learning', {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action,
+                    entryIds: selectedSearchLearningIds,
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || '검색 학습 일괄 검토 저장에 실패했습니다.');
+            }
+
+            const updatedEntries = Array.isArray(payload.entries) ? payload.entries as SearchLearningEntry[] : [];
+            setData((current) => {
+                if (!current) {
+                    return current;
+                }
+
+                const updatedMap = new Map(updatedEntries.map((entry) => [entry.id, entry]));
+                const entries = current.searchLearning.entries.map((entry) => updatedMap.get(entry.id) || entry);
+                return {
+                    ...current,
+                    searchLearning: {
+                        ...current.searchLearning,
+                        entries,
+                        summary: summarizeSearchLearningEntries(entries),
+                    },
+                };
+            });
+            setSelectedSearchLearningIds([]);
+            setSearchLearningMessage(action === 'bulk_approve'
+                ? `${updatedEntries.length}개의 학습 query를 일괄 승인했습니다.`
+                : `${updatedEntries.length}개의 학습 query를 일괄 보류 처리했습니다.`);
+        } catch (bulkError) {
+            setSearchLearningMessage(bulkError instanceof Error ? bulkError.message : '검색 학습 일괄 검토 저장에 실패했습니다.');
         } finally {
             setProcessingSearchLearningId(null);
         }
@@ -3268,16 +3366,58 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     {searchLearningMessage}
                                 </div>
                             )}
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={selectPendingSearchLearningEntries}
+                                    className="rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-200"
+                                >
+                                    pending 전체 선택
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={clearSearchLearningSelection}
+                                    className="rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300"
+                                >
+                                    선택 해제
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleBulkReviewSearchLearning('bulk_approve')}
+                                    disabled={selectedSearchLearningIds.length === 0 || processingSearchLearningId === 'bulk_approve'}
+                                    className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {processingSearchLearningId === 'bulk_approve' ? '승인 중...' : `선택 승인 (${selectedSearchLearningIds.length})`}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleBulkReviewSearchLearning('bulk_ignore')}
+                                    disabled={selectedSearchLearningIds.length === 0 || processingSearchLearningId === 'bulk_ignore'}
+                                    className="rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {processingSearchLearningId === 'bulk_ignore' ? '보류 중...' : `선택 보류 (${selectedSearchLearningIds.length})`}
+                                </button>
+                            </div>
                             <div className="mt-4 grid gap-4 xl:grid-cols-2">
                                 {searchLearningEntries.slice(0, 8).map((entry) => (
                                     <div key={entry.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
                                         <div className="flex items-start justify-between gap-3">
-                                            <div>
+                                            <div className="flex items-start gap-3">
+                                                <label className="mt-0.5 flex items-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedSearchLearningIds.includes(entry.id)}
+                                                        onChange={() => toggleSearchLearningSelection(entry.id)}
+                                                        className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-sky-400 focus:ring-sky-400"
+                                                    />
+                                                </label>
+                                                <div>
                                                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{formatTime(entry.lastSeenAt)}</p>
                                                 <p className="mt-1 text-sm font-semibold text-white">{entry.query}</p>
                                                 <p className="mt-1 text-xs text-slate-400">
                                                     normalized {entry.normalizedQuery || '-'} · fit {entry.lastResultQuality || '-'} · products {entry.lastTotalProducts}
                                                 </p>
+                                                </div>
                                             </div>
                                             <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${searchLearningStatusClass(entry.status)}`}>
                                                 {searchLearningStatusLabel(entry.status)}

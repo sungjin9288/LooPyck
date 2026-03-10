@@ -561,6 +561,38 @@ export async function reviewSearchLearningEntry(
     return await loadSearchLearningEntry(entryId);
 }
 
+export async function reviewSearchLearningEntries(
+    entryIds: string[],
+    status: SearchLearningStatus,
+    reviewedBy: string
+): Promise<SearchLearningEntry[]> {
+    const normalizedIds = uniqueOrdered(entryIds.map((entryId) => entryId.trim()).filter(Boolean)).slice(0, 24);
+    if (normalizedIds.length === 0) {
+        return [];
+    }
+
+    const updatedEntries = await Promise.all(
+        normalizedIds.map(async (entryId) => {
+            const entry = await loadSearchLearningEntry(entryId);
+            if (!entry) {
+                return null;
+            }
+
+            const approvedQueries = status === 'approved'
+                ? uniqueOrdered([
+                    ...(entry.aiSuggestion?.suggestedQueries || []),
+                    ...entry.approvedQueries,
+                    ...entry.suggestedQueries,
+                ]).slice(0, 8)
+                : [];
+
+            return await reviewSearchLearningEntry(entryId, status, reviewedBy, approvedQueries);
+        })
+    );
+
+    return updatedEntries.filter((entry): entry is SearchLearningEntry => Boolean(entry));
+}
+
 export function resetSearchLearningEntries(): void {
     getMemoryEntries().clear();
     getApprovedCache().clear();

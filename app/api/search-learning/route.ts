@@ -6,6 +6,7 @@ import {
     generateSearchLearningSuggestion,
     loadSearchLearningEntry,
     reviewSearchLearningEntry,
+    reviewSearchLearningEntries,
     saveSearchLearningSuggestion,
 } from '@/lib/search/queryLearning';
 
@@ -21,6 +22,11 @@ const ReviewEntrySchema = z.object({
     action: z.enum(['approve', 'ignore']),
     entryId: z.string().trim().min(1).max(180),
     approvedQueries: z.array(z.string().trim().min(1).max(60)).max(8).optional().default([]),
+});
+
+const BulkReviewEntrySchema = z.object({
+    action: z.enum(['bulk_approve', 'bulk_ignore']),
+    entryIds: z.array(z.string().trim().min(1).max(180)).min(1).max(24),
 });
 
 export async function POST(request: NextRequest) {
@@ -73,7 +79,19 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
         }
 
-        const payload = ReviewEntrySchema.safeParse(await request.json());
+        const raw = await request.json();
+        const bulkPayload = BulkReviewEntrySchema.safeParse(raw);
+        if (bulkPayload.success) {
+            const entries = await reviewSearchLearningEntries(
+                bulkPayload.data.entryIds,
+                bulkPayload.data.action === 'bulk_approve' ? 'approved' : 'ignored',
+                adminCheck.uid
+            );
+
+            return NextResponse.json({ entries });
+        }
+
+        const payload = ReviewEntrySchema.safeParse(raw);
         if (!payload.success) {
             return NextResponse.json({ error: payload.error.issues[0]?.message || '요청 형식이 올바르지 않습니다.' }, { status: 400 });
         }

@@ -1,5 +1,6 @@
 import type { ProductSource, UnifiedProduct } from '../api/types.ts';
 import { normalizeTitle } from '../core/dataNormalizer.ts';
+import { resolveSemanticFashionExpansion } from './fashionOntology.ts';
 import type { SearchSort } from '../../types/searchSort.ts';
 
 type QueryIntent = 'fashion' | 'mixed' | 'unknown' | 'non_fashion';
@@ -307,10 +308,27 @@ function tokenize(text: string): string[] {
     );
 }
 
+function getBestSignalAliasLength(group: FashionSignalGroup, query: string): number {
+    return group.aliases.reduce((maxLength, alias) => {
+        if (!query.includes(alias)) {
+            return maxLength;
+        }
+
+        return Math.max(maxLength, normalizeSearchText(alias).length);
+    }, 0);
+}
+
 function findMatchingSignalGroups(query: string): FashionSignalGroup[] {
-    return FASHION_SIGNAL_GROUPS.filter((group) =>
-        group.aliases.some((alias) => query.includes(alias))
-    );
+    return FASHION_SIGNAL_GROUPS
+        .filter((group) => group.aliases.some((alias) => query.includes(alias)))
+        .sort((left, right) => {
+            const aliasDiff = getBestSignalAliasLength(right, query) - getBestSignalAliasLength(left, query);
+            if (aliasDiff !== 0) {
+                return aliasDiff;
+            }
+
+            return right.canonical.length - left.canonical.length;
+        });
 }
 
 function findMatchingBlockedGroups(query: string): BlockedSignalGroup[] {
@@ -403,9 +421,13 @@ export function analyzeFashionQuery(query: string): FashionQueryAnalysis {
     const normalizedSource = normalizeSearchText(originalQuery);
     const brandSignals = findBrandSignals(normalizedSource);
     const matchingSignalGroups = findMatchingSignalGroups(normalizedSource);
+    const semanticExpansion = resolveSemanticFashionExpansion(originalQuery);
     const blockedGroups = findMatchingBlockedGroups(normalizedSource);
 
-    const categorySignals = uniqueOrdered(matchingSignalGroups.map((group) => group.canonical));
+    const categorySignals = uniqueOrdered([
+        ...matchingSignalGroups.map((group) => group.canonical),
+        ...semanticExpansion.categories,
+    ]);
     const blockedSignals = uniqueOrdered(blockedGroups.flatMap((group) => group.keywords.filter((keyword) => normalizedSource.includes(keyword))));
     const rawTokens = tokenize(originalQuery);
     const normalizedTokens = rawTokens.filter((token) => !blockedSignals.includes(token));
@@ -420,7 +442,7 @@ export function analyzeFashionQuery(query: string): FashionQueryAnalysis {
             )
     ).join(' ').trim();
 
-    const hasFashionSignals = brandSignals.length > 0 || categorySignals.length > 0;
+    const hasFashionSignals = brandSignals.length > 0 || categorySignals.length > 0 || semanticExpansion.queries.length > 0;
     const hasBlockedSignals = blockedSignals.length > 0;
 
     let intent: QueryIntent = 'unknown';
@@ -439,12 +461,16 @@ export function analyzeFashionQuery(query: string): FashionQueryAnalysis {
 
     const suggestedQueries = !allowed
         ? buildNonFashionSuggestions(blockedGroups, brandSignals)
-        : buildRelatedSuggestions({
+        : uniqueOrdered([
+            ...buildRelatedSuggestions({
             normalizedQuery: normalizedQuery || originalQuery,
             brandSignals,
             categorySignals,
             suggestedQueries: hasBlockedSignals ? buildNonFashionSuggestions(blockedGroups, brandSignals) : [],
-        });
+            }),
+            ...semanticExpansion.queries,
+            ...semanticExpansion.related,
+        ]).slice(0, 8);
 
     return {
         allowed,
@@ -468,6 +494,7 @@ export function buildSourceAwareQueryCandidates(
     analysis: Pick<FashionQueryAnalysis, 'originalQuery' | 'normalizedQuery' | 'brandSignals' | 'categorySignals' | 'suggestedQueries' | 'primaryTokens'>,
     source: ProductSource
 ): string[] {
+    const semanticExpansion = resolveSemanticFashionExpansion(analysis.originalQuery);
     const baseQuery = analysis.normalizedQuery || analysis.originalQuery;
     const primaryBrand = analysis.brandSignals[0];
     const brandVariants = primaryBrand
@@ -487,6 +514,8 @@ export function buildSourceAwareQueryCandidates(
         ...categoryVariants,
         ...modifierCategoryVariants,
         ...categoryVariants.flatMap((variant) => brandVariants.map((brand) => `${brand} ${variant}`)),
+        ...semanticExpansion.queries,
+        ...semanticExpansion.related,
         ...analysis.suggestedQueries.slice(0, 2),
     ].map((value) => normalizeWhitespace(value || '')));
 
