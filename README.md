@@ -126,6 +126,8 @@ LooPyck/
 ├─ utils/
 ├─ public/
 ├─ tailwind.config.ts
+├─ firebase.json
+├─ firestore.indexes.json
 └─ firestore.rules
 ```
 
@@ -156,6 +158,9 @@ npm run typecheck
 
 # 6. Env Validation
 npm run env:check
+
+# 7. Firebase Rules / Indexes Deploy
+firebase deploy --only firestore:rules,firestore:indexes
 ```
 
 ### 환경 변수

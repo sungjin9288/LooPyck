@@ -719,18 +719,12 @@ async function expireStaleAlertTuningApprovalRequests(
 ): Promise<void> {
     const now = new Date();
     const nowMs = now.getTime();
-    const openSnapshots = await Promise.all(
-        (['pending', 'pending_second_approval'] as const).map((status) =>
-            docRef.collection('requests')
-                .where('status', '==', status)
-                .orderBy('createdAt', 'asc')
-                .limit(OPEN_REQUEST_SCAN_LIMIT)
-                .get()
-        )
-    );
+    const snapshot = await docRef.collection('requests')
+        .orderBy('createdAt', 'asc')
+        .limit(OPEN_REQUEST_SCAN_LIMIT)
+        .get();
 
-    const staleDocs = openSnapshots
-        .flatMap((snapshot) => snapshot.docs)
+    const staleDocs = snapshot.docs
         .filter((doc) => isAlertTuningApprovalRequestExpired(mapApprovalRequest(doc), nowMs));
 
     if (staleDocs.length === 0) {

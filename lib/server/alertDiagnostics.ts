@@ -595,7 +595,7 @@ export async function loadAlertDiagnostics(limit: number = 20, tuningConfigInput
     }
 
     const [alertsSnap, favoritesSnap, personasSnap] = await Promise.all([
-        db.collectionGroup('alerts').orderBy('createdAt', 'desc').limit(MAX_RECENT_ALERTS).get(),
+        db.collectionGroup('alerts').limit(MAX_RECENT_ALERTS).get(),
         db.collectionGroup('favorites').limit(MAX_FAVORITES).get(),
         db.collectionGroup('preferences').where(FieldPath.documentId(), '==', 'alertPersona').limit(MAX_ALERT_PERSONAS).get(),
     ]);
@@ -610,7 +610,15 @@ export async function loadAlertDiagnostics(limit: number = 20, tuningConfigInput
     const rolloutAlertSignals: AlertRolloutAlertSignal[] = [];
     const rolloutFavoriteSignals: AlertRolloutFavoriteSignal[] = [];
 
-    const recent: AlertDiagnosticsRecentEvent[] = alertsSnap.docs.map((doc) => {
+    const sortedAlertDocs = [...alertsSnap.docs].sort((left, right) => {
+        const leftData = left.data() as AlertDoc;
+        const rightData = right.data() as AlertDoc;
+        const leftCreatedAt = toMillis(leftData.createdAt) ?? 0;
+        const rightCreatedAt = toMillis(rightData.createdAt) ?? 0;
+        return rightCreatedAt - leftCreatedAt;
+    });
+
+    const recent: AlertDiagnosticsRecentEvent[] = sortedAlertDocs.map((doc) => {
         const data = doc.data() as AlertDoc;
         const priority = data.priority === 'critical' || data.priority === 'high' || data.priority === 'medium'
             ? data.priority
