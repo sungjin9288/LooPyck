@@ -354,27 +354,34 @@ async function runNaverSearch(
         };
     }
 
-    try {
-        const products = await fetchNaverRealtime(query, page, sort);
-        return {
-            source: 'NAVER',
-            products,
-            durationMs: Date.now() - startedAt,
-            fallbackReason: products.length > 0 ? undefined : 'no_results_or_api_error',
-            requestedQueries,
-            resolvedQuery: query,
-        };
-    } catch (error) {
-        console.error('[RealtimeSearch] NAVER adapter failed:', error);
-        return {
-            source: 'NAVER',
-            products: [],
-            durationMs: Date.now() - startedAt,
-            fallbackReason: 'naver_exception',
-            requestedQueries,
-            resolvedQuery: query,
-        };
+    let lastReason = 'no_results_or_api_error';
+
+    for (const candidate of requestedQueries) {
+        try {
+            const products = await fetchNaverRealtime(candidate, page, sort);
+            if (products.length > 0) {
+                return {
+                    source: 'NAVER',
+                    products,
+                    durationMs: Date.now() - startedAt,
+                    requestedQueries,
+                    resolvedQuery: candidate,
+                };
+            }
+        } catch (error) {
+            console.error(`[RealtimeSearch] NAVER adapter failed for candidate "${candidate}":`, error);
+            lastReason = 'naver_exception';
+        }
     }
+
+    return {
+        source: 'NAVER',
+        products: [],
+        durationMs: Date.now() - startedAt,
+        fallbackReason: lastReason,
+        requestedQueries,
+        resolvedQuery: query,
+    };
 }
 
 function buildAggregationDiagnostics(
@@ -773,6 +780,21 @@ export async function aggregateRealtimeSearchDetailed(
 
     return {
         products: sorted,
+        diagnostics,
+    };
+}
+
+export async function aggregateRealtimeSearchNaverOnly(
+    query: string,
+    page: number = 1,
+    sort: SearchSort = 'sim',
+    queries: string[] = [query]
+): Promise<AggregateRealtimeSearchResult> {
+    const naverRun = await runNaverSearch(queries, page, sort);
+    const diagnostics = buildAggregationDiagnostics(query, page, sort, naverRun.products, naverRun, []);
+
+    return {
+        products: naverRun.products,
         diagnostics,
     };
 }

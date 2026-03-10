@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { aggregateRealtimeSearchDetailed } from '@/lib/api/realtimeAggregator';
+import { aggregateRealtimeSearchDetailed, aggregateRealtimeSearchNaverOnly } from '@/lib/api/realtimeAggregator';
 import { persistSearchDiagnostics, recordSearchDiagnostics } from '@/lib/api/searchDiagnostics';
 import { analyzeFashionQuery, buildSourceAwareSearchPlan, rerankProductsByFashionRelevance } from '@/lib/search/fashionQueryAssistant';
 import { SearchSort, ALLOWED_SORTS } from '@/types/searchSort';
@@ -7,6 +7,26 @@ import { checkRateLimit, getRateLimitKey, isQueryLengthValid, normalizeQuery } f
 import { persistPriceHistorySnapshot } from '@/lib/server/priceHistoryStore';
 
 export const runtime = 'nodejs';
+const SEARCH_AGGREGATION_TIMEOUT_MS = 12_000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+        return await Promise.race([
+            promise,
+            new Promise<T>((_, reject) => {
+                timer = setTimeout(() => {
+                    reject(new Error(`search_timeout_${timeoutMs}`));
+                }, timeoutMs);
+            }),
+        ]);
+    } finally {
+        if (timer) {
+            clearTimeout(timer);
+        }
+    }
+}
 
 export async function GET(request: NextRequest) {
     const rateLimit = await checkRateLimit(getRateLimitKey(request, 'realtime-search'), 60, 60_000);
@@ -59,7 +79,36 @@ export async function GET(request: NextRequest) {
     try {
         const effectiveQuery = queryAnalysis.normalizedQuery || query;
         const sourceQueryPlan = buildSourceAwareSearchPlan(queryAnalysis);
-        const { products, diagnostics } = await aggregateRealtimeSearchDetailed(effectiveQuery, page, sort, sourceQueryPlan);
+        let fallbackMode: 'full' | 'naver_only' = 'full';
+        let aggregation = await withTimeout(
+            aggregateRealtimeSearchDetailed(effectiveQuery, page, sort, sourceQueryPlan),
+            SEARCH_AGGREGATION_TIMEOUT_MS
+        ).catch(async (error) => {
+            console.warn('[RealtimeSearch] full aggregation failed, falling back to NAVER only:', error);
+            fallbackMode = 'naver_only';
+            return await aggregateRealtimeSearchNaverOnly(
+                effectiveQuery,
+                page,
+                sort,
+                sourceQueryPlan.NAVER || [effectiveQuery, query]
+            );
+        });
+
+        if (aggregation.products.length === 0) {
+            const naverFallback = await aggregateRealtimeSearchNaverOnly(
+                effectiveQuery,
+                page,
+                sort,
+                sourceQueryPlan.NAVER || [effectiveQuery, query]
+            );
+
+            if (naverFallback.products.length > 0) {
+                aggregation = naverFallback;
+                fallbackMode = 'naver_only';
+            }
+        }
+
+        const { products, diagnostics } = aggregation;
         const reranked = rerankProductsByFashionRelevance(products, queryAnalysis, sort);
         const diagnosticsPayload = {
             ...diagnostics,
@@ -123,6 +172,7 @@ export async function GET(request: NextRequest) {
                     'X-Option-Histories-Persisted': String(optionHistoriesPersisted),
                     'X-Search-Direct-Sources': String(diagnosticsPayload.directSourceCount),
                     'X-Search-Fallback-Sources': String(diagnosticsPayload.fallbackSourceCount),
+                    'X-Search-Fallback-Mode': fallbackMode,
                 },
             }
         );

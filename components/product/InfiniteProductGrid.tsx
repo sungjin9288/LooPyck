@@ -30,6 +30,7 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
         hasMore,
         loadMore,
         isScanning,
+        error,
         sources,
         searchMeta,
         suggestedQueries,
@@ -367,6 +368,16 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
                             최근 본 상품 기반 선호 반영: {preferenceProfile.topBrands.slice(0, 2).join(', ')}
                         </p>
                     )}
+                </section>
+            )}
+
+            {error && (
+                <section className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 shadow-sm">
+                    <p className="text-sm font-semibold text-rose-900">검색 요청이 정상적으로 끝나지 않았습니다.</p>
+                    <p className="mt-1 text-sm text-rose-800">{error}</p>
+                    <p className="mt-2 text-xs text-rose-700">
+                        일시적인 외부 쇼핑몰 응답 지연일 수 있습니다. 같은 검색어로 다시 시도하거나 더 짧은 패션 키워드로 검색해보세요.
+                    </p>
                 </section>
             )}
 
