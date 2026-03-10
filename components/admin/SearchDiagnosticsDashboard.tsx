@@ -315,6 +315,37 @@ type AlertTuningWebhookConfig = {
     targetLabel: string | null;
 };
 
+type SearchLearningSuggestion = {
+    normalizedQuery: string;
+    categoryHint: string | null;
+    suggestedQueries: string[];
+    rationale: string;
+    model: 'heuristic' | 'gemini';
+    generatedAt: string;
+};
+
+type SearchLearningEntry = {
+    id: string;
+    query: string;
+    normalizedQuery: string;
+    effectiveQuery: string;
+    queryIntent: string | null;
+    status: 'pending' | 'approved' | 'ignored';
+    occurrenceCount: number;
+    lowFitCount: number;
+    zeroResultCount: number;
+    lastResultQuality: 'strong' | 'mixed' | 'weak' | null;
+    lastTotalProducts: number;
+    suggestedQueries: string[];
+    approvedQueries: string[];
+    aiSuggestion: SearchLearningSuggestion | null;
+    lastSeenAt: string;
+    reviewedAt: string | null;
+    reviewedBy: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+};
+
 type DiagnosticsResponse = {
     summary: {
         trackedSearches: number;
@@ -340,6 +371,17 @@ type DiagnosticsResponse = {
         topOpenedBrands: Array<{ brand: string; count: number }>;
     };
     storage: 'memory' | 'firestore';
+    searchLearning: {
+        entries: SearchLearningEntry[];
+        summary: {
+            total: number;
+            pending: number;
+            approved: number;
+            ignored: number;
+            zeroResult: number;
+        };
+        storage: 'memory' | 'firestore';
+    };
     pdp: {
         summary: {
             trackedEvents: number;
@@ -426,6 +468,28 @@ function buildLowFitQueries(recent: RecentSnapshot[]): Array<{ query: string; qu
             totalProducts: snapshot.totalProducts,
         }))
         .slice(0, 10);
+}
+
+function searchLearningStatusLabel(status: SearchLearningEntry['status']): string {
+    switch (status) {
+        case 'approved':
+            return '승인됨';
+        case 'ignored':
+            return '보류';
+        default:
+            return '검토 대기';
+    }
+}
+
+function searchLearningStatusClass(status: SearchLearningEntry['status']): string {
+    switch (status) {
+        case 'approved':
+            return 'bg-emerald-500/15 text-emerald-200';
+        case 'ignored':
+            return 'bg-slate-700/60 text-slate-300';
+        default:
+            return 'bg-amber-500/15 text-amber-200';
+    }
 }
 
 function formatTime(value: string | null | undefined): string {
@@ -865,6 +929,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({});
     const [markingAuditId, setMarkingAuditId] = useState<string | null>(null);
     const [runningReminderDigest, setRunningReminderDigest] = useState(false);
+    const [processingSearchLearningId, setProcessingSearchLearningId] = useState<string | null>(null);
+    const [searchLearningMessage, setSearchLearningMessage] = useState<string | null>(null);
     const seenAuditEventIds = useRef<Set<string>>(new Set());
     const auditFeedHydrated = useRef(false);
 
@@ -1049,6 +1115,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     }
 
     const summary = data?.summary;
+    const searchLearning = data?.searchLearning;
+    const searchLearningEntries = searchLearning?.entries || [];
     const totalSources = summary?.sources.length || 0;
     const directSources = summary?.sources.filter((entry) => entry.collectionMode === 'direct').length || 0;
     const fallbackSources = summary?.sources.filter((entry) => entry.fallbackHits > 0).length || 0;
@@ -1466,6 +1534,96 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             setTuningMessage(rollbackError instanceof Error ? rollbackError.message : '알림 튜닝 설정 복원에 실패했습니다.');
         } finally {
             setRollbackingHistoryId(null);
+        }
+    }
+
+    async function handleGenerateSearchLearningSuggestion(entryId: string) {
+        if (!user) {
+            return;
+        }
+
+        setProcessingSearchLearningId(entryId);
+        setSearchLearningMessage(null);
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/search-learning', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'generate',
+                    entryId,
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'AI 검색 제안 생성에 실패했습니다.');
+            }
+
+            setData((current) => current ? {
+                ...current,
+                searchLearning: {
+                    ...current.searchLearning,
+                    entries: current.searchLearning.entries.map((entry) => (
+                        entry.id === entryId ? (payload.entry || entry) : entry
+                    )),
+                },
+            } : current);
+            setSearchLearningMessage('AI 검색어 제안을 생성했습니다.');
+        } catch (suggestionError) {
+            setSearchLearningMessage(suggestionError instanceof Error ? suggestionError.message : 'AI 검색 제안 생성에 실패했습니다.');
+        } finally {
+            setProcessingSearchLearningId(null);
+        }
+    }
+
+    async function handleReviewSearchLearningEntry(entry: SearchLearningEntry, action: 'approve' | 'ignore') {
+        if (!user) {
+            return;
+        }
+
+        setProcessingSearchLearningId(entry.id);
+        setSearchLearningMessage(null);
+        try {
+            const token = await user.getIdToken();
+            const approvedQueries = action === 'approve'
+                ? (entry.aiSuggestion?.suggestedQueries.length
+                    ? entry.aiSuggestion.suggestedQueries
+                    : entry.suggestedQueries)
+                : [];
+            const response = await fetch('/api/search-learning', {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action,
+                    entryId: entry.id,
+                    approvedQueries,
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || '검색 학습 검토 저장에 실패했습니다.');
+            }
+
+            setData((current) => current ? {
+                ...current,
+                searchLearning: {
+                    ...current.searchLearning,
+                    entries: current.searchLearning.entries.map((currentEntry) => (
+                        currentEntry.id === entry.id ? (payload.entry || currentEntry) : currentEntry
+                    )),
+                },
+            } : current);
+            setSearchLearningMessage(action === 'approve' ? '학습 query를 승인했습니다.' : '학습 query를 보류 처리했습니다.');
+        } catch (reviewError) {
+            setSearchLearningMessage(reviewError instanceof Error ? reviewError.message : '검색 학습 검토 저장에 실패했습니다.');
+        } finally {
+            setProcessingSearchLearningId(null);
         }
     }
 
@@ -3082,6 +3240,124 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
 
                 {!isOpsOnly && (
                     <>
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Queue</h2>
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        low-fit 또는 0건 검색어를 저장하고, AI 제안 후 승인된 검색어를 다음 검색부터 확장어로 사용합니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        total {searchLearning?.summary.total ?? 0}
+                                    </span>
+                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-200">
+                                        pending {searchLearning?.summary.pending ?? 0}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+                                        approved {searchLearning?.summary.approved ?? 0}
+                                    </span>
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-200">
+                                        zero-result {searchLearning?.summary.zeroResult ?? 0}
+                                    </span>
+                                </div>
+                            </div>
+                            {searchLearningMessage && (
+                                <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-200">
+                                    {searchLearningMessage}
+                                </div>
+                            )}
+                            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                {searchLearningEntries.slice(0, 8).map((entry) => (
+                                    <div key={entry.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{formatTime(entry.lastSeenAt)}</p>
+                                                <p className="mt-1 text-sm font-semibold text-white">{entry.query}</p>
+                                                <p className="mt-1 text-xs text-slate-400">
+                                                    normalized {entry.normalizedQuery || '-'} · fit {entry.lastResultQuality || '-'} · products {entry.lastTotalProducts}
+                                                </p>
+                                            </div>
+                                            <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${searchLearningStatusClass(entry.status)}`}>
+                                                {searchLearningStatusLabel(entry.status)}
+                                            </span>
+                                        </div>
+                                        <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-300">
+                                            <span className="rounded-full border border-slate-800 px-2 py-1">occurrence {entry.occurrenceCount}</span>
+                                            <span className="rounded-full border border-slate-800 px-2 py-1">low-fit {entry.lowFitCount}</span>
+                                            <span className="rounded-full border border-slate-800 px-2 py-1">zero {entry.zeroResultCount}</span>
+                                        </div>
+                                        {entry.aiSuggestion && (
+                                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/80 p-3">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-300">
+                                                        AI Suggestion · {entry.aiSuggestion.model}
+                                                    </p>
+                                                    {entry.aiSuggestion.categoryHint && (
+                                                        <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] text-slate-300">
+                                                            {entry.aiSuggestion.categoryHint}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="mt-2 text-xs leading-6 text-slate-400">{entry.aiSuggestion.rationale}</p>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {entry.aiSuggestion.suggestedQueries.map((query) => (
+                                                        <span key={`${entry.id}_${query}`} className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-[11px] text-sky-100">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {entry.approvedQueries.length > 0 && (
+                                            <div className="mt-4">
+                                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-300">Approved Queries</p>
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {entry.approvedQueries.map((query) => (
+                                                        <span key={`${entry.id}_approved_${query}`} className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleGenerateSearchLearningSuggestion(entry.id)}
+                                                disabled={processingSearchLearningId === entry.id}
+                                                className="rounded-full bg-slate-100 px-3 py-2 text-xs font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                {processingSearchLearningId === entry.id ? '생성 중...' : 'AI 제안 생성'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleReviewSearchLearningEntry(entry, 'approve')}
+                                                disabled={processingSearchLearningId === entry.id}
+                                                className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                승인
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleReviewSearchLearningEntry(entry, 'ignore')}
+                                                disabled={processingSearchLearningId === entry.id}
+                                                className="rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                보류
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {searchLearningEntries.length === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                        아직 저장된 학습 대상 query가 없습니다.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
                         <section className="mt-8 grid gap-4 lg:grid-cols-2">
                     <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
                         <h2 className="text-lg font-bold text-white">Low-fit Queries</h2>

@@ -66,6 +66,7 @@ export type SearchSourceStrategy =
     | 'direct_preferred_over_naver'
     | 'naver_classified_fallback'
     | 'classified_naver'
+    | 'tracked_catalog'
     | 'empty';
 
 export interface SearchSourceDiagnostic {

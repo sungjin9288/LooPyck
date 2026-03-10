@@ -125,9 +125,15 @@ const BRAND_QUERY_ALIASES: Record<string, string[]> = {
 
 const QUERY_MODIFIER_VARIANTS: Record<string, QueryModifierVariant> = {
     '운동용': { local: ['운동용', '스포츠', '트레이닝', '러닝'], global: ['sport', 'training', 'running', 'athletic'] },
+    '운동': { local: ['운동', '운동용', '트레이닝', '스포츠'], global: ['sport', 'training', 'athletic', 'gym'] },
     '스포츠': { local: ['스포츠', '운동용', '트레이닝', '러닝'], global: ['sport', 'training', 'running', 'athletic'] },
     '트레이닝': { local: ['트레이닝', '운동용', '스포츠'], global: ['training', 'sport', 'athletic'] },
     '러닝': { local: ['러닝', '운동용', '트레이닝'], global: ['running', 'training', 'athletic'] },
+    '헬스': { local: ['헬스', '짐', '트레이닝', '운동용'], global: ['gym', 'training', 'sport', 'athletic'] },
+    '짐': { local: ['짐', '헬스', '트레이닝', '운동용'], global: ['gym', 'training', 'sport', 'athletic'] },
+    '등산': { local: ['등산', '아웃도어', '고프코어'], global: ['hiking', 'outdoor', 'gorpcore'] },
+    '아웃도어': { local: ['아웃도어', '등산', '고프코어'], global: ['outdoor', 'hiking', 'gorpcore'] },
+    '고프코어': { local: ['고프코어', '아웃도어', '등산'], global: ['gorpcore', 'outdoor', 'hiking'] },
     '남자': { local: ['남자', '남성', '맨즈'], global: ['men', 'mens', 'male'] },
     '남성': { local: ['남성', '남자', '맨즈'], global: ['men', 'mens', 'male'] },
     '맨즈': { local: ['맨즈', '남자', '남성'], global: ['mens', 'men', 'male'] },
@@ -138,6 +144,8 @@ const QUERY_MODIFIER_VARIANTS: Record<string, QueryModifierVariant> = {
     '오버사이즈': { local: ['오버사이즈', '오버핏', '루즈핏'], global: ['oversized', 'relaxed fit', 'boxy fit'] },
     '기본': { local: ['기본', '베이직', '에센셜'], global: ['basic', 'essential'] },
     '베이직': { local: ['베이직', '기본', '에센셜'], global: ['basic', 'essential'] },
+    '와이드': { local: ['와이드', '와이드핏', '루즈핏'], global: ['wide', 'wide fit', 'relaxed fit'] },
+    '루즈핏': { local: ['루즈핏', '와이드핏', '오버핏'], global: ['relaxed fit', 'oversized', 'loose fit'] },
 };
 
 const DIRECT_QUERY_EXPANSION_SOURCES: ProductSource[] = [
@@ -161,17 +169,23 @@ const GLOBAL_QUERY_SOURCES = new Set<ProductSource>(['FARFETCH', 'SSENSE']);
 
 const CATEGORY_QUERY_VARIANTS: Record<string, { local: string[]; global: string[] }> = {
     '자켓': { local: ['자켓', '블레이저', '바람막이'], global: ['jacket', 'blazer', 'windbreaker'] },
+    '바람막이': { local: ['바람막이', '윈드브레이커', '러닝 자켓'], global: ['windbreaker', 'running jacket', 'shell jacket'] },
     '코트': { local: ['코트', '트렌치코트', '롱코트'], global: ['coat', 'trench coat', 'long coat'] },
     '패딩': { local: ['패딩', '숏패딩', '다운 자켓'], global: ['puffer jacket', 'down jacket', 'puffer coat'] },
+    '플리스': { local: ['플리스', '후리스', '집업 플리스'], global: ['fleece', 'fleece jacket', 'zip fleece'] },
     '가디건': { local: ['가디건', '니트 가디건'], global: ['cardigan', 'knit cardigan'] },
     '맨투맨': { local: ['맨투맨', '스웨트셔츠'], global: ['sweatshirt', 'crewneck sweatshirt'] },
-    '후드집업': { local: ['후드집업', '후드 집업', '후드', '후디'], global: ['zip hoodie', 'hooded zip-up', 'hoodie'] },
+    '후드집업': { local: ['후드집업', '후드 집업', '후드티', '후드', '후디', '트레이닝 후드집업'], global: ['zip hoodie', 'hooded zip-up', 'hoodie', 'training hoodie'] },
     '셔츠': { local: ['셔츠', '옥스포드 셔츠'], global: ['shirt', 'oxford shirt'] },
     '니트': { local: ['니트', '크루넥 니트'], global: ['knit', 'sweater', 'crewneck knit'] },
     '티셔츠': { local: ['티셔츠', '반팔 티셔츠'], global: ['t-shirt', 'tee', 'graphic tee'] },
     '데님 팬츠': { local: ['청바지', '데님 팬츠', '와이드 데님'], global: ['jeans', 'denim pants', 'wide-leg jeans'] },
     '슬랙스': { local: ['슬랙스', '와이드 슬랙스'], global: ['trousers', 'tailored trousers', 'slacks'] },
+    '조거 팬츠': { local: ['조거 팬츠', '조거', '트레이닝 팬츠'], global: ['jogger pants', 'joggers', 'training pants'] },
+    '트랙 팬츠': { local: ['트랙 팬츠', '트레이닝 팬츠', '조거 팬츠'], global: ['track pants', 'training pants', 'jogger pants'] },
     '카고 팬츠': { local: ['카고 팬츠', '카고 바지'], global: ['cargo pants', 'utility pants'] },
+    '레깅스': { local: ['레깅스', '요가 팬츠', '트레이닝 레깅스'], global: ['leggings', 'yoga pants', 'training leggings'] },
+    '쇼츠': { local: ['반바지', '쇼츠', '트레이닝 쇼츠'], global: ['shorts', 'training shorts', 'running shorts'] },
     '스커트': { local: ['스커트', '플리츠 스커트'], global: ['skirt', 'pleated skirt'] },
     '원피스': { local: ['원피스', '니트 원피스'], global: ['dress', 'knit dress'] },
     '스니커즈': { local: ['스니커즈', '운동화', '러닝화'], global: ['sneakers', 'trainers', 'running shoes'] },
@@ -187,17 +201,23 @@ const CATEGORY_QUERY_VARIANTS: Record<string, { local: string[]; global: string[
 
 const FASHION_SIGNAL_GROUPS: FashionSignalGroup[] = [
     { canonical: '자켓', aliases: ['자켓', '재킷', 'jacket', 'blazer', '블레이저', '바람막이', '점퍼', '트랙자켓'], related: ['블레이저', '바람막이', '트랙 자켓'] },
+    { canonical: '바람막이', aliases: ['바람막이', '윈드브레이커', 'windbreaker', 'shell jacket', '러닝 자켓'], related: ['러닝 자켓', '윈드브레이커', '아노락'] },
     { canonical: '코트', aliases: ['코트', 'coat', '트렌치', '트렌치코트', 'overcoat'], related: ['트렌치코트', '롱코트', '하프코트'] },
     { canonical: '패딩', aliases: ['패딩', '다운', 'down jacket', 'puffer', '숏패딩'], related: ['숏패딩', '롱패딩', '다운 베스트'] },
+    { canonical: '플리스', aliases: ['플리스', '후리스', 'fleece'], related: ['집업 플리스', '보아 플리스', '플리스 자켓'] },
     { canonical: '가디건', aliases: ['가디건', 'cardigan', '볼레로'], related: ['브이넥 가디건', '크롭 가디건', '니트 가디건'] },
     { canonical: '맨투맨', aliases: ['맨투맨', 'sweatshirt', '스웨트셔츠', 'pullover'], related: ['오버핏 맨투맨', '그래픽 맨투맨', '기모 맨투맨'] },
-    { canonical: '후드집업', aliases: ['후드집업', '후드 집업', '후디', 'hoodie', 'zip hoodie', '후드'], related: ['집업 후드', '오버핏 후드집업', '기모 후드집업'] },
+    { canonical: '후드집업', aliases: ['후드집업', '후드 집업', '후드티', '후디', 'hoodie', 'zip hoodie', '후드'], related: ['집업 후드', '오버핏 후드집업', '기모 후드집업', '트레이닝 후드집업'] },
     { canonical: '셔츠', aliases: ['셔츠', 'shirt', '옥스포드', 'oxford shirt', '드레스셔츠'], related: ['옥스포드 셔츠', '스트라이프 셔츠', '오버핏 셔츠'] },
     { canonical: '니트', aliases: ['니트', 'knit', 'sweater', '스웨터', '크루넥'], related: ['크루넥 니트', '브이넥 니트', '케이블 니트'] },
     { canonical: '티셔츠', aliases: ['티셔츠', '티셔츠', 'tee', 't-shirt', '반팔', '긴팔티'], related: ['그래픽 티셔츠', '기본 반팔', '롱슬리브 티셔츠'] },
     { canonical: '데님 팬츠', aliases: ['청바지', '데님', 'jean', 'jeans', 'denim'], related: ['와이드 데님 팬츠', '스트레이트 데님', '로우라이즈 데님'] },
     { canonical: '슬랙스', aliases: ['슬랙스', 'trousers', '팬츠', 'dress pants'], related: ['와이드 슬랙스', '테이퍼드 슬랙스', '플리츠 팬츠'] },
+    { canonical: '조거 팬츠', aliases: ['조거', '조거 팬츠', 'jogger', 'joggers'], related: ['트레이닝 조거 팬츠', '스웨트 조거 팬츠', '러닝 조거 팬츠'] },
+    { canonical: '트랙 팬츠', aliases: ['트랙 팬츠', '트레이닝 팬츠', 'track pants'], related: ['사이드라인 트랙 팬츠', '나일론 트랙 팬츠', '트레이닝 팬츠'] },
     { canonical: '카고 팬츠', aliases: ['카고', 'cargo pants', '카고팬츠'], related: ['와이드 카고 팬츠', '나일론 카고 팬츠', '고프코어 팬츠'] },
+    { canonical: '레깅스', aliases: ['레깅스', 'leggings', '요가 팬츠'], related: ['트레이닝 레깅스', '플레어 레깅스', '러닝 레깅스'] },
+    { canonical: '쇼츠', aliases: ['반바지', '쇼츠', 'shorts', '트레이닝 쇼츠'], related: ['나일론 쇼츠', '트레이닝 쇼츠', '러닝 쇼츠'] },
     { canonical: '스커트', aliases: ['스커트', 'skirt', '미니스커트', '플리츠 스커트'], related: ['플리츠 스커트', '미니스커트', '롱스커트'] },
     { canonical: '원피스', aliases: ['원피스', 'dress', 'gown'], related: ['미니 원피스', '셔츠 원피스', '니트 원피스'] },
     { canonical: '스니커즈', aliases: ['스니커즈', '운동화', 'sneaker', 'sneakers', 'shoe', 'shoes', '러닝화', '런닝화'], related: ['로우탑 스니커즈', '러닝화', '레트로 스니커즈'] },
@@ -646,4 +666,36 @@ export function rerankProductsByFashionRelevance(
             suggestedQueries,
         },
     };
+}
+
+export function searchProductsByFashionQuery(
+    products: UnifiedProduct[],
+    analysis: FashionQueryAnalysis,
+    limitCount: number = 24
+): UnifiedProduct[] {
+    const normalizedLimit = Math.max(1, Math.min(limitCount, 120));
+    const scored = products
+        .map((product) => scoreProduct(product, analysis))
+        .sort((left, right) =>
+            right.score - left.score
+            || right.coverage - left.coverage
+            || left.product.price - right.product.price
+        );
+
+    if (scored.length === 0) {
+        return [];
+    }
+
+    const maxScore = scored[0]?.score || 0;
+    const scoreFloor = Math.max(16, maxScore * 0.18);
+    const filtered = scored.filter((item) =>
+        item.exactMatch
+        || item.matchedTokens >= 1
+        || item.coverage >= 0.34
+        || item.score >= scoreFloor
+    );
+
+    return (filtered.length > 0 ? filtered : scored)
+        .slice(0, normalizedLimit)
+        .map((item) => item.product);
 }

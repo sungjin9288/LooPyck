@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { aggregateRealtimeSearchDetailed, aggregateRealtimeSearchNaverOnly } from '@/lib/api/realtimeAggregator';
+import { aggregateRealtimeSearchDetailed, aggregateRealtimeSearchNaverOnly, type SearchAggregationDiagnostics, type SearchSourceDiagnostic, type UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import { persistSearchDiagnostics, recordSearchDiagnostics } from '@/lib/api/searchDiagnostics';
 import { analyzeFashionQuery, buildSourceAwareSearchPlan, rerankProductsByFashionRelevance } from '@/lib/search/fashionQueryAssistant';
+import { loadApprovedSearchLearningQueries, mergeLearnedQueriesIntoPlan, persistSearchLearningCandidate, recordSearchLearningCandidate } from '@/lib/search/queryLearning';
 import { SearchSort, ALLOWED_SORTS } from '@/types/searchSort';
 import { checkRateLimit, getRateLimitKey, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
-import { persistPriceHistorySnapshot } from '@/lib/server/priceHistoryStore';
+import { persistPriceHistorySnapshot, searchTrackedProductsByFashionQuery } from '@/lib/server/priceHistoryStore';
 
 export const runtime = 'nodejs';
 const SEARCH_AGGREGATION_TIMEOUT_MS = 12_000;
@@ -29,6 +30,41 @@ function buildBroadFallbackQueries(
         ...queryAnalysis.suggestedQueries,
         ...categoryQueries,
     ]).slice(0, 12);
+}
+
+function buildTrackedCatalogDiagnostics(
+    baseDiagnostics: SearchAggregationDiagnostics,
+    products: UnifiedProduct[]
+): SearchAggregationDiagnostics {
+    const counts = new Map<string, number>();
+    products.forEach((product) => {
+        counts.set(product.source, (counts.get(product.source) || 0) + 1);
+    });
+
+    const sourceDiagnostics: SearchSourceDiagnostic[] = Array.from(counts.entries())
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([source, count]) => ({
+            source: source as UnifiedProduct['source'],
+            attempted: false,
+            success: count > 0,
+            durationMs: 0,
+            directCount: count,
+            naverCount: 0,
+            finalCount: count,
+            strategy: 'tracked_catalog',
+            fallbackReason: 'tracked_catalog_search',
+            requestedQueries: [baseDiagnostics.effectiveQuery || baseDiagnostics.query],
+            resolvedQuery: baseDiagnostics.effectiveQuery || baseDiagnostics.query,
+        }));
+
+    return {
+        ...baseDiagnostics,
+        generatedAt: new Date().toISOString(),
+        totalProducts: products.length,
+        directSourceCount: sourceDiagnostics.length,
+        fallbackSourceCount: sourceDiagnostics.length,
+        sources: sourceDiagnostics,
+    };
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
@@ -108,8 +144,12 @@ export async function GET(request: NextRequest) {
 
     try {
         const effectiveQuery = queryAnalysis.normalizedQuery || query;
-        const sourceQueryPlan = buildSourceAwareSearchPlan(queryAnalysis);
-        let fallbackMode: 'full' | 'naver_only' = 'full';
+        const learnedQueries = await loadApprovedSearchLearningQueries([effectiveQuery, queryAnalysis.originalQuery, query]);
+        const sourceQueryPlan = mergeLearnedQueriesIntoPlan(
+            buildSourceAwareSearchPlan(queryAnalysis),
+            learnedQueries
+        );
+        let fallbackMode: 'full' | 'naver_only' | 'tracked_catalog' = 'full';
         let aggregation = await withTimeout(
             aggregateRealtimeSearchDetailed(effectiveQuery, page, sort, sourceQueryPlan),
             SEARCH_AGGREGATION_TIMEOUT_MS
@@ -151,6 +191,17 @@ export async function GET(request: NextRequest) {
             }
         }
 
+        if (aggregation.products.length === 0) {
+            const trackedFallbackProducts = await searchTrackedProductsByFashionQuery(queryAnalysis, 24, 320);
+            if (trackedFallbackProducts.length > 0) {
+                aggregation = {
+                    products: trackedFallbackProducts,
+                    diagnostics: buildTrackedCatalogDiagnostics(aggregation.diagnostics, trackedFallbackProducts),
+                };
+                fallbackMode = 'tracked_catalog';
+            }
+        }
+
         const { products, diagnostics } = aggregation;
         const reranked = rerankProductsByFashionRelevance(products, queryAnalysis, sort);
         const diagnosticsPayload = {
@@ -164,6 +215,7 @@ export async function GET(request: NextRequest) {
             totalProducts: reranked.products.length,
         };
         recordSearchDiagnostics(diagnosticsPayload);
+        recordSearchLearningCandidate(diagnosticsPayload);
 
         let historyEnabled = false;
         let comparisonGroupsPersisted = 0;
@@ -184,6 +236,13 @@ export async function GET(request: NextRequest) {
             }),
             SEARCH_SIDE_EFFECT_TIMEOUT_MS
         );
+        const learningPersistPromise = withSoftTimeout(
+            persistSearchLearningCandidate(diagnosticsPayload).catch((learningError) => {
+                console.warn('[SearchLearning] persist failed:', learningError);
+                return null;
+            }),
+            SEARCH_SIDE_EFFECT_TIMEOUT_MS
+        );
 
         const historyResult = await historyPersistPromise;
         if (historyResult) {
@@ -193,6 +252,7 @@ export async function GET(request: NextRequest) {
             variantHistoriesPersisted = historyResult.variantHistoriesPersisted;
         }
         void searchDiagnosticsPersistPromise;
+        void learningPersistPromise;
 
         const fallbackSources = diagnosticsPayload.sources.filter(
             (entry) => entry.strategy === 'naver_classified_fallback' || entry.strategy === 'classified_naver'

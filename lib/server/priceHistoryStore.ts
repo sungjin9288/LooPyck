@@ -3,6 +3,7 @@ import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { isProductSource, type GroupedProduct, type ProductSource, type ProductVariantCandidate, type UnifiedProduct } from '@/lib/api/types';
 import { buildOptionHistoryIdentity, buildOptionHistoryStorageKey } from '@/lib/product/optionHistory';
 import { groupProducts } from '@/lib/product/productMatching';
+import { analyzeFashionQuery, searchProductsByFashionQuery, type FashionQueryAnalysis } from '@/lib/search/fashionQueryAssistant';
 import { buildVariantHistoryIdentity, buildVariantHistoryStorageKey } from '@/lib/product/variantHistory';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 import { getAdminDb } from '@/lib/server/firebaseAdmin';
@@ -763,6 +764,43 @@ export async function listTrackedProductsForSitemap(
         return products;
     } catch (error) {
         console.warn('[PriceHistory] sitemap load failed:', error);
+        return [];
+    }
+}
+
+export async function searchTrackedProductsByFashionQuery(
+    query: string | FashionQueryAnalysis,
+    limitCount: number = 24,
+    poolSize: number = 240
+): Promise<UnifiedProduct[]> {
+    const db = getAdminDb();
+    if (!db) return [];
+
+    const analysis = typeof query === 'string' ? analyzeFashionQuery(query) : query;
+    if (!analysis.allowed) {
+        return [];
+    }
+
+    try {
+        const snap = await db
+            .collection('marketPriceHistory')
+            .orderBy('updatedAt', 'desc')
+            .limit(Math.max(20, Math.min(poolSize, 400)))
+            .get();
+
+        const dedup = new Map<string, UnifiedProduct>();
+        snap.forEach((doc) => {
+            const product = toTrackedProduct(doc.data() || {});
+            if (!product) {
+                return;
+            }
+
+            dedup.set(buildHistoryKey(product), product);
+        });
+
+        return searchProductsByFashionQuery(Array.from(dedup.values()), analysis, limitCount);
+    } catch (error) {
+        console.warn('[PriceHistory] tracked search fallback failed:', error);
         return [];
     }
 }
