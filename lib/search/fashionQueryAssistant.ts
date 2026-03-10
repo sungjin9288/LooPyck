@@ -18,6 +18,11 @@ type BlockedSignalGroup = {
     reason: string;
 };
 
+type QueryModifierVariant = {
+    local: string[];
+    global: string[];
+};
+
 export interface FashionQueryAnalysis {
     allowed: boolean;
     intent: QueryIntent;
@@ -116,6 +121,23 @@ const BRAND_QUERY_ALIASES: Record<string, string[]> = {
     'stussy': ['스투시'],
     'supreme': ['슈프림'],
     'asics': ['아식스'],
+};
+
+const QUERY_MODIFIER_VARIANTS: Record<string, QueryModifierVariant> = {
+    '운동용': { local: ['운동용', '스포츠', '트레이닝', '러닝'], global: ['sport', 'training', 'running', 'athletic'] },
+    '스포츠': { local: ['스포츠', '운동용', '트레이닝', '러닝'], global: ['sport', 'training', 'running', 'athletic'] },
+    '트레이닝': { local: ['트레이닝', '운동용', '스포츠'], global: ['training', 'sport', 'athletic'] },
+    '러닝': { local: ['러닝', '운동용', '트레이닝'], global: ['running', 'training', 'athletic'] },
+    '남자': { local: ['남자', '남성', '맨즈'], global: ['men', 'mens', 'male'] },
+    '남성': { local: ['남성', '남자', '맨즈'], global: ['men', 'mens', 'male'] },
+    '맨즈': { local: ['맨즈', '남자', '남성'], global: ['mens', 'men', 'male'] },
+    '여자': { local: ['여자', '여성', '우먼'], global: ['women', 'womens', 'female'] },
+    '여성': { local: ['여성', '여자', '우먼'], global: ['women', 'womens', 'female'] },
+    '우먼': { local: ['우먼', '여성', '여자'], global: ['women', 'womens', 'female'] },
+    '오버핏': { local: ['오버핏', '루즈핏', '박시핏'], global: ['oversized', 'relaxed fit', 'boxy fit'] },
+    '오버사이즈': { local: ['오버사이즈', '오버핏', '루즈핏'], global: ['oversized', 'relaxed fit', 'boxy fit'] },
+    '기본': { local: ['기본', '베이직', '에센셜'], global: ['basic', 'essential'] },
+    '베이직': { local: ['베이직', '기본', '에센셜'], global: ['basic', 'essential'] },
 };
 
 const DIRECT_QUERY_EXPANSION_SOURCES: ProductSource[] = [
@@ -332,6 +354,30 @@ function getCategoryQueryVariants(category: string | undefined, source: ProductS
     return GLOBAL_QUERY_SOURCES.has(source) ? variants.global : variants.local;
 }
 
+function getQueryModifierVariants(
+    analysis: Pick<FashionQueryAnalysis, 'primaryTokens' | 'categorySignals' | 'brandSignals'>,
+    source: ProductSource
+): string[] {
+    const categoryTokens = new Set(
+        analysis.categorySignals.flatMap((category) => tokenize(category))
+    );
+    const brandTokens = new Set(
+        analysis.brandSignals.flatMap((brand) => tokenize(brand))
+    );
+
+    const modifierTokens = analysis.primaryTokens.filter((token) => !categoryTokens.has(token) && !brandTokens.has(token));
+    const candidates = modifierTokens.flatMap((token) => {
+        const variants = QUERY_MODIFIER_VARIANTS[token];
+        if (!variants) {
+            return [token];
+        }
+
+        return GLOBAL_QUERY_SOURCES.has(source) ? variants.global : variants.local;
+    });
+
+    return uniqueOrdered(candidates).slice(0, 4);
+}
+
 export function analyzeFashionQuery(query: string): FashionQueryAnalysis {
     const originalQuery = normalizeTitle(query).trim();
     const normalizedSource = normalizeSearchText(originalQuery);
@@ -399,7 +445,7 @@ export function analyzeFashionQuery(query: string): FashionQueryAnalysis {
 }
 
 export function buildSourceAwareQueryCandidates(
-    analysis: Pick<FashionQueryAnalysis, 'originalQuery' | 'normalizedQuery' | 'brandSignals' | 'categorySignals' | 'suggestedQueries'>,
+    analysis: Pick<FashionQueryAnalysis, 'originalQuery' | 'normalizedQuery' | 'brandSignals' | 'categorySignals' | 'suggestedQueries' | 'primaryTokens'>,
     source: ProductSource
 ): string[] {
     const baseQuery = analysis.normalizedQuery || analysis.originalQuery;
@@ -409,17 +455,22 @@ export function buildSourceAwareQueryCandidates(
         : [];
     const primaryCategory = analysis.categorySignals[0];
     const categoryVariants = getCategoryQueryVariants(primaryCategory, source);
+    const modifierVariants = getQueryModifierVariants(analysis, source);
+    const modifierCategoryVariants = modifierVariants.flatMap((modifier) =>
+        categoryVariants.length > 0 ? categoryVariants.map((variant) => `${modifier} ${variant}`) : [modifier]
+    );
 
     const candidates = uniqueOrdered([
         baseQuery,
         analysis.originalQuery,
         ...brandVariants,
         ...categoryVariants,
+        ...modifierCategoryVariants,
         ...categoryVariants.flatMap((variant) => brandVariants.map((brand) => `${brand} ${variant}`)),
         ...analysis.suggestedQueries.slice(0, 2),
     ].map((value) => normalizeWhitespace(value || '')));
 
-    return candidates.filter(Boolean).slice(0, 4);
+    return candidates.filter(Boolean).slice(0, 8);
 }
 
 export function buildSourceAwareSearchPlan(analysis: FashionQueryAnalysis): SearchQueryCandidatePlan {

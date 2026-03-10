@@ -10,6 +10,27 @@ export const runtime = 'nodejs';
 const SEARCH_AGGREGATION_TIMEOUT_MS = 12_000;
 const SEARCH_SIDE_EFFECT_TIMEOUT_MS = 1_500;
 
+function uniqueQueryCandidates(values: string[]): string[] {
+    return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function buildBroadFallbackQueries(
+    queryAnalysis: ReturnType<typeof analyzeFashionQuery>,
+    sourceQueryPlan: ReturnType<typeof buildSourceAwareSearchPlan>
+): string[] {
+    const categoryQueries = queryAnalysis.categorySignals.flatMap((category) => {
+        const categoryAnalysis = analyzeFashionQuery(category);
+        const categoryPlan = buildSourceAwareSearchPlan(categoryAnalysis);
+        return categoryPlan.NAVER || [category];
+    });
+
+    return uniqueQueryCandidates([
+        ...(sourceQueryPlan.NAVER || []),
+        ...queryAnalysis.suggestedQueries,
+        ...categoryQueries,
+    ]).slice(0, 12);
+}
+
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -114,6 +135,19 @@ export async function GET(request: NextRequest) {
             if (naverFallback.products.length > 0) {
                 aggregation = naverFallback;
                 fallbackMode = 'naver_only';
+            } else {
+                const broadFallbackQueries = buildBroadFallbackQueries(queryAnalysis, sourceQueryPlan);
+                const broadFallback = await aggregateRealtimeSearchNaverOnly(
+                    effectiveQuery,
+                    page,
+                    sort,
+                    broadFallbackQueries
+                );
+
+                if (broadFallback.products.length > 0) {
+                    aggregation = broadFallback;
+                    fallbackMode = 'naver_only';
+                }
             }
         }
 

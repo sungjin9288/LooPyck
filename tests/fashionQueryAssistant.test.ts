@@ -102,6 +102,17 @@ test('naver query plan broadens generic hoodie searches', () => {
     assert.ok(plan.NAVER?.includes('남자 후드'));
     assert.ok(plan.NAVER?.includes('후드집업'));
     assert.ok(plan.NAVER?.includes('후드'));
+    assert.ok(plan.NAVER?.includes('남자 후드집업'));
+});
+
+test('sports hoodie query expands into sport modifier and hoodie category variants', () => {
+    const analysis = analyzeFashionQuery('운동용 후드');
+    const plan = buildSourceAwareSearchPlan(analysis);
+
+    assert.equal(analysis.allowed, true);
+    assert.ok(plan.NAVER?.includes('운동용 후드'));
+    assert.ok(plan.NAVER?.includes('후드집업'));
+    assert.ok(plan.NAVER?.includes('운동용 후드집업'));
 });
 
 test('weak-result search meta exposes refinement suggestions', () => {
