@@ -1,4 +1,4 @@
-import { FieldPath, Timestamp } from 'firebase-admin/firestore';
+import { Timestamp } from 'firebase-admin/firestore';
 import {
     parseAlertBehaviorProfileSnapshot,
     resolveAlertTuningConfig,
@@ -597,7 +597,7 @@ export async function loadAlertDiagnostics(limit: number = 20, tuningConfigInput
     const [alertsSnap, favoritesSnap, personasSnap] = await Promise.all([
         db.collectionGroup('alerts').limit(MAX_RECENT_ALERTS).get(),
         db.collectionGroup('favorites').limit(MAX_FAVORITES).get(),
-        db.collectionGroup('preferences').where(FieldPath.documentId(), '==', 'alertPersona').limit(MAX_ALERT_PERSONAS).get(),
+        db.collectionGroup('preferences').limit(MAX_ALERT_PERSONAS).get(),
     ]);
 
     const sourceMap = new Map<string, AlertSourceState>();
@@ -769,6 +769,7 @@ export async function loadAlertDiagnostics(limit: number = 20, tuningConfigInput
     })));
 
     const recentProfiles = personasSnap.docs
+        .filter((doc) => doc.id === 'alertPersona')
         .map((doc) => {
             const data = doc.data() as AlertPersonaDoc;
             const profile = parseAlertBehaviorProfileSnapshot(data.profile ?? data);
