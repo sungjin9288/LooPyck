@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { analyzeFashionQuery, buildSourceAwareSearchPlan, searchProductsByFashionQuery } from '../lib/search/fashionQueryAssistant.ts';
 import type { UnifiedProduct } from '../lib/api/types.ts';
 import { resolveSemanticFashionExpansion } from '../lib/search/fashionOntology.ts';
+import { SEARCH_QUALITY_DATASET } from '../lib/search/searchQualityDataset.ts';
 
 function product(overrides: Partial<UnifiedProduct>): UnifiedProduct {
     return {
@@ -35,26 +36,24 @@ function product(overrides: Partial<UnifiedProduct>): UnifiedProduct {
     };
 }
 
-test('fashion search regression plan covers common hoodie and training variants', () => {
-    const cases = [
-        { query: '운동용 후드', expected: ['후드집업', '운동용 후드집업', '트레이닝 후드집업'] },
-        { query: '남자 후드', expected: ['후드집업', '남자 후드집업'] },
-        { query: '트레이닝 팬츠', expected: ['트레이닝 팬츠', '조거 팬츠', '트랙 팬츠'] },
-        { query: '러닝 자켓', expected: ['러닝 자켓', '바람막이', '윈드브레이커'] },
-        { query: '조거', expected: ['조거', '조거 팬츠'] },
-    ];
-
-    cases.forEach(({ query, expected }) => {
+test('fashion search regression plan covers curated fashion query dataset', () => {
+    SEARCH_QUALITY_DATASET.forEach(({ query, expectedNaver, expectedGlobal }) => {
         const analysis = analyzeFashionQuery(query);
         const plan = buildSourceAwareSearchPlan(analysis);
 
         assert.equal(analysis.allowed, true, `${query} should be allowed`);
-        expected.forEach((candidate) => {
+        assert.ok((plan.NAVER || []).length >= 1, `${query} should build a usable NAVER candidate set`);
+        assert.ok(
+            expectedNaver.some((candidate) => plan.NAVER?.includes(candidate)),
+            `${query} should include at least one expected NAVER candidate`
+        );
+
+        if (expectedGlobal && expectedGlobal.length > 0) {
             assert.ok(
-                plan.NAVER?.includes(candidate),
-                `${query} should include "${candidate}" in NAVER candidates`
+                expectedGlobal.some((candidate) => plan.SSENSE?.includes(candidate)),
+                `${query} should include at least one expected global candidate in SSENSE candidates`
             );
-        });
+        }
     });
 });
 

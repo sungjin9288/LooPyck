@@ -115,6 +115,15 @@ test('sports hoodie query expands into sport modifier and hoodie category varian
     assert.ok(plan.NAVER?.includes('운동용 후드집업'));
 });
 
+test('source-aware rewrite adds source-specific mens and global hoodie candidates', () => {
+    const analysis = analyzeFashionQuery('남자 후드');
+    const plan = buildSourceAwareSearchPlan(analysis);
+
+    assert.ok(plan.MUSINSA?.includes('남성'));
+    assert.ok(plan.SSENSE?.includes('mens'));
+    assert.ok(plan.SSENSE?.includes('zip hoodie'));
+});
+
 test('weak-result search meta exposes refinement suggestions', () => {
     const analysis = analyzeFashionQuery('코트');
     const result = rerankProductsByFashionRelevance([

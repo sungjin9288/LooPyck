@@ -1,6 +1,7 @@
 import type { ProductSource, UnifiedProduct } from '../api/types.ts';
 import { normalizeTitle } from '../core/dataNormalizer.ts';
 import { resolveSemanticFashionExpansion } from './fashionOntology.ts';
+import { buildSourceRewriteQueries } from './sourceRewriteRules.ts';
 import type { SearchSort } from '../../types/searchSort.ts';
 
 type QueryIntent = 'fashion' | 'mixed' | 'unknown' | 'non_fashion';
@@ -33,6 +34,7 @@ export interface FashionQueryAnalysis {
     primaryTokens: string[];
     brandSignals: string[];
     categorySignals: string[];
+    semanticClusterIds: string[];
     blockedSignals: string[];
     suggestedQueries: string[];
 }
@@ -416,6 +418,16 @@ function getQueryModifierVariants(
     return uniqueOrdered(candidates).slice(0, 4);
 }
 
+function getSecondaryQueryTokens(analysis: Pick<FashionQueryAnalysis, 'suggestedQueries' | 'primaryTokens'>): string[] {
+    const primaryTokens = new Set(analysis.primaryTokens);
+    const suggestedTokens = analysis.suggestedQueries
+        .slice(0, 4)
+        .flatMap((suggestion) => tokenize(suggestion))
+        .filter((token) => !primaryTokens.has(token));
+
+    return uniqueOrdered(suggestedTokens).slice(0, 8);
+}
+
 export function analyzeFashionQuery(query: string): FashionQueryAnalysis {
     const originalQuery = normalizeTitle(query).trim();
     const normalizedSource = normalizeSearchText(originalQuery);
@@ -485,13 +497,14 @@ export function analyzeFashionQuery(query: string): FashionQueryAnalysis {
         ]),
         brandSignals,
         categorySignals,
+        semanticClusterIds: semanticExpansion.matchedClusterIds,
         blockedSignals,
         suggestedQueries,
     };
 }
 
 export function buildSourceAwareQueryCandidates(
-    analysis: Pick<FashionQueryAnalysis, 'originalQuery' | 'normalizedQuery' | 'brandSignals' | 'categorySignals' | 'suggestedQueries' | 'primaryTokens'>,
+    analysis: Pick<FashionQueryAnalysis, 'originalQuery' | 'normalizedQuery' | 'brandSignals' | 'categorySignals' | 'suggestedQueries' | 'primaryTokens' | 'semanticClusterIds'>,
     source: ProductSource
 ): string[] {
     const semanticExpansion = resolveSemanticFashionExpansion(analysis.originalQuery);
@@ -503,6 +516,13 @@ export function buildSourceAwareQueryCandidates(
     const primaryCategory = analysis.categorySignals[0];
     const categoryVariants = getCategoryQueryVariants(primaryCategory, source);
     const modifierVariants = getQueryModifierVariants(analysis, source);
+    const sourceRewriteQueries = buildSourceRewriteQueries(source, {
+        originalQuery: analysis.originalQuery,
+        brandSignals: analysis.brandSignals,
+        categorySignals: analysis.categorySignals,
+        primaryTokens: analysis.primaryTokens,
+        semanticClusterIds: analysis.semanticClusterIds,
+    });
     const modifierCategoryVariants = modifierVariants.flatMap((modifier) =>
         categoryVariants.length > 0 ? categoryVariants.map((variant) => `${modifier} ${variant}`) : [modifier]
     );
@@ -511,6 +531,7 @@ export function buildSourceAwareQueryCandidates(
         baseQuery,
         analysis.originalQuery,
         ...brandVariants,
+        ...sourceRewriteQueries,
         ...categoryVariants,
         ...modifierCategoryVariants,
         ...categoryVariants.flatMap((variant) => brandVariants.map((brand) => `${brand} ${variant}`)),
@@ -519,7 +540,7 @@ export function buildSourceAwareQueryCandidates(
         ...analysis.suggestedQueries.slice(0, 2),
     ].map((value) => normalizeWhitespace(value || '')));
 
-    return candidates.filter(Boolean).slice(0, 8);
+    return candidates.filter(Boolean).slice(0, 12);
 }
 
 export function buildSourceAwareSearchPlan(analysis: FashionQueryAnalysis): SearchQueryCandidatePlan {
@@ -557,6 +578,7 @@ function scoreProduct(product: UnifiedProduct, analysis: FashionQueryAnalysis): 
         ...analysis.categorySignals,
         ...analysis.brandSignals,
     ]);
+    const secondaryTokens = getSecondaryQueryTokens(analysis);
 
     let score = 0;
     let matchedTokens = 0;
@@ -607,6 +629,20 @@ function scoreProduct(product: UnifiedProduct, analysis: FashionQueryAnalysis): 
 
         if (token.length > 2) {
             score -= 5;
+        }
+    }
+
+    for (const token of secondaryTokens) {
+        const inTitle = text.title.includes(token);
+        const inCategory = text.categories.includes(token);
+
+        if (inTitle) {
+            score += 10;
+            continue;
+        }
+
+        if (inCategory) {
+            score += 6;
         }
     }
 

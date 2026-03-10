@@ -275,7 +275,7 @@ export function buildFallbackSearchLearningSuggestion(entry: Pick<SearchLearning
         ...(plan.NAVER || []),
         ...analysis.suggestedQueries,
         ...entry.suggestedQueries,
-    ]).slice(0, 8);
+    ]).slice(0, 12);
 
     return {
         normalizedQuery: analysis.normalizedQuery || entry.query,
