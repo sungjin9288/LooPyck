@@ -19,6 +19,10 @@ import {
     buildSearchLearningRewriteSourceDrafts,
     buildSearchLearningRewriteSourceDraftSummary,
 } from '@/lib/search/searchLearningRewriteSourceDrafts';
+import {
+    buildSearchLearningRewriteSourceOps,
+    buildSearchLearningRewriteSourceOpsSummary,
+} from '@/lib/search/searchLearningRewriteSourceOps';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1227,6 +1231,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningRewritePacks
     );
     const searchLearningRewriteSourceDraftSummary = buildSearchLearningRewriteSourceDraftSummary(searchLearningRewriteSourceDrafts);
+    const searchLearningRewriteSourceOps = buildSearchLearningRewriteSourceOps(searchLearningRewriteSourceDrafts);
+    const searchLearningRewriteSourceOpsSummary = buildSearchLearningRewriteSourceOpsSummary(searchLearningRewriteSourceOps);
     const totalSources = summary?.sources.length || 0;
     const directSources = summary?.sources.filter((entry) => entry.collectionMode === 'direct').length || 0;
     const fallbackSources = summary?.sources.filter((entry) => entry.fallbackHits > 0).length || 0;
@@ -3752,6 +3758,140 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     <p className="mt-1 text-xs text-slate-400">
                                         uncovered curated queries
                                     </p>
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-white">Source Rollout Ops Summary</h3>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            source/action 조합별로 승격, rollback, 표본 대기 후보를 묶어 한 번에 triage합니다.
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                        tracked {searchLearningRewriteSourceOpsSummary.trackedSources}
+                                    </span>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningRewriteSourceOpsSummary.topPromote.flatMap((entry) => entry.entryIds),
+                                            `${searchLearningRewriteSourceOpsSummary.topPromote.length}개의 승격 source ops query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningRewriteSourceOpsSummary.topPromote.length === 0}
+                                        className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        승격 ops 선택 ({searchLearningRewriteSourceOpsSummary.topPromote.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningRewriteSourceOpsSummary.topRollback.flatMap((entry) => entry.entryIds),
+                                            `${searchLearningRewriteSourceOpsSummary.topRollback.length}개의 rollback source ops query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningRewriteSourceOpsSummary.topRollback.length === 0}
+                                        className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        rollback ops 선택 ({searchLearningRewriteSourceOpsSummary.topRollback.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningRewriteSourceOpsSummary.topAwaiting.flatMap((entry) => entry.entryIds),
+                                            `${searchLearningRewriteSourceOpsSummary.topAwaiting.length}개의 표본 대기 source ops query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningRewriteSourceOpsSummary.topAwaiting.length === 0}
+                                        className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        표본 대기 ops 선택 ({searchLearningRewriteSourceOpsSummary.topAwaiting.length})
+                                    </button>
+                                </div>
+                                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Promote</p>
+                                        <p className="mt-3 text-3xl font-black text-emerald-300">{searchLearningRewriteSourceOpsSummary.promoteSources}</p>
+                                        <p className="mt-1 text-xs text-slate-400">source/action 기준 승격 후보</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Hold</p>
+                                        <p className="mt-3 text-3xl font-black text-sky-300">{searchLearningRewriteSourceOpsSummary.holdSources}</p>
+                                        <p className="mt-1 text-xs text-slate-400">유지하며 표본 관측 중인 source/action</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Rollback</p>
+                                        <p className="mt-3 text-3xl font-black text-rose-300">{searchLearningRewriteSourceOpsSummary.rollbackSources}</p>
+                                        <p className="mt-1 text-xs text-slate-400">source/action 기준 rollback 후보</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Awaiting</p>
+                                        <p className="mt-3 text-3xl font-black text-amber-300">{searchLearningRewriteSourceOpsSummary.awaitingSources}</p>
+                                        <p className="mt-1 text-xs text-slate-400">새 표본을 기다리는 source/action</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                                    {searchLearningRewriteSourceOps.slice(0, 6).map((item) => {
+                                        const toneClass =
+                                            item.action === 'promote'
+                                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                                                : item.action === 'rollback'
+                                                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+                                                    : item.action === 'awaiting_samples'
+                                                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                                                        : 'border-sky-500/30 bg-sky-500/10 text-sky-200';
+
+                                        return (
+                                            <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-white">{item.source}</p>
+                                                        <p className="mt-1 text-xs text-slate-500">
+                                                            drafts {item.draftCount} · clusters {item.clusterCount} · measured {item.measured}
+                                                        </p>
+                                                    </div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${toneClass}`}>
+                                                        {item.action}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Improved Rate</p>
+                                                        <p className="mt-2 text-sm font-semibold text-slate-100">{Math.round(item.avgImprovedRate * 100)}%</p>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Needs Attention</p>
+                                                        <p className="mt-2 text-sm font-semibold text-slate-100">{item.noImprovement}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {item.topClusters.map((cluster) => (
+                                                        <span key={`${item.id}_${cluster}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {cluster}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {item.topQueries.slice(0, 4).map((query) => (
+                                                        <span key={`${item.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(item.entryIds, `${item.source} / ${item.action} source ops query를 선택했습니다.`)}
+                                                    className="mt-4 rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                >
+                                                    source ops 선택
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                    {searchLearningRewriteSourceOps.length === 0 && (
+                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-3">
+                                            아직 source ops summary가 없습니다.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">

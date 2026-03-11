@@ -29,6 +29,10 @@ import {
     buildSearchLearningRewriteSourceDraftSummary,
     buildSearchLearningRewriteSourceDrafts,
 } from '../lib/search/searchLearningRewriteSourceDrafts.ts';
+import {
+    buildSearchLearningRewriteSourceOps,
+    buildSearchLearningRewriteSourceOpsSummary,
+} from '../lib/search/searchLearningRewriteSourceOps.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -290,6 +294,87 @@ test('source rewrite drafts expand rewrite pack recommendations into source-leve
     assert.ok(naverDraft);
     assert.ok((naverDraft?.queries.length || 0) > 0);
     assert.ok((naverDraft?.queries || []).some((query) => query.includes('후드')));
+});
+
+test('source rewrite ops summarize promote and rollback drafts by source', () => {
+    const ops = buildSearchLearningRewriteSourceOps([
+        {
+            id: 'hoodie_training:NAVER',
+            clusterId: 'hoodie_training',
+            clusterLabel: '후드/후드집업',
+            source: 'NAVER',
+            action: 'promote',
+            reason: 'good',
+            entryIds: ['entry-1'],
+            queries: ['후드집업', '운동용 후드'],
+            queryCount: 2,
+            measured: 3,
+            improved: 2,
+            noImprovement: 0,
+            awaitingSamples: 0,
+            improvedRate: 2 / 3,
+            beforeLowFitRate: 1,
+            afterLowFitRate: 0.2,
+            beforeZeroRate: 1,
+            afterZeroRate: 0,
+            topQuery: '운동용 후드',
+        },
+        {
+            id: 'hoodie_training:MUSINSA',
+            clusterId: 'hoodie_training',
+            clusterLabel: '후드/후드집업',
+            source: 'MUSINSA',
+            action: 'promote',
+            reason: 'good',
+            entryIds: ['entry-1'],
+            queries: ['후드집업'],
+            queryCount: 1,
+            measured: 3,
+            improved: 2,
+            noImprovement: 0,
+            awaitingSamples: 0,
+            improvedRate: 2 / 3,
+            beforeLowFitRate: 1,
+            afterLowFitRate: 0.2,
+            beforeZeroRate: 1,
+            afterZeroRate: 0,
+            topQuery: '운동용 후드',
+        },
+        {
+            id: 'other:NAVER',
+            clusterId: 'other',
+            clusterLabel: '기타 패션 검색어',
+            source: 'NAVER',
+            action: 'rollback',
+            reason: 'bad',
+            entryIds: ['entry-2'],
+            queries: ['등산 바지'],
+            queryCount: 1,
+            measured: 2,
+            improved: 0,
+            noImprovement: 2,
+            awaitingSamples: 0,
+            improvedRate: 0,
+            beforeLowFitRate: 0.5,
+            afterLowFitRate: 0.5,
+            beforeZeroRate: 0.5,
+            afterZeroRate: 0.5,
+            topQuery: '등산 바지',
+        },
+    ]);
+
+    const summary = buildSearchLearningRewriteSourceOpsSummary(ops);
+    const naverPromote = ops.find((entry) => entry.id === 'NAVER:promote');
+    const naverRollback = ops.find((entry) => entry.id === 'NAVER:rollback');
+
+    assert.equal(summary.trackedSources, 3);
+    assert.equal(summary.promoteSources, 2);
+    assert.equal(summary.rollbackSources, 1);
+    assert.ok(naverPromote);
+    assert.equal(naverPromote?.draftCount, 1);
+    assert.ok((naverPromote?.topQueries || []).includes('후드집업'));
+    assert.ok(naverRollback);
+    assert.equal(naverRollback?.noImprovement, 2);
 });
 
 test('query learning queue records low-fit snapshots in memory', async () => {
