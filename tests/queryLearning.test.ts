@@ -37,6 +37,10 @@ import {
     buildSearchLearningRewriteSourceActionDrafts,
     buildSearchLearningRewriteSourceActionDraftSummary,
 } from '../lib/search/searchLearningRewriteSourceActionDrafts.ts';
+import {
+    buildSearchLearningRewriteSourceActionReviewQueue,
+    buildSearchLearningRewriteSourceActionReviewSummary,
+} from '../lib/search/searchLearningRewriteSourceActionReview.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -435,6 +439,98 @@ test('source action drafts derive direct ops actions from source summaries', () 
     assert.equal(summary.rollbackRegenerate, 1);
     assert.equal(drafts.find((entry) => entry.action === 'promote_confirm')?.title, '승격 유지 확인');
     assert.equal(drafts.find((entry) => entry.action === 'rollback_regenerate')?.title, 'AI 재생성 필요');
+});
+
+test('source action review queue highlights approved entries with fresh AI suggestions', () => {
+    const drafts = buildSearchLearningRewriteSourceActionDrafts([
+        {
+            id: 'NAVER:rollback',
+            source: 'NAVER',
+            action: 'rollback',
+            draftCount: 1,
+            clusterCount: 1,
+            entryIds: ['entry-1', 'entry-2'],
+            queryCount: 2,
+            measured: 2,
+            improved: 0,
+            noImprovement: 2,
+            awaitingSamples: 0,
+            avgImprovedRate: 0,
+            topClusters: ['후드/후드집업'],
+            topQueries: ['운동용 후드', '남자 후드'],
+        },
+    ]);
+
+    const reviewQueue = buildSearchLearningRewriteSourceActionReviewQueue(drafts, [
+        {
+            id: 'entry-1',
+            query: '운동용 후드',
+            normalizedQuery: '운동용 후드',
+            effectiveQuery: '운동용 후드',
+            queryIntent: 'fashion',
+            status: 'approved',
+            occurrenceCount: 4,
+            lowFitCount: 3,
+            zeroResultCount: 2,
+            lastResultQuality: 'weak',
+            lastTotalProducts: 0,
+            suggestedQueries: ['후드집업'],
+            approvedQueries: ['후드집업'],
+            aiSuggestion: {
+                normalizedQuery: '운동용 후드',
+                categoryHint: '후드집업',
+                suggestedQueries: ['트레이닝 후드집업', '운동용 후드집업'],
+                rationale: '운동 modifier를 추가합니다.',
+                model: 'heuristic',
+                generatedAt: '2026-03-11T10:00:00.000Z',
+            },
+            approvalBaseline: {
+                approvedAt: '2026-03-11T09:00:00.000Z',
+                occurrenceCount: 3,
+                lowFitCount: 3,
+                zeroResultCount: 2,
+            },
+            lastSeenAt: '2026-03-11T10:00:00.000Z',
+            reviewedAt: '2026-03-11T09:00:00.000Z',
+            reviewedBy: 'admin-user',
+            createdAt: '2026-03-11T08:00:00.000Z',
+            updatedAt: '2026-03-11T10:00:00.000Z',
+        },
+        {
+            id: 'entry-2',
+            query: '남자 후드',
+            normalizedQuery: '남자 후드',
+            effectiveQuery: '남자 후드',
+            queryIntent: 'fashion',
+            status: 'approved',
+            occurrenceCount: 2,
+            lowFitCount: 2,
+            zeroResultCount: 1,
+            lastResultQuality: 'weak',
+            lastTotalProducts: 0,
+            suggestedQueries: ['남성 후드집업'],
+            approvedQueries: ['남성 후드집업'],
+            aiSuggestion: null,
+            approvalBaseline: {
+                approvedAt: '2026-03-11T09:00:00.000Z',
+                occurrenceCount: 2,
+                lowFitCount: 2,
+                zeroResultCount: 1,
+            },
+            lastSeenAt: '2026-03-11T10:00:00.000Z',
+            reviewedAt: '2026-03-11T09:00:00.000Z',
+            reviewedBy: 'admin-user',
+            createdAt: '2026-03-11T08:00:00.000Z',
+            updatedAt: '2026-03-11T10:00:00.000Z',
+        },
+    ]);
+    const summary = buildSearchLearningRewriteSourceActionReviewSummary(reviewQueue);
+
+    assert.equal(summary.readyReview, 1);
+    assert.equal(summary.generationNeeded, 0);
+    assert.equal(summary.topReadyReview[0]?.readyReviewCount, 1);
+    assert.equal(reviewQueue[0]?.reviewState, 'ready_review');
+    assert.deepEqual(reviewQueue[0]?.readyReviewEntryIds, ['entry-1']);
 });
 
 test('query learning queue records low-fit snapshots in memory', async () => {

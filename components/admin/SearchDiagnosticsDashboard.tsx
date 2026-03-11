@@ -27,6 +27,10 @@ import {
     buildSearchLearningRewriteSourceActionDrafts,
     buildSearchLearningRewriteSourceActionDraftSummary,
 } from '@/lib/search/searchLearningRewriteSourceActionDrafts';
+import {
+    buildSearchLearningRewriteSourceActionReviewQueue,
+    buildSearchLearningRewriteSourceActionReviewSummary,
+} from '@/lib/search/searchLearningRewriteSourceActionReview';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1239,6 +1243,13 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const searchLearningRewriteSourceOpsSummary = buildSearchLearningRewriteSourceOpsSummary(searchLearningRewriteSourceOps);
     const searchLearningRewriteSourceActionDrafts = buildSearchLearningRewriteSourceActionDrafts(searchLearningRewriteSourceOps);
     const searchLearningRewriteSourceActionDraftSummary = buildSearchLearningRewriteSourceActionDraftSummary(searchLearningRewriteSourceActionDrafts);
+    const searchLearningRewriteSourceActionReviewQueue = buildSearchLearningRewriteSourceActionReviewQueue(
+        searchLearningRewriteSourceActionDrafts,
+        searchLearningEntries
+    );
+    const searchLearningRewriteSourceActionReviewSummary = buildSearchLearningRewriteSourceActionReviewSummary(
+        searchLearningRewriteSourceActionReviewQueue
+    );
     const totalSources = summary?.sources.length || 0;
     const directSources = summary?.sources.filter((entry) => entry.collectionMode === 'direct').length || 0;
     const fallbackSources = summary?.sources.filter((entry) => entry.fallbackHits > 0).length || 0;
@@ -1944,6 +1955,25 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         );
     }
 
+    async function handleGenerateSourceActionReviewSuggestions() {
+        await handleBulkGenerateSearchLearningSuggestionsForIds(
+            searchLearningRewriteSourceActionReviewSummary.topGenerationNeeded.flatMap((entry) => entry.generationNeededEntryIds),
+            'source_action_review_generate',
+            (count) => `${count}개의 source action review query에 AI 제안을 생성했습니다.`,
+            'source action review query AI 제안을 생성하지 못했습니다.'
+        );
+    }
+
+    async function handleApproveSourceActionReviewSuggestions() {
+        await handleBulkReviewSearchLearningForIds(
+            searchLearningRewriteSourceActionReviewSummary.topReadyReview.flatMap((entry) => entry.readyReviewEntryIds),
+            'bulk_approve',
+            'source_action_review_approve',
+            (count) => `${count}개의 source action review query를 일괄 승인했습니다.`,
+            'source action review 승인에 실패했습니다.'
+        );
+    }
+
     async function handleGenerateImpactNoImprovementSuggestions() {
         await handleBulkGenerateSearchLearningSuggestionsForIds(
             searchLearningImpactSummary.topNeedsAttention.map((impact) => impact.entryId),
@@ -2047,7 +2077,29 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             return;
         }
 
-        setProcessingSearchLearningId(action);
+        await handleBulkReviewSearchLearningForIds(
+            selectedSearchLearningIds,
+            action,
+            action,
+            action === 'bulk_approve'
+                ? (count) => `${count}개의 학습 query를 일괄 승인했습니다.`
+                : `${selectedSearchLearningIds.length}개의 학습 query를 일괄 보류 처리했습니다.`,
+            '검색 학습 일괄 검토 저장에 실패했습니다.'
+        );
+    }
+
+    async function handleBulkReviewSearchLearningForIds(
+        entryIds: string[],
+        action: 'bulk_approve' | 'bulk_ignore',
+        processingKey: string,
+        successMessage: string | ((count: number) => string),
+        fallbackErrorMessage: string
+    ) {
+        if (!user || entryIds.length === 0) {
+            return;
+        }
+
+        setProcessingSearchLearningId(processingKey);
         setSearchLearningMessage(null);
         try {
             const token = await user.getIdToken();
@@ -2059,12 +2111,12 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                 },
                 body: JSON.stringify({
                     action,
-                    entryIds: selectedSearchLearningIds,
+                    entryIds,
                 }),
             });
             const payload = await response.json();
             if (!response.ok) {
-                throw new Error(payload.error || '검색 학습 일괄 검토 저장에 실패했습니다.');
+                throw new Error(payload.error || fallbackErrorMessage);
             }
 
             const updatedEntries = Array.isArray(payload.entries) ? payload.entries as SearchLearningEntry[] : [];
@@ -2084,12 +2136,10 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                     },
                 };
             });
-            setSelectedSearchLearningIds([]);
-            setSearchLearningMessage(action === 'bulk_approve'
-                ? `${updatedEntries.length}개의 학습 query를 일괄 승인했습니다.`
-                : `${updatedEntries.length}개의 학습 query를 일괄 보류 처리했습니다.`);
+            setSelectedSearchLearningIds((current) => current.filter((id) => !entryIds.includes(id)));
+            setSearchLearningMessage(typeof successMessage === 'function' ? successMessage(updatedEntries.length) : successMessage);
         } catch (bulkError) {
-            setSearchLearningMessage(bulkError instanceof Error ? bulkError.message : '검색 학습 일괄 검토 저장에 실패했습니다.');
+            setSearchLearningMessage(bulkError instanceof Error ? bulkError.message : fallbackErrorMessage);
         } finally {
             setProcessingSearchLearningId(null);
         }
@@ -3773,6 +3823,125 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     <p className="mt-1 text-xs text-slate-400">
                                         uncovered curated queries
                                     </p>
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-white">Source Action Review Queue</h3>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            source action에서 바로 review 가능한 AI draft와 아직 AI 생성이 필요한 항목을 분리해 운영 우선순위로 보여줍니다.
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                        queue {searchLearningRewriteSourceActionReviewSummary.total}
+                                    </span>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningRewriteSourceActionReviewSummary.topReadyReview.flatMap((entry) => entry.readyReviewEntryIds),
+                                            `${searchLearningRewriteSourceActionReviewSummary.topReadyReview.length}개의 source action review query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningRewriteSourceActionReviewSummary.topReadyReview.length === 0}
+                                        className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        review 선택 ({searchLearningRewriteSourceActionReviewSummary.topReadyReview.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleApproveSourceActionReviewSuggestions}
+                                        disabled={searchLearningRewriteSourceActionReviewSummary.topReadyReview.length === 0 || processingSearchLearningId === 'source_action_review_approve'}
+                                        className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {processingSearchLearningId === 'source_action_review_approve'
+                                            ? '승인 중...'
+                                            : `review 즉시 승인 (${searchLearningRewriteSourceActionReviewSummary.topReadyReview.length})`}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleGenerateSourceActionReviewSuggestions}
+                                        disabled={searchLearningRewriteSourceActionReviewSummary.topGenerationNeeded.length === 0 || processingSearchLearningId === 'source_action_review_generate'}
+                                        className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {processingSearchLearningId === 'source_action_review_generate'
+                                            ? '생성 중...'
+                                            : `AI 제안 생성 (${searchLearningRewriteSourceActionReviewSummary.topGenerationNeeded.length})`}
+                                    </button>
+                                </div>
+                                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Ready Review</p>
+                                        <p className="mt-3 text-3xl font-black text-emerald-300">{searchLearningRewriteSourceActionReviewSummary.readyReview}</p>
+                                        <p className="mt-1 text-xs text-slate-400">새 AI 제안이 있어 바로 승인 가능한 action</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Generation Needed</p>
+                                        <p className="mt-3 text-3xl font-black text-rose-300">{searchLearningRewriteSourceActionReviewSummary.generationNeeded}</p>
+                                        <p className="mt-1 text-xs text-slate-400">AI 제안 생성부터 다시 필요한 action</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Stable Follow-up</p>
+                                        <p className="mt-3 text-3xl font-black text-sky-300">{searchLearningRewriteSourceActionReviewSummary.stableFollowup}</p>
+                                        <p className="mt-1 text-xs text-slate-400">지금은 유지하면서 관측만 보면 되는 action</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                                    {searchLearningRewriteSourceActionReviewQueue.slice(0, 6).map((item) => {
+                                        const toneClass =
+                                            item.reviewState === 'ready_review'
+                                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                                                : item.reviewState === 'generation_needed'
+                                                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+                                                    : 'border-sky-500/30 bg-sky-500/10 text-sky-200';
+
+                                        return (
+                                            <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-white">{item.source}</p>
+                                                        <p className="mt-1 text-xs text-slate-500">
+                                                            {item.title} · review {item.readyReviewCount} · generation {item.generationNeededCount}
+                                                        </p>
+                                                    </div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${toneClass}`}>
+                                                        {item.reviewState}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-3 text-xs leading-6 text-slate-400">{item.reason}</p>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {item.topClusters.map((cluster) => (
+                                                        <span key={`${item.id}_${cluster}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {cluster}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {item.topQueries.slice(0, 4).map((query) => (
+                                                        <span key={`${item.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(
+                                                        item.reviewState === 'ready_review' ? item.readyReviewEntryIds : item.entryIds,
+                                                        `${item.source} / ${item.title} review query를 선택했습니다.`
+                                                    )}
+                                                    className="mt-4 rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                >
+                                                    review queue 선택
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                    {searchLearningRewriteSourceActionReviewQueue.length === 0 && (
+                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-3">
+                                            아직 source action review queue가 없습니다.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
