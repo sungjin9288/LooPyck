@@ -51,6 +51,7 @@ import {
     buildSearchLearningRewriteSourceApprovalActivity,
     buildSearchLearningRewriteSourceApprovalActivitySummary,
 } from '../lib/search/searchLearningRewriteSourceApprovalActivity.ts';
+import { buildSearchLearningActivitySummary } from '../lib/search/searchLearningActivitySummary.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -1140,6 +1141,57 @@ test('search learning activity records seed, generate and review operations', as
     assert.equal(activity.events[1]?.context, 'bulk_generate');
     assert.equal(activity.events[2]?.type, 'seed_queries');
     assert.equal(activity.events[2]?.context, 'coverage_seed');
+});
+
+test('search learning activity summary aggregates contexts and repeated queries', () => {
+    const summary = buildSearchLearningActivitySummary([
+        {
+            id: 'seed-1',
+            type: 'seed_queries',
+            context: 'coverage_seed',
+            reviewedStatus: null,
+            actorUid: 'admin-a',
+            count: 2,
+            entryIds: ['q1', 'q2'],
+            queries: ['운동용 후드', '트레이닝 팬츠'],
+            createdAt: '2026-03-11T10:00:00.000Z',
+        },
+        {
+            id: 'generate-1',
+            type: 'generate_suggestions',
+            context: 'bulk_generate',
+            reviewedStatus: null,
+            actorUid: 'admin-a',
+            count: 1,
+            entryIds: ['q1'],
+            queries: ['운동용 후드'],
+            createdAt: '2026-03-11T10:02:00.000Z',
+        },
+        {
+            id: 'review-1',
+            type: 'review_entries',
+            context: 'bulk_approve',
+            reviewedStatus: 'approved',
+            actorUid: 'admin-b',
+            count: 1,
+            entryIds: ['q1'],
+            queries: ['운동용 후드'],
+            createdAt: '2026-03-11T10:03:00.000Z',
+        },
+    ]);
+
+    assert.equal(summary.total, 3);
+    assert.equal(summary.seeded, 2);
+    assert.equal(summary.generated, 1);
+    assert.equal(summary.reviewed, 1);
+    assert.equal(summary.approvedReviews, 1);
+    assert.equal(summary.ignoredReviews, 0);
+    assert.equal(summary.uniqueActors, 2);
+    assert.equal(summary.topContexts[0]?.context, 'coverage_seed');
+    assert.equal(summary.topGeneratedContexts[0]?.context, 'bulk_generate');
+    assert.equal(summary.topReviewContexts[0]?.context, 'bulk_approve');
+    assert.equal(summary.topQueries[0]?.query, '운동용 후드');
+    assert.equal(summary.topQueries[0]?.count, 3);
 });
 
 test('coverage seed adds missing queries directly into search learning queue', async () => {

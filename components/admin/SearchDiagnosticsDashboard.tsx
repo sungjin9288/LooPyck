@@ -39,6 +39,7 @@ import {
     buildSearchLearningRewriteSourceApprovalActivity,
     buildSearchLearningRewriteSourceApprovalActivitySummary,
 } from '@/lib/search/searchLearningRewriteSourceApprovalActivity';
+import { buildSearchLearningActivitySummary } from '@/lib/search/searchLearningActivitySummary';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1290,6 +1291,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const searchLearning = data?.searchLearning;
     const searchLearningEntries = searchLearning?.entries || [];
     const searchLearningActivity = data?.searchLearningActivity?.events || [];
+    const searchLearningActivitySummary = buildSearchLearningActivitySummary(searchLearningActivity);
     const searchLearningDraftEntries = searchLearningEntries.filter((entry) =>
         entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
     );
@@ -5483,6 +5485,158 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-200">
                                         events {searchLearningActivity.length}
                                     </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningActivitySummary.topGeneratedContexts.flatMap((entry) => entry.entryIds),
+                                            `${searchLearningActivitySummary.topGeneratedContexts.length}개의 생성 activity context query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningActivitySummary.topGeneratedContexts.length === 0}
+                                        className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs font-bold text-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        생성 activity 선택 ({searchLearningActivitySummary.topGeneratedContexts.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningActivitySummary.topReviewContexts.flatMap((entry) => entry.entryIds),
+                                            `${searchLearningActivitySummary.topReviewContexts.length}개의 review activity context query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningActivitySummary.topReviewContexts.length === 0}
+                                        className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        review activity 선택 ({searchLearningActivitySummary.topReviewContexts.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningActivitySummary.topQueries.flatMap((entry) => entry.entryIds),
+                                            `${searchLearningActivitySummary.topQueries.length}개의 반복 query activity를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningActivitySummary.topQueries.length === 0}
+                                        className="rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-bold text-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        반복 query 선택 ({searchLearningActivitySummary.topQueries.length})
+                                    </button>
+                                </div>
+                                <div className="mt-4 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Generated</p>
+                                        <p className="mt-3 text-3xl font-black text-sky-300">{searchLearningActivitySummary.generated}</p>
+                                        <p className="mt-1 text-xs text-slate-400">AI 제안 생성 수</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Seeded</p>
+                                        <p className="mt-3 text-3xl font-black text-cyan-300">{searchLearningActivitySummary.seeded}</p>
+                                        <p className="mt-1 text-xs text-slate-400">coverage/queue seed 수</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Reviewed</p>
+                                        <p className="mt-3 text-3xl font-black text-emerald-300">{searchLearningActivitySummary.reviewed}</p>
+                                        <p className="mt-1 text-xs text-slate-400">review 처리 수</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Approved</p>
+                                        <p className="mt-3 text-3xl font-black text-emerald-300">{searchLearningActivitySummary.approvedReviews}</p>
+                                        <p className="mt-1 text-xs text-slate-400">승인된 review 수</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Ignored</p>
+                                        <p className="mt-3 text-3xl font-black text-slate-200">{searchLearningActivitySummary.ignoredReviews}</p>
+                                        <p className="mt-1 text-xs text-slate-400">보류된 review 수</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Actors</p>
+                                        <p className="mt-3 text-3xl font-black text-violet-300">{searchLearningActivitySummary.uniqueActors}</p>
+                                        <p className="mt-1 text-xs text-slate-400">활동 admin 수</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <h3 className="text-sm font-semibold text-white">Top Activity Contexts</h3>
+                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                top {searchLearningActivitySummary.topContexts.length}
+                                            </span>
+                                        </div>
+                                        <div className="mt-4 space-y-3">
+                                            {searchLearningActivitySummary.topContexts.map((entry) => (
+                                                <div key={entry.context} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-white">{entry.context}</p>
+                                                            <p className="mt-1 text-xs text-slate-500">
+                                                                {formatTime(entry.lastSeenAt)} · {entry.types.join(', ')}
+                                                            </p>
+                                                        </div>
+                                                        <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                            {entry.count}건
+                                                        </span>
+                                                    </div>
+                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                        {entry.queries.slice(0, 4).map((query) => (
+                                                            <span key={`${entry.context}_${query}`} className="rounded-full border border-slate-700 bg-slate-950/70 px-2 py-1 text-[11px] text-slate-200">
+                                                                {query}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => selectSearchLearningEntries(entry.entryIds, `${entry.context} context의 ${entry.entryIds.length}개 query를 선택했습니다.`)}
+                                                        className="mt-4 rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                    >
+                                                        context query 선택
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {searchLearningActivitySummary.topContexts.length === 0 && (
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 text-sm text-slate-500">
+                                                    아직 activity context가 없습니다.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <h3 className="text-sm font-semibold text-white">Repeated Activity Queries</h3>
+                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                top {searchLearningActivitySummary.topQueries.length}
+                                            </span>
+                                        </div>
+                                        <div className="mt-4 space-y-3">
+                                            {searchLearningActivitySummary.topQueries.map((entry) => (
+                                                <div key={entry.query} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-white">{entry.query}</p>
+                                                            <p className="mt-1 text-xs text-slate-500">
+                                                                {formatTime(entry.lastSeenAt)} · {entry.types.join(', ')}
+                                                            </p>
+                                                        </div>
+                                                        <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                            {entry.count}회
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => selectSearchLearningEntries(entry.entryIds, `${entry.query} activity의 ${entry.entryIds.length}개 query를 선택했습니다.`)}
+                                                        className="mt-4 rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                    >
+                                                        반복 query 선택
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {searchLearningActivitySummary.topQueries.length === 0 && (
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 text-sm text-slate-500">
+                                                    아직 반복 activity query가 없습니다.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div className="mt-4 grid gap-4 xl:grid-cols-2">
