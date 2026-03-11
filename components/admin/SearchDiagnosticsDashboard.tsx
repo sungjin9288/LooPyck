@@ -35,6 +35,10 @@ import {
     buildSearchLearningRewriteSourceApprovalQueue,
     buildSearchLearningRewriteSourceApprovalQueueSummary,
 } from '@/lib/search/searchLearningRewriteSourceApprovalQueue';
+import {
+    buildSearchLearningRewriteSourceApprovalActivity,
+    buildSearchLearningRewriteSourceApprovalActivitySummary,
+} from '@/lib/search/searchLearningRewriteSourceApprovalActivity';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1260,6 +1264,12 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     );
     const searchLearningRewriteSourceApprovalQueueSummary = buildSearchLearningRewriteSourceApprovalQueueSummary(
         searchLearningRewriteSourceApprovalQueue
+    );
+    const searchLearningRewriteSourceApprovalActivity = buildSearchLearningRewriteSourceApprovalActivity(
+        searchLearningRewriteSourceApprovalQueue
+    );
+    const searchLearningRewriteSourceApprovalActivitySummary = buildSearchLearningRewriteSourceApprovalActivitySummary(
+        searchLearningRewriteSourceApprovalActivity
     );
     const totalSources = summary?.sources.length || 0;
     const directSources = summary?.sources.filter((entry) => entry.collectionMode === 'direct').length || 0;
@@ -3853,6 +3863,143 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     <p className="mt-1 text-xs text-slate-400">
                                         uncovered curated queries
                                     </p>
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-white">Source Approval Activity</h3>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            source approval 흐름을 긴급 승인, rollback 재생성, 승격 관찰, 표본 추가 수집 순서로 한 번에 triage합니다.
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                        activity {searchLearningRewriteSourceApprovalActivitySummary.total}
+                                    </span>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleApproveSourceApprovalReviewPending}
+                                        disabled={searchLearningRewriteSourceApprovalActivitySummary.topReviewApprove.length === 0 || processingSearchLearningId === 'source_approval_review_approve'}
+                                        className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {processingSearchLearningId === 'source_approval_review_approve'
+                                            ? '승인 중...'
+                                            : `긴급 review 승인 (${searchLearningRewriteSourceApprovalActivitySummary.topReviewApprove.length})`}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleGenerateSourceApprovalRollbackSuggestions}
+                                        disabled={searchLearningRewriteSourceApprovalActivitySummary.topRollbackGenerate.length === 0 || processingSearchLearningId === 'source_approval_rollback_generate'}
+                                        className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {processingSearchLearningId === 'source_approval_rollback_generate'
+                                            ? '생성 중...'
+                                            : `긴급 rollback AI 제안 (${searchLearningRewriteSourceApprovalActivitySummary.topRollbackGenerate.length})`}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningRewriteSourceApprovalActivitySummary.topPromoteWatch.flatMap((item) => item.primaryEntryIds),
+                                            `${searchLearningRewriteSourceApprovalActivitySummary.topPromoteWatch.length}개의 승격 관찰 query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningRewriteSourceApprovalActivitySummary.topPromoteWatch.length === 0}
+                                        className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        승격 관찰 선택 ({searchLearningRewriteSourceApprovalActivitySummary.topPromoteWatch.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningRewriteSourceApprovalActivitySummary.topObserveMore.flatMap((item) => item.primaryEntryIds),
+                                            `${searchLearningRewriteSourceApprovalActivitySummary.topObserveMore.length}개의 표본 추가 수집 query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningRewriteSourceApprovalActivitySummary.topObserveMore.length === 0}
+                                        className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        표본 추가 수집 선택 ({searchLearningRewriteSourceApprovalActivitySummary.topObserveMore.length})
+                                    </button>
+                                </div>
+                                <div className="mt-4 grid gap-4 md:grid-cols-4">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Urgent</p>
+                                        <p className="mt-3 text-3xl font-black text-rose-300">{searchLearningRewriteSourceApprovalActivitySummary.urgent}</p>
+                                        <p className="mt-1 text-xs text-slate-400">즉시 승인 또는 rollback 재생성이 필요한 항목</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">High</p>
+                                        <p className="mt-3 text-3xl font-black text-amber-300">{searchLearningRewriteSourceApprovalActivitySummary.high}</p>
+                                        <p className="mt-1 text-xs text-slate-400">rollback 재검토처럼 우선순위가 높은 후속 액션</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Medium</p>
+                                        <p className="mt-3 text-3xl font-black text-cyan-300">{searchLearningRewriteSourceApprovalActivitySummary.medium}</p>
+                                        <p className="mt-1 text-xs text-slate-400">승격 관찰처럼 유지/확대 판단을 기다리는 항목</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Low</p>
+                                        <p className="mt-3 text-3xl font-black text-sky-300">{searchLearningRewriteSourceApprovalActivitySummary.low}</p>
+                                        <p className="mt-1 text-xs text-slate-400">표본 추가 수집 위주로 보면 되는 항목</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                                    {searchLearningRewriteSourceApprovalActivity.slice(0, 6).map((item) => {
+                                        const toneClass =
+                                            item.priority === 'urgent'
+                                                ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+                                                : item.priority === 'high'
+                                                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                                                    : item.priority === 'medium'
+                                                        ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-200'
+                                                        : 'border-sky-500/30 bg-sky-500/10 text-sky-200';
+
+                                        return (
+                                            <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-white">{item.source}</p>
+                                                        <p className="mt-1 text-xs text-slate-500">
+                                                            {item.title} · review {item.readyReviewCount} · regenerate {item.generationNeededCount}
+                                                        </p>
+                                                    </div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${toneClass}`}>
+                                                        {item.priority}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-3 text-xs leading-6 text-slate-400">{item.description}</p>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {item.topClusters.map((cluster) => (
+                                                        <span key={`${item.id}_${cluster}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {cluster}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {item.topQueries.slice(0, 4).map((query) => (
+                                                        <span key={`${item.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(
+                                                        item.primaryEntryIds.length > 0 ? item.primaryEntryIds : item.entryIds,
+                                                        `${item.source} / ${item.title} activity query를 선택했습니다.`
+                                                    )}
+                                                    className="mt-4 rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                >
+                                                    activity 선택
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                    {searchLearningRewriteSourceApprovalActivity.length === 0 && (
+                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-3">
+                                            아직 source approval activity가 없습니다.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">

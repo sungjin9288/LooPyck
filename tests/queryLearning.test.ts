@@ -44,7 +44,12 @@ import {
 import {
     buildSearchLearningRewriteSourceApprovalQueue,
     buildSearchLearningRewriteSourceApprovalQueueSummary,
+    type SearchLearningRewriteSourceApprovalQueueItem,
 } from '../lib/search/searchLearningRewriteSourceApprovalQueue.ts';
+import {
+    buildSearchLearningRewriteSourceApprovalActivity,
+    buildSearchLearningRewriteSourceApprovalActivitySummary,
+} from '../lib/search/searchLearningRewriteSourceApprovalActivity.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -616,6 +621,73 @@ test('source approval queue promotes stable actions and flags rollback candidate
     assert.equal(summary.rollbackCandidates, 1);
     assert.equal(queue.find((entry) => entry.source === 'NAVER')?.decision, 'promote_candidate');
     assert.equal(queue.find((entry) => entry.source === 'MUSINSA')?.decision, 'rollback_candidate');
+});
+
+test('source approval activity prioritizes review and rollback actions into a single ops feed', () => {
+    const approvalQueue: SearchLearningRewriteSourceApprovalQueueItem[] = [
+        {
+            id: 'NAVER:approval',
+            source: 'NAVER',
+            action: 'promote_confirm',
+            decision: 'review_pending',
+            title: '리뷰 우선 처리',
+            reason: '이미 생성된 AI rewrite 제안이 있어 운영자가 먼저 review/approve 해야 합니다.',
+            entryIds: ['entry-1'],
+            primaryEntryIds: ['entry-1'],
+            reviewState: 'ready_review',
+            readyReviewCount: 1,
+            generationNeededCount: 0,
+            stableCount: 0,
+            topClusters: ['후드/후드집업'],
+            topQueries: ['운동용 후드'],
+        },
+        {
+            id: 'MUSINSA:approval',
+            source: 'MUSINSA',
+            action: 'rollback_regenerate',
+            decision: 'rollback_candidate',
+            title: 'Rollback 후보',
+            reason: 'rollback 후보이며 아직 review할 draft가 없어 AI 제안을 다시 생성해야 합니다.',
+            entryIds: ['entry-2'],
+            primaryEntryIds: ['entry-2'],
+            reviewState: 'generation_needed',
+            readyReviewCount: 0,
+            generationNeededCount: 1,
+            stableCount: 0,
+            topClusters: ['트레이닝/조거 팬츠'],
+            topQueries: ['트레이닝 팬츠'],
+        },
+        {
+            id: 'SSF:approval',
+            source: 'SSF',
+            action: 'hold_review',
+            decision: 'observe_pending',
+            title: '관측 대기',
+            reason: '즉시 승격/rollback보다 추가 표본 관측이 우선입니다.',
+            entryIds: ['entry-3'],
+            primaryEntryIds: ['entry-3'],
+            reviewState: 'stable_followup',
+            readyReviewCount: 0,
+            generationNeededCount: 0,
+            stableCount: 1,
+            topClusters: ['러닝 자켓/바람막이'],
+            topQueries: ['러닝 자켓'],
+        },
+    ];
+    const activity = buildSearchLearningRewriteSourceApprovalActivity(approvalQueue);
+    const summary = buildSearchLearningRewriteSourceApprovalActivitySummary(activity);
+
+    assert.equal(summary.total, 3);
+    assert.equal(summary.urgent, 2);
+    assert.equal(summary.medium, 0);
+    assert.equal(summary.low, 1);
+    assert.equal(summary.reviewApprove, 1);
+    assert.equal(summary.rollbackGenerate, 1);
+    assert.equal(summary.observeMore, 1);
+    assert.equal(activity[0]?.kind, 'review_approve');
+    assert.equal(activity[0]?.priority, 'urgent');
+    assert.equal(activity.find((entry) => entry.source === 'MUSINSA')?.kind, 'rollback_generate');
+    assert.equal(activity.find((entry) => entry.source === 'SSF')?.kind, 'observe_more');
 });
 
 test('query learning queue records low-fit snapshots in memory', async () => {

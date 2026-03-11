@@ -5,13 +5,26 @@ import type {
 
 type SearchLearningReviewEntryLike = {
     id: string;
+    source?: string;
+    action?: SearchLearningRewriteSourceActionType;
+    title?: string;
+    reviewState?: SearchLearningRewriteSourceActionReviewState;
+    reason?: string;
+    entryIds?: string[];
+    readyReviewEntryIds?: string[];
+    generationNeededEntryIds?: string[];
+    readyReviewCount?: number;
+    generationNeededCount?: number;
+    stableCount?: number;
+    topClusters?: string[];
+    topQueries?: string[];
     query?: string;
     normalizedQuery?: string;
     effectiveQuery?: string;
     queryIntent?: 'pending' | 'unknown' | 'fashion' | 'mixed' | 'non_fashion' | string | null;
-    status: 'pending' | 'approved' | 'ignored';
-    approvedQueries: string[];
-    aiSuggestion: {
+    status?: 'pending' | 'approved' | 'ignored';
+    approvedQueries?: string[];
+    aiSuggestion?: {
         normalizedQuery?: string;
         categoryHint?: string | null;
         suggestedQueries: string[];
@@ -111,7 +124,7 @@ function entryNeedsReview(entry: SearchLearningReviewEntryLike): boolean {
         return false;
     }
 
-    const approvedQueries = new Set(entry.approvedQueries);
+    const approvedQueries = new Set(entry.approvedQueries || []);
     return suggestionQueries.some((query) => !approvedQueries.has(query));
 }
 
