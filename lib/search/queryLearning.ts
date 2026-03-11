@@ -12,7 +12,9 @@ import {
 } from './searchLearningRewritePacks.ts';
 
 const SEARCH_LEARNING_COLLECTION = 'searchLearningQueries';
+const SEARCH_LEARNING_ACTIVITY_COLLECTION = 'searchLearningActivity';
 const MAX_MEMORY_ENTRIES = 80;
+const MAX_MEMORY_ACTIVITY = 120;
 const APPROVED_CACHE_TTL_MS = 5 * 60_000;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
@@ -20,6 +22,7 @@ const globalSearchLearning = globalThis as typeof globalThis & {
     __loopyckSearchLearningEntries?: Map<string, SearchLearningEntry>;
     __loopyckSearchLearningApprovedCache?: Map<string, { queries: string[]; expiresAt: number }>;
     __loopyckSearchLearningRewritePackCache?: { packs: SearchLearningRewritePack[]; expiresAt: number };
+    __loopyckSearchLearningActivity?: SearchLearningActivityEvent[];
 };
 
 export type SearchLearningStatus = 'pending' | 'approved' | 'ignored';
@@ -63,6 +66,28 @@ export type SearchLearningEntry = {
     updatedAt: string | null;
 };
 
+export type SearchLearningActivityType =
+    | 'seed_queries'
+    | 'generate_suggestions'
+    | 'review_entries';
+
+export type SearchLearningActivityEvent = {
+    id: string;
+    type: SearchLearningActivityType;
+    context: string | null;
+    reviewedStatus: SearchLearningStatus | null;
+    actorUid: string | null;
+    count: number;
+    entryIds: string[];
+    queries: string[];
+    createdAt: string;
+};
+
+type SearchLearningActivityFeed = {
+    events: SearchLearningActivityEvent[];
+    storage: 'memory' | 'firestore';
+};
+
 type SearchLearningQueue = {
     entries: SearchLearningEntry[];
     summary: {
@@ -88,6 +113,14 @@ function getMemoryEntries(): Map<string, SearchLearningEntry> {
     }
 
     return globalSearchLearning.__loopyckSearchLearningEntries;
+}
+
+function getMemoryActivity(): SearchLearningActivityEvent[] {
+    if (!globalSearchLearning.__loopyckSearchLearningActivity) {
+        globalSearchLearning.__loopyckSearchLearningActivity = [];
+    }
+
+    return globalSearchLearning.__loopyckSearchLearningActivity;
 }
 
 function getApprovedCache(): Map<string, { queries: string[]; expiresAt: number }> {
@@ -131,6 +164,10 @@ function uniqueOrdered(values: string[]): string[] {
 
 function buildSearchLearningDocId(query: string): string {
     return normalizeSearchLearningQuery(query).replace(/[^\w:-]/g, '_').slice(0, 180);
+}
+
+function buildSearchLearningActivityId(type: SearchLearningActivityType, timestamp: string): string {
+    return `${type}:${timestamp}:${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function buildEntryFromSnapshot(snapshot: SearchAggregationDiagnostics): SearchLearningEntry {
@@ -195,6 +232,14 @@ function evictMemoryEntries(entries: Map<string, SearchLearningEntry>): void {
     ordered.slice(0, MAX_MEMORY_ENTRIES).forEach((entry) => {
         entries.set(entry.id, entry);
     });
+}
+
+function appendMemoryActivity(event: SearchLearningActivityEvent): void {
+    const activity = getMemoryActivity();
+    activity.unshift(event);
+    if (activity.length > MAX_MEMORY_ACTIVITY) {
+        activity.splice(MAX_MEMORY_ACTIVITY);
+    }
 }
 
 function summarizeEntries(entries: SearchLearningEntry[]): SearchLearningQueue['summary'] {
@@ -461,6 +506,87 @@ export async function loadSearchLearningQueue(limit: number = 20): Promise<Searc
     };
 }
 
+function parseActivityEvent(id: string, raw: Record<string, unknown>): SearchLearningActivityEvent {
+    return {
+        id,
+        type: raw.type === 'seed_queries' || raw.type === 'review_entries' ? raw.type : 'generate_suggestions',
+        context: typeof raw.context === 'string' ? raw.context : null,
+        reviewedStatus: raw.reviewedStatus === 'approved' || raw.reviewedStatus === 'ignored' || raw.reviewedStatus === 'pending'
+            ? raw.reviewedStatus
+            : null,
+        actorUid: typeof raw.actorUid === 'string' ? raw.actorUid : null,
+        count: typeof raw.count === 'number' ? raw.count : 0,
+        entryIds: Array.isArray(raw.entryIds) ? raw.entryIds.filter((entry): entry is string => typeof entry === 'string') : [],
+        queries: Array.isArray(raw.queries) ? raw.queries.filter((entry): entry is string => typeof entry === 'string') : [],
+        createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date(0).toISOString(),
+    };
+}
+
+function serializeActivityEvent(event: SearchLearningActivityEvent): Record<string, unknown> {
+    return {
+        type: event.type,
+        context: event.context,
+        reviewedStatus: event.reviewedStatus,
+        actorUid: event.actorUid,
+        count: event.count,
+        entryIds: event.entryIds,
+        queries: event.queries,
+        createdAt: event.createdAt,
+    };
+}
+
+export async function recordSearchLearningActivity(input: {
+    type: SearchLearningActivityType;
+    context?: string | null;
+    reviewedStatus?: SearchLearningStatus | null;
+    actorUid?: string | null;
+    entryIds: string[];
+    queries: string[];
+}): Promise<SearchLearningActivityEvent> {
+    const createdAt = new Date().toISOString();
+    const event: SearchLearningActivityEvent = {
+        id: buildSearchLearningActivityId(input.type, createdAt),
+        type: input.type,
+        context: input.context || null,
+        reviewedStatus: input.reviewedStatus || null,
+        actorUid: input.actorUid || null,
+        count: Math.max(input.entryIds.length, input.queries.length),
+        entryIds: uniqueOrdered(input.entryIds).slice(0, 24),
+        queries: uniqueOrdered(input.queries).slice(0, 12),
+        createdAt,
+    };
+
+    appendMemoryActivity(event);
+
+    const db = getAdminDb();
+    if (!db) {
+        return event;
+    }
+
+    await db.collection(SEARCH_LEARNING_ACTIVITY_COLLECTION).doc(event.id).set(serializeActivityEvent(event), { merge: true });
+    return event;
+}
+
+export async function loadSearchLearningActivity(limit: number = 20): Promise<SearchLearningActivityFeed> {
+    const db = getAdminDb();
+    if (!db) {
+        return {
+            events: getMemoryActivity().slice(0, Math.max(1, Math.min(limit, 40))),
+            storage: 'memory',
+        };
+    }
+
+    const snapshot = await db.collection(SEARCH_LEARNING_ACTIVITY_COLLECTION)
+        .orderBy('createdAt', 'desc')
+        .limit(Math.max(1, Math.min(limit, 40)))
+        .get();
+
+    return {
+        events: snapshot.docs.map((doc) => parseActivityEvent(doc.id, doc.data() as Record<string, unknown>)),
+        storage: 'firestore',
+    };
+}
+
 export async function loadSearchLearningEntry(entryId: string): Promise<SearchLearningEntry | null> {
     const memory = getMemoryEntries().get(entryId);
     const db = getAdminDb();
@@ -655,7 +781,10 @@ ${entry.suggestedQueries.join(', ') || '없음'}
     }
 }
 
-export async function generateSearchLearningSuggestions(entryIds: string[]): Promise<SearchLearningEntry[]> {
+export async function generateSearchLearningSuggestions(
+    entryIds: string[],
+    options: { context?: string | null; actorUid?: string | null } = {}
+): Promise<SearchLearningEntry[]> {
     const normalizedIds = uniqueOrdered(entryIds.map((entryId) => entryId.trim()).filter(Boolean)).slice(0, 12);
     if (normalizedIds.length === 0) {
         return [];
@@ -673,10 +802,24 @@ export async function generateSearchLearningSuggestions(entryIds: string[]): Pro
         })
     );
 
-    return updatedEntries.filter((entry): entry is SearchLearningEntry => Boolean(entry));
+    const entries = updatedEntries.filter((entry): entry is SearchLearningEntry => Boolean(entry));
+    if (entries.length > 0) {
+        await recordSearchLearningActivity({
+            type: 'generate_suggestions',
+            context: options.context,
+            actorUid: options.actorUid,
+            entryIds: entries.map((entry) => entry.id),
+            queries: entries.map((entry) => entry.query),
+        });
+    }
+
+    return entries;
 }
 
-export async function seedSearchLearningEntries(queries: string[]): Promise<SearchLearningEntry[]> {
+export async function seedSearchLearningEntries(
+    queries: string[],
+    options: { context?: string | null; actorUid?: string | null } = {}
+): Promise<SearchLearningEntry[]> {
     const normalizedQueries = uniqueOrdered(
         queries.map((query) => normalizeTitle(query).trim()).filter(Boolean)
     ).slice(0, 24);
@@ -712,7 +855,18 @@ export async function seedSearchLearningEntries(queries: string[]): Promise<Sear
         })
     );
 
-    return updatedEntries.filter((entry): entry is SearchLearningEntry => Boolean(entry));
+    const entries = updatedEntries.filter((entry): entry is SearchLearningEntry => Boolean(entry));
+    if (entries.length > 0) {
+        await recordSearchLearningActivity({
+            type: 'seed_queries',
+            context: options.context,
+            actorUid: options.actorUid,
+            entryIds: entries.map((entry) => entry.id),
+            queries: entries.map((entry) => entry.query),
+        });
+    }
+
+    return entries;
 }
 
 export async function saveSearchLearningSuggestion(entryId: string, suggestion: SearchLearningSuggestion): Promise<SearchLearningEntry | null> {
@@ -795,7 +949,8 @@ export async function reviewSearchLearningEntry(
 export async function reviewSearchLearningEntries(
     entryIds: string[],
     status: SearchLearningStatus,
-    reviewedBy: string
+    reviewedBy: string,
+    options: { context?: string | null } = {}
 ): Promise<SearchLearningEntry[]> {
     const normalizedIds = uniqueOrdered(entryIds.map((entryId) => entryId.trim()).filter(Boolean)).slice(0, 24);
     if (normalizedIds.length === 0) {
@@ -821,11 +976,24 @@ export async function reviewSearchLearningEntries(
         })
     );
 
-    return updatedEntries.filter((entry): entry is SearchLearningEntry => Boolean(entry));
+    const entries = updatedEntries.filter((entry): entry is SearchLearningEntry => Boolean(entry));
+    if (entries.length > 0) {
+        await recordSearchLearningActivity({
+            type: 'review_entries',
+            context: options.context,
+            reviewedStatus: status,
+            actorUid: reviewedBy,
+            entryIds: entries.map((entry) => entry.id),
+            queries: entries.map((entry) => entry.query),
+        });
+    }
+
+    return entries;
 }
 
 export function resetSearchLearningEntries(): void {
     getMemoryEntries().clear();
     getApprovedCache().clear();
     invalidateRewritePackCache();
+    getMemoryActivity().splice(0);
 }

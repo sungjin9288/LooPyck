@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadPdpDiagnostics } from '@/lib/api/pdpDiagnostics';
 import { loadSearchDiagnostics } from '@/lib/api/searchDiagnostics';
 import { buildSearchQualityCoverageSummary } from '@/lib/search/searchQualityCoverage';
-import { loadSearchLearningQueue } from '@/lib/search/queryLearning';
+import { loadSearchLearningActivity, loadSearchLearningQueue } from '@/lib/search/queryLearning';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 import { loadAlertDiagnostics } from '@/lib/server/alertDiagnostics';
 import { requireAdminRequest } from '@/lib/server/adminAccess';
@@ -50,10 +50,11 @@ export async function GET(request: NextRequest) {
         const limitRaw = Number.parseInt(request.nextUrl.searchParams.get('limit') || '10', 10);
         const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(limitRaw, 120)) : 10;
         const includeRecent = request.nextUrl.searchParams.get('include') === 'recent';
-        const [diagnostics, pdpDiagnostics, searchLearning, alertTuning, alertTuningRequests, alertTuningAudit] = await Promise.all([
+        const [diagnostics, pdpDiagnostics, searchLearning, searchLearningActivity, alertTuning, alertTuningRequests, alertTuningAudit] = await Promise.all([
             loadSearchDiagnostics(limit),
             loadPdpDiagnostics(limit),
             loadSearchLearningQueue(Math.min(limit, 30)),
+            loadSearchLearningActivity(Math.min(limit, 20)),
             loadAlertTuningConfigRecord(),
             loadAlertTuningApprovalRequests(),
             loadAlertTuningAuditEvents(undefined, adminCheck.uid),
@@ -73,6 +74,7 @@ export async function GET(request: NextRequest) {
                 interactionSummary: diagnostics.interactionSummary,
                 storage: diagnostics.storage,
                 searchLearning,
+                searchLearningActivity,
                 searchQualityCoverage,
                 pdp: {
                     summary: pdpDiagnostics.summary,

@@ -387,6 +387,18 @@ type SearchLearningEntry = {
     updatedAt: string | null;
 };
 
+type SearchLearningActivityEvent = {
+    id: string;
+    type: 'seed_queries' | 'generate_suggestions' | 'review_entries';
+    context: string | null;
+    reviewedStatus: 'pending' | 'approved' | 'ignored' | null;
+    actorUid: string | null;
+    count: number;
+    entryIds: string[];
+    queries: string[];
+    createdAt: string;
+};
+
 type DiagnosticsResponse = {
     summary: {
         trackedSearches: number;
@@ -421,6 +433,10 @@ type DiagnosticsResponse = {
             ignored: number;
             zeroResult: number;
         };
+        storage: 'memory' | 'firestore';
+    };
+    searchLearningActivity: {
+        events: SearchLearningActivityEvent[];
         storage: 'memory' | 'firestore';
     };
     searchQualityCoverage: {
@@ -579,6 +595,34 @@ function summarizeSearchLearningEntries(entries: SearchLearningEntry[]): Diagnos
     };
 }
 
+function searchLearningActivityLabel(event: SearchLearningActivityEvent): string {
+    switch (event.type) {
+        case 'seed_queries':
+            return '큐 추가';
+        case 'generate_suggestions':
+            return 'AI 제안 생성';
+        case 'review_entries':
+            return event.reviewedStatus === 'approved' ? '승인' : '보류';
+        default:
+            return '활동';
+    }
+}
+
+function searchLearningActivityClass(event: SearchLearningActivityEvent): string {
+    switch (event.type) {
+        case 'seed_queries':
+            return 'bg-amber-500/15 text-amber-200';
+        case 'generate_suggestions':
+            return 'bg-cyan-500/15 text-cyan-200';
+        case 'review_entries':
+            return event.reviewedStatus === 'approved'
+                ? 'bg-emerald-500/15 text-emerald-200'
+                : 'bg-slate-700/60 text-slate-200';
+        default:
+            return 'bg-slate-700/60 text-slate-200';
+    }
+}
+
 function mergeSearchLearningEntries(
     currentEntries: SearchLearningEntry[],
     updatedEntries: SearchLearningEntry[]
@@ -594,6 +638,21 @@ function mergeSearchLearningEntries(
     });
 
     return merged.sort((left, right) => right.lastSeenAt.localeCompare(left.lastSeenAt));
+}
+
+function mergeSearchLearningActivityEvents(
+    currentEvents: SearchLearningActivityEvent[],
+    incomingEvents: SearchLearningActivityEvent[]
+): SearchLearningActivityEvent[] {
+    const next = [...incomingEvents, ...currentEvents];
+    const seen = new Set<string>();
+    return next.filter((event) => {
+        if (seen.has(event.id)) {
+            return false;
+        }
+        seen.add(event.id);
+        return true;
+    }).sort((left, right) => right.createdAt.localeCompare(left.createdAt)).slice(0, 20);
 }
 
 function formatPercent(value: number | null): string {
@@ -1230,6 +1289,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const summary = data?.summary;
     const searchLearning = data?.searchLearning;
     const searchLearningEntries = searchLearning?.entries || [];
+    const searchLearningActivity = data?.searchLearningActivity?.events || [];
     const searchLearningDraftEntries = searchLearningEntries.filter((entry) =>
         entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
     );
@@ -1709,6 +1769,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                 body: JSON.stringify({
                     action: 'generate',
                     entryId,
+                    context: 'single_generate',
                 }),
             });
             const payload = await response.json();
@@ -1728,6 +1789,12 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                             entry.id === entryId ? (payload.entry || entry) : entry
                         ))
                     ),
+                },
+                searchLearningActivity: {
+                    ...current.searchLearningActivity,
+                    events: payload.activity
+                        ? mergeSearchLearningActivityEvents(current.searchLearningActivity.events, [payload.activity as SearchLearningActivityEvent])
+                        : current.searchLearningActivity.events,
                 },
             } : current);
             setSearchLearningMessage('AI 검색어 제안을 생성했습니다.');
@@ -1774,6 +1841,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                 body: JSON.stringify({
                     action: 'bulk_generate',
                     entryIds,
+                    context: processingKey,
                 }),
             });
             const payload = await response.json();
@@ -1794,6 +1862,12 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                         ...current.searchLearning,
                         entries,
                         summary: summarizeSearchLearningEntries(entries),
+                    },
+                    searchLearningActivity: {
+                        ...current.searchLearningActivity,
+                        events: payload.activity
+                            ? mergeSearchLearningActivityEvents(current.searchLearningActivity.events, [payload.activity as SearchLearningActivityEvent])
+                            : current.searchLearningActivity.events,
                     },
                 };
             });
@@ -1823,6 +1897,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                 body: JSON.stringify({
                     action: 'seed_queries',
                     queries: data.searchQualityCoverage.uncoveredQueries.map((entry) => entry.query),
+                    context: 'coverage_seed',
                 }),
             });
             const payload = await response.json();
@@ -1843,6 +1918,12 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                         ...current.searchLearning,
                         entries,
                         summary: summarizeSearchLearningEntries(entries),
+                    },
+                    searchLearningActivity: {
+                        ...current.searchLearningActivity,
+                        events: payload.activity
+                            ? mergeSearchLearningActivityEvents(current.searchLearningActivity.events, [payload.activity as SearchLearningActivityEvent])
+                            : current.searchLearningActivity.events,
                     },
                 };
             });
@@ -1872,6 +1953,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                 body: JSON.stringify({
                     action: 'seed_queries',
                     queries,
+                    context: `coverage_cluster_seed:${clusterId}`,
                 }),
             });
             const payload = await response.json();
@@ -1892,6 +1974,12 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                         ...current.searchLearning,
                         entries,
                         summary: summarizeSearchLearningEntries(entries),
+                    },
+                    searchLearningActivity: {
+                        ...current.searchLearningActivity,
+                        events: payload.activity
+                            ? mergeSearchLearningActivityEvents(current.searchLearningActivity.events, [payload.activity as SearchLearningActivityEvent])
+                            : current.searchLearningActivity.events,
                     },
                 };
             });
@@ -2078,6 +2166,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                     action,
                     entryId: entry.id,
                     approvedQueries,
+                    context: `single_review:${action}`,
                 }),
             });
             const payload = await response.json();
@@ -2100,6 +2189,12 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                         ...current.searchLearning,
                         entries,
                         summary: summarizeSearchLearningEntries(entries),
+                    },
+                    searchLearningActivity: {
+                        ...current.searchLearningActivity,
+                        events: payload.activity
+                            ? mergeSearchLearningActivityEvents(current.searchLearningActivity.events, [payload.activity as SearchLearningActivityEvent])
+                            : current.searchLearningActivity.events,
                     },
                 };
             });
@@ -2152,6 +2247,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                 body: JSON.stringify({
                     action,
                     entryIds,
+                    context: processingKey,
                 }),
             });
             const payload = await response.json();
@@ -5369,6 +5465,68 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Activity</h2>
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        queue 추가, AI 제안 생성, 승인/보류 같은 운영 액션이 최근 순서대로 기록됩니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        storage {data?.searchLearningActivity.storage ?? 'memory'}
+                                    </span>
+                                    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-200">
+                                        events {searchLearningActivity.length}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                {searchLearningActivity.slice(0, 8).map((event) => (
+                                    <div key={event.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-semibold text-white">{searchLearningActivityLabel(event)}</p>
+                                                <p className="mt-1 text-xs text-slate-500">
+                                                    {formatTime(event.createdAt)}
+                                                    {event.context ? ` · ${event.context}` : ''}
+                                                    {event.actorUid ? ` · ${event.actorUid.slice(0, 8)}` : ''}
+                                                </p>
+                                            </div>
+                                            <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${searchLearningActivityClass(event)}`}>
+                                                {event.count}건
+                                            </span>
+                                        </div>
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {event.queries.slice(0, 4).map((query) => (
+                                                <span key={`${event.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-950/70 px-2 py-1 text-[11px] text-slate-200">
+                                                    {query}
+                                                </span>
+                                            ))}
+                                        </div>
+                                        {event.entryIds.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => selectSearchLearningEntries(
+                                                    event.entryIds,
+                                                    `${searchLearningActivityLabel(event)} activity의 ${event.entryIds.length}개 query를 선택했습니다.`
+                                                )}
+                                                className="mt-4 rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                            >
+                                                activity query 선택
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                {searchLearningActivity.length === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500 xl:col-span-2">
+                                        아직 search learning activity가 없습니다.
+                                    </div>
+                                )}
                             </div>
                         </section>
 

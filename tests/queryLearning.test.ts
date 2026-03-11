@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     buildFallbackSearchLearningSuggestion,
     generateSearchLearningSuggestions,
+    loadSearchLearningActivity,
     loadApprovedSearchLearningRewritePlan,
     mergeLearnedQueriesIntoPlan,
     recordSearchLearningCandidate,
@@ -1106,6 +1107,39 @@ test('bulk suggestion generation attaches AI or heuristic suggestions to selecte
     assert.equal(updated.length, 1);
     assert.ok(updated[0]?.aiSuggestion);
     assert.ok(updated[0]?.aiSuggestion?.suggestedQueries.includes('후드집업'));
+});
+
+test('search learning activity records seed, generate and review operations', async () => {
+    resetSearchLearningEntries();
+
+    const seeded = await seedSearchLearningEntries(['운동용 후드'], {
+        context: 'coverage_seed',
+        actorUid: 'admin-user',
+    });
+    assert.equal(seeded.length, 1);
+
+    const generated = await generateSearchLearningSuggestions([seeded[0]!.id], {
+        context: 'bulk_generate',
+        actorUid: 'admin-user',
+    });
+    assert.equal(generated.length, 1);
+
+    const reviewed = await reviewSearchLearningEntries(
+        [seeded[0]!.id],
+        'approved',
+        'admin-user',
+        { context: 'bulk_approve' }
+    );
+    assert.equal(reviewed.length, 1);
+
+    const activity = await loadSearchLearningActivity(10);
+    assert.equal(activity.events.length, 3);
+    assert.equal(activity.events[0]?.type, 'review_entries');
+    assert.equal(activity.events[0]?.context, 'bulk_approve');
+    assert.equal(activity.events[1]?.type, 'generate_suggestions');
+    assert.equal(activity.events[1]?.context, 'bulk_generate');
+    assert.equal(activity.events[2]?.type, 'seed_queries');
+    assert.equal(activity.events[2]?.context, 'coverage_seed');
 });
 
 test('coverage seed adds missing queries directly into search learning queue', async () => {

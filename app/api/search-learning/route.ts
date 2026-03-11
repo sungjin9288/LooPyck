@@ -5,7 +5,9 @@ import { requireAdminRequest } from '@/lib/server/adminAccess';
 import {
     generateSearchLearningSuggestions,
     generateSearchLearningSuggestion,
+    loadSearchLearningActivity,
     loadSearchLearningEntry,
+    recordSearchLearningActivity,
     reviewSearchLearningEntry,
     reviewSearchLearningEntries,
     saveSearchLearningSuggestion,
@@ -23,11 +25,13 @@ const GenerateSuggestionSchema = z.object({
 const BulkGenerateSuggestionSchema = z.object({
     action: z.literal('bulk_generate'),
     entryIds: z.array(z.string().trim().min(1).max(180)).min(1).max(12),
+    context: z.string().trim().min(1).max(80).optional(),
 });
 
 const SeedCoverageQueriesSchema = z.object({
     action: z.literal('seed_queries'),
     queries: z.array(z.string().trim().min(1).max(80)).min(1).max(24),
+    context: z.string().trim().min(1).max(80).optional(),
 });
 
 const ReviewEntrySchema = z.object({
@@ -39,6 +43,7 @@ const ReviewEntrySchema = z.object({
 const BulkReviewEntrySchema = z.object({
     action: z.enum(['bulk_approve', 'bulk_ignore']),
     entryIds: z.array(z.string().trim().min(1).max(180)).min(1).max(24),
+    context: z.string().trim().min(1).max(80).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -59,14 +64,22 @@ export async function POST(request: NextRequest) {
         const raw = await request.json();
         const seedPayload = SeedCoverageQueriesSchema.safeParse(raw);
         if (seedPayload.success) {
-            const entries = await seedSearchLearningEntries(seedPayload.data.queries);
-            return NextResponse.json({ entries });
+            const entries = await seedSearchLearningEntries(seedPayload.data.queries, {
+                context: seedPayload.data.context,
+                actorUid: adminCheck.uid,
+            });
+            const activity = (await loadSearchLearningActivity(1)).events[0] || null;
+            return NextResponse.json({ entries, activity });
         }
 
         const bulkPayload = BulkGenerateSuggestionSchema.safeParse(raw);
         if (bulkPayload.success) {
-            const entries = await generateSearchLearningSuggestions(bulkPayload.data.entryIds);
-            return NextResponse.json({ entries });
+            const entries = await generateSearchLearningSuggestions(bulkPayload.data.entryIds, {
+                context: bulkPayload.data.context,
+                actorUid: adminCheck.uid,
+            });
+            const activity = (await loadSearchLearningActivity(1)).events[0] || null;
+            return NextResponse.json({ entries, activity });
         }
 
         const payload = GenerateSuggestionSchema.safeParse(raw);
@@ -81,8 +94,15 @@ export async function POST(request: NextRequest) {
 
         const suggestion = await generateSearchLearningSuggestion(entry);
         const updated = await saveSearchLearningSuggestion(entry.id, suggestion);
+        const activity = await recordSearchLearningActivity({
+            type: 'generate_suggestions',
+            context: 'single_generate',
+            actorUid: adminCheck.uid,
+            entryIds: updated ? [updated.id] : [entry.id],
+            queries: updated ? [updated.query] : [entry.query],
+        });
 
-        return NextResponse.json({ entry: updated, suggestion });
+        return NextResponse.json({ entry: updated, suggestion, activity });
     } catch (error) {
         console.error('Search learning suggestion route failed:', error);
         return NextResponse.json({ error: '검색 학습 제안을 생성하지 못했습니다.' }, { status: 500 });
@@ -110,10 +130,12 @@ export async function PATCH(request: NextRequest) {
             const entries = await reviewSearchLearningEntries(
                 bulkPayload.data.entryIds,
                 bulkPayload.data.action === 'bulk_approve' ? 'approved' : 'ignored',
-                adminCheck.uid
+                adminCheck.uid,
+                { context: bulkPayload.data.context }
             );
 
-            return NextResponse.json({ entries });
+            const activity = (await loadSearchLearningActivity(1)).events[0] || null;
+            return NextResponse.json({ entries, activity });
         }
 
         const payload = ReviewEntrySchema.safeParse(raw);
@@ -132,7 +154,18 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: '학습 대상을 찾을 수 없습니다.' }, { status: 404 });
         }
 
-        return NextResponse.json({ entry: updated });
+        const activity = updated
+            ? await recordSearchLearningActivity({
+                type: 'review_entries',
+                context: `single_review:${payload.data.action}`,
+                reviewedStatus: payload.data.action === 'approve' ? 'approved' : 'ignored',
+                actorUid: adminCheck.uid,
+                entryIds: [updated.id],
+                queries: [updated.query],
+            })
+            : null;
+
+        return NextResponse.json({ entry: updated, activity });
     } catch (error) {
         console.error('Search learning review route failed:', error);
         return NextResponse.json({ error: '검색 학습 검토를 저장하지 못했습니다.' }, { status: 500 });
