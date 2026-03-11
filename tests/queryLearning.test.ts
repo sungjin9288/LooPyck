@@ -10,7 +10,11 @@ import {
     seedSearchLearningEntries,
     loadSearchLearningQueue,
 } from '../lib/search/queryLearning.ts';
-import { buildSearchLearningImpactClusterSummaries, buildSearchLearningImpactSummary } from '../lib/search/searchLearningImpact.ts';
+import {
+    buildSearchLearningImpactClusterRollup,
+    buildSearchLearningImpactClusterSummaries,
+    buildSearchLearningImpactSummary,
+} from '../lib/search/searchLearningImpact.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -336,6 +340,91 @@ test('search learning impact cluster summaries group related fashion queries', a
     assert.equal(hoodieCluster?.improved, 1);
     assert.equal(hoodieCluster?.awaitingSamples, 1);
     assert.equal(hoodieCluster?.entryIds.length, 2);
+});
+
+test('search learning impact cluster rollup summarizes improved and weak semantic groups', async () => {
+    resetSearchLearningEntries();
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T17:00:00.000Z',
+        effectiveQuery: '운동용 후드',
+        queryIntent: 'fashion',
+        resultQuality: 'weak',
+        exactMatchCount: 0,
+        strongMatchCount: 0,
+        suggestedQueries: ['후드집업'],
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    recordSearchLearningCandidate({
+        query: '등산 바지',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T17:01:00.000Z',
+        effectiveQuery: '등산 바지',
+        queryIntent: 'fashion',
+        resultQuality: 'mixed',
+        exactMatchCount: 0,
+        strongMatchCount: 1,
+        suggestedQueries: ['카고 팬츠'],
+        totalProducts: 4,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const queue = await loadSearchLearningQueue(10);
+    await reviewSearchLearningEntries(queue.entries.map((entry) => entry.id), 'approved', 'admin-user');
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T17:05:00.000Z',
+        effectiveQuery: '운동용 후드집업',
+        queryIntent: 'fashion',
+        resultQuality: 'mixed',
+        exactMatchCount: 1,
+        strongMatchCount: 3,
+        suggestedQueries: ['후드집업'],
+        totalProducts: 10,
+        directSourceCount: 1,
+        fallbackSourceCount: 0,
+        sources: [],
+    });
+
+    recordSearchLearningCandidate({
+        query: '등산 바지',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T17:06:00.000Z',
+        effectiveQuery: '등산 팬츠',
+        queryIntent: 'fashion',
+        resultQuality: 'mixed',
+        exactMatchCount: 0,
+        strongMatchCount: 1,
+        suggestedQueries: ['카고 팬츠'],
+        totalProducts: 3,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const updated = await loadSearchLearningQueue(10);
+    const rollup = buildSearchLearningImpactClusterRollup(updated.entries);
+
+    assert.equal(rollup.tracked, 2);
+    assert.equal(rollup.improved, 1);
+    assert.equal(rollup.noImprovement, 1);
+    assert.equal(rollup.awaitingSamples, 0);
+    assert.equal(rollup.topImproved[0]?.clusterId, 'hoodie_training');
+    assert.equal(rollup.topNeedsAttention[0]?.clusterId, 'other');
 });
 
 test('bulk suggestion generation attaches AI or heuristic suggestions to selected queue entries', async () => {

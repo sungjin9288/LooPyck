@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { DEFAULT_ALERT_TUNING_CONFIG, type AlertBehaviorMode, type AlertTuningConfig } from '@/lib/favorites/alertPersonalization';
 import { buildAlertRolloutRecommendations, buildAlertTuningSuggestions } from '@/lib/favorites/alertRecommendations';
-import { buildSearchLearningImpact, buildSearchLearningImpactClusterSummaries, buildSearchLearningImpactSummary } from '@/lib/search/searchLearningImpact';
+import {
+    buildSearchLearningImpact,
+    buildSearchLearningImpactClusterRollup,
+    buildSearchLearningImpactClusterSummaries,
+    buildSearchLearningImpactSummary,
+} from '@/lib/search/searchLearningImpact';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1197,6 +1202,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const searchLearning = data?.searchLearning;
     const searchLearningEntries = searchLearning?.entries || [];
     const searchLearningImpactSummary = buildSearchLearningImpactSummary(searchLearningEntries);
+    const searchLearningImpactClusterRollup = buildSearchLearningImpactClusterRollup(searchLearningEntries);
     const searchLearningImpactClusters = buildSearchLearningImpactClusterSummaries(searchLearningEntries).slice(0, 6);
     const totalSources = summary?.sources.length || 0;
     const directSources = summary?.sources.filter((entry) => entry.collectionMode === 'direct').length || 0;
@@ -3979,6 +3985,158 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     </div>
                                 </div>
                             )}
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <h3 className="text-sm font-semibold text-white">Semantic Cluster Impact</h3>
+                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                        tracked {searchLearningImpactClusterRollup.tracked}
+                                    </span>
+                                </div>
+                                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Tracked Clusters</p>
+                                        <p className="mt-3 text-3xl font-black text-white">{searchLearningImpactClusterRollup.tracked}</p>
+                                        <p className="mt-1 text-xs text-slate-400">semantic cluster 단위 승인 영향</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Improved Clusters</p>
+                                        <p className="mt-3 text-3xl font-black text-emerald-300">{searchLearningImpactClusterRollup.improved}</p>
+                                        <p className="mt-1 text-xs text-slate-400">
+                                            measured {searchLearningImpactClusterRollup.measured} · success {Math.round(searchLearningImpactClusterRollup.improvedRate * 100)}%
+                                        </p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Needs Tuning</p>
+                                        <p className="mt-3 text-3xl font-black text-rose-300">{searchLearningImpactClusterRollup.noImprovement}</p>
+                                        <p className="mt-1 text-xs text-slate-400">개선 없이 유지/회귀한 클러스터</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Awaiting Samples</p>
+                                        <p className="mt-3 text-3xl font-black text-amber-300">{searchLearningImpactClusterRollup.awaitingSamples}</p>
+                                        <p className="mt-1 text-xs text-slate-400">승인 후 새 검색 표본이 아직 없음</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <h4 className="text-sm font-semibold text-white">Improved Clusters</h4>
+                                            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-200">
+                                                top {searchLearningImpactClusterRollup.topImproved.length}
+                                            </span>
+                                        </div>
+                                        <div className="mt-4 space-y-3">
+                                            {searchLearningImpactClusterRollup.topImproved.map((cluster) => (
+                                                <div key={`cluster_improved_${cluster.clusterId}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-white">{cluster.clusterLabel}</p>
+                                                            <p className="mt-1 text-xs text-slate-500">
+                                                                queries {cluster.queryCount} · measured {cluster.measured} · 대표 {cluster.topQuery || '-'}
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => selectImpactClusterEntries(cluster.entryIds, cluster.clusterLabel)}
+                                                            className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200"
+                                                        >
+                                                            선택
+                                                        </button>
+                                                    </div>
+                                                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                                                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Low-fit</p>
+                                                            <p className="mt-2 text-sm font-semibold text-slate-100">
+                                                                {formatPercent(cluster.beforeLowFitRate)} → {formatPercent(cluster.afterLowFitRate)}
+                                                            </p>
+                                                        </div>
+                                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                                                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Zero-result</p>
+                                                            <p className="mt-2 text-sm font-semibold text-slate-100">
+                                                                {formatPercent(cluster.beforeZeroRate)} → {formatPercent(cluster.afterZeroRate)}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {searchLearningImpactClusterRollup.topImproved.length === 0 && (
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                                    아직 개선이 확인된 semantic cluster가 없습니다.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <h4 className="text-sm font-semibold text-white">Clusters Still Needing Tuning</h4>
+                                            <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[10px] font-bold text-rose-200">
+                                                top {searchLearningImpactClusterRollup.topNeedsAttention.length}
+                                            </span>
+                                        </div>
+                                        <div className="mt-4 space-y-3">
+                                            {searchLearningImpactClusterRollup.topNeedsAttention.map((cluster) => (
+                                                <div key={`cluster_attention_${cluster.clusterId}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-white">{cluster.clusterLabel}</p>
+                                                            <p className="mt-1 text-xs text-slate-500">
+                                                                queries {cluster.queryCount} · measured {cluster.measured} · 대표 {cluster.topQuery || '-'}
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => selectImpactClusterEntries(cluster.entryIds, cluster.clusterLabel)}
+                                                            className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200"
+                                                        >
+                                                            선택
+                                                        </button>
+                                                    </div>
+                                                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                                                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Low-fit</p>
+                                                            <p className="mt-2 text-sm font-semibold text-slate-100">
+                                                                {formatPercent(cluster.beforeLowFitRate)} → {formatPercent(cluster.afterLowFitRate)}
+                                                            </p>
+                                                        </div>
+                                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                                                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Zero-result</p>
+                                                            <p className="mt-2 text-sm font-semibold text-slate-100">
+                                                                {formatPercent(cluster.beforeZeroRate)} → {formatPercent(cluster.afterZeroRate)}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {searchLearningImpactClusterRollup.topNeedsAttention.length === 0 && (
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
+                                                    아직 개선이 없는 semantic cluster는 없습니다.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                {searchLearningImpactClusterRollup.topAwaitingSamples.length > 0 && (
+                                    <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <h4 className="text-sm font-semibold text-white">Awaiting Cluster Samples</h4>
+                                            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-200">
+                                                top {searchLearningImpactClusterRollup.topAwaitingSamples.length}
+                                            </span>
+                                        </div>
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {searchLearningImpactClusterRollup.topAwaitingSamples.map((cluster) => (
+                                                <button
+                                                    key={`cluster_awaiting_${cluster.clusterId}`}
+                                                    type="button"
+                                                    onClick={() => selectImpactClusterEntries(cluster.entryIds, cluster.clusterLabel)}
+                                                    className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100"
+                                                >
+                                                    {cluster.clusterLabel} · queries {cluster.queryCount}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                             <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
                                 <div className="flex items-center justify-between gap-3">
                                     <h3 className="text-sm font-semibold text-white">Semantic Cluster Triage</h3>

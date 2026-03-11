@@ -24,6 +24,11 @@ export type SearchLearningImpactMetrics = {
     query: string;
     approvedAt: string;
     postApprovalSamples: number;
+    beforeSampleCount: number;
+    beforeLowFitCount: number;
+    beforeZeroCount: number;
+    afterLowFitCount: number;
+    afterZeroCount: number;
     beforeLowFitRate: number | null;
     afterLowFitRate: number | null;
     beforeZeroRate: number | null;
@@ -57,6 +62,24 @@ export type SearchLearningImpactClusterSummary = {
     improvedRate: number;
     entryIds: string[];
     topQuery: string | null;
+    beforeLowFitRate: number | null;
+    afterLowFitRate: number | null;
+    beforeZeroRate: number | null;
+    afterZeroRate: number | null;
+    improvementScore: number;
+    outcome: SearchLearningImpactOutcome;
+};
+
+export type SearchLearningImpactClusterRollup = {
+    tracked: number;
+    measured: number;
+    awaitingSamples: number;
+    improved: number;
+    noImprovement: number;
+    improvedRate: number;
+    topImproved: SearchLearningImpactClusterSummary[];
+    topNeedsAttention: SearchLearningImpactClusterSummary[];
+    topAwaitingSamples: SearchLearningImpactClusterSummary[];
 };
 
 function rate(count: number, total: number): number | null {
@@ -73,6 +96,14 @@ function numericDelta(before: number | null, after: number | null): number {
     }
 
     return before - after;
+}
+
+function aggregateRate(count: number, total: number): number | null {
+    if (total <= 0) {
+        return null;
+    }
+
+    return count / total;
 }
 
 function resolveImpactCluster(entry: Pick<SearchLearningImpactEntryLike, 'query'>): { clusterId: string; clusterLabel: string } {
@@ -119,6 +150,11 @@ export function buildSearchLearningImpact(entry: SearchLearningImpactEntryLike):
             query: entry.query,
             approvedAt: baseline.approvedAt,
             postApprovalSamples,
+            beforeSampleCount: baseline.occurrenceCount,
+            beforeLowFitCount: baseline.lowFitCount,
+            beforeZeroCount: baseline.zeroResultCount,
+            afterLowFitCount: postApprovalLowFit,
+            afterZeroCount: postApprovalZero,
             beforeLowFitRate,
             afterLowFitRate,
             beforeZeroRate,
@@ -142,6 +178,11 @@ export function buildSearchLearningImpact(entry: SearchLearningImpactEntryLike):
         query: entry.query,
         approvedAt: baseline.approvedAt,
         postApprovalSamples,
+        beforeSampleCount: baseline.occurrenceCount,
+        beforeLowFitCount: baseline.lowFitCount,
+        beforeZeroCount: baseline.zeroResultCount,
+        afterLowFitCount: postApprovalLowFit,
+        afterZeroCount: postApprovalZero,
         beforeLowFitRate,
         afterLowFitRate,
         beforeZeroRate,
@@ -204,6 +245,12 @@ export function buildSearchLearningImpactClusterSummaries(entries: SearchLearnin
             improvedRate: 0,
             entryIds: [],
             topQuery: null,
+            beforeLowFitRate: null,
+            afterLowFitRate: null,
+            beforeZeroRate: null,
+            afterZeroRate: null,
+            improvementScore: 0,
+            outcome: 'awaiting_samples' as SearchLearningImpactOutcome,
         };
 
         current.queryCount += 1;
@@ -223,6 +270,33 @@ export function buildSearchLearningImpactClusterSummaries(entries: SearchLearnin
             current.topQuery = impact.query;
         }
 
+        const beforeSamples = impacts
+            .filter((candidate) => current.entryIds.includes(candidate.entryId))
+            .reduce((sum, candidate) => sum + candidate.beforeSampleCount, 0);
+        const beforeLowFit = impacts
+            .filter((candidate) => current.entryIds.includes(candidate.entryId))
+            .reduce((sum, candidate) => sum + candidate.beforeLowFitCount, 0);
+        const beforeZero = impacts
+            .filter((candidate) => current.entryIds.includes(candidate.entryId))
+            .reduce((sum, candidate) => sum + candidate.beforeZeroCount, 0);
+        const afterSamples = impacts
+            .filter((candidate) => current.entryIds.includes(candidate.entryId))
+            .reduce((sum, candidate) => sum + candidate.postApprovalSamples, 0);
+        const afterLowFit = impacts
+            .filter((candidate) => current.entryIds.includes(candidate.entryId))
+            .reduce((sum, candidate) => sum + candidate.afterLowFitCount, 0);
+        const afterZero = impacts
+            .filter((candidate) => current.entryIds.includes(candidate.entryId))
+            .reduce((sum, candidate) => sum + candidate.afterZeroCount, 0);
+
+        current.beforeLowFitRate = aggregateRate(beforeLowFit, beforeSamples);
+        current.afterLowFitRate = aggregateRate(afterLowFit, afterSamples);
+        current.beforeZeroRate = aggregateRate(beforeZero, beforeSamples);
+        current.afterZeroRate = aggregateRate(afterZero, afterSamples);
+        current.improvementScore =
+            numericDelta(current.beforeLowFitRate, current.afterLowFitRate) +
+            numericDelta(current.beforeZeroRate, current.afterZeroRate);
+
         clusters.set(clusterId, current);
     });
 
@@ -230,6 +304,15 @@ export function buildSearchLearningImpactClusterSummaries(entries: SearchLearnin
         .map((cluster) => ({
             ...cluster,
             improvedRate: cluster.measured > 0 ? cluster.improved / cluster.measured : 0,
+            outcome: (
+                cluster.awaitingSamples > 0 && cluster.measured === 0
+                    ? 'awaiting_samples'
+                    : cluster.improvementScore > 0.0001
+                        ? 'improved'
+                        : cluster.improvementScore < -0.0001
+                            ? 'regressed'
+                            : 'unchanged'
+            ) as SearchLearningImpactOutcome,
         }))
         .sort((left, right) => {
             if (right.noImprovement !== left.noImprovement) {
@@ -240,4 +323,30 @@ export function buildSearchLearningImpactClusterSummaries(entries: SearchLearnin
             }
             return right.queryCount - left.queryCount;
         });
+}
+
+export function buildSearchLearningImpactClusterRollup(entries: SearchLearningImpactEntryLike[]): SearchLearningImpactClusterRollup {
+    const clusters = buildSearchLearningImpactClusterSummaries(entries);
+    const awaitingSamples = clusters.filter((cluster) => cluster.outcome === 'awaiting_samples');
+    const measured = clusters.filter((cluster) => cluster.outcome !== 'awaiting_samples');
+    const improved = measured.filter((cluster) => cluster.outcome === 'improved');
+    const noImprovement = measured.filter((cluster) => cluster.outcome !== 'improved');
+
+    return {
+        tracked: clusters.length,
+        measured: measured.length,
+        awaitingSamples: awaitingSamples.length,
+        improved: improved.length,
+        noImprovement: noImprovement.length,
+        improvedRate: measured.length > 0 ? improved.length / measured.length : 0,
+        topImproved: improved
+            .sort((left, right) => right.improvementScore - left.improvementScore)
+            .slice(0, 5),
+        topNeedsAttention: noImprovement
+            .sort((left, right) => left.improvementScore - right.improvementScore)
+            .slice(0, 5),
+        topAwaitingSamples: awaitingSamples
+            .sort((left, right) => right.queryCount - left.queryCount)
+            .slice(0, 5),
+    };
 }
