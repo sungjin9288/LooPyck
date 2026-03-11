@@ -27,6 +27,13 @@ export type SearchLearningSuggestion = {
     generatedAt: string;
 };
 
+export type SearchLearningApprovalBaseline = {
+    approvedAt: string;
+    occurrenceCount: number;
+    lowFitCount: number;
+    zeroResultCount: number;
+};
+
 export type SearchLearningEntry = {
     id: string;
     query: string;
@@ -42,6 +49,7 @@ export type SearchLearningEntry = {
     suggestedQueries: string[];
     approvedQueries: string[];
     aiSuggestion: SearchLearningSuggestion | null;
+    approvalBaseline: SearchLearningApprovalBaseline | null;
     lastSeenAt: string;
     reviewedAt: string | null;
     reviewedBy: string | null;
@@ -108,9 +116,9 @@ function buildSearchLearningDocId(query: string): string {
 }
 
 function buildEntryFromSnapshot(snapshot: SearchAggregationDiagnostics): SearchLearningEntry {
-    const normalizedQuery = normalizeSearchLearningQuery(snapshot.effectiveQuery || snapshot.query);
+    const normalizedQuery = normalizeSearchLearningQuery(snapshot.query);
     return {
-        id: buildSearchLearningDocId(snapshot.effectiveQuery || snapshot.query),
+        id: buildSearchLearningDocId(snapshot.query),
         query: snapshot.query,
         normalizedQuery,
         effectiveQuery: snapshot.effectiveQuery || normalizedQuery,
@@ -124,6 +132,7 @@ function buildEntryFromSnapshot(snapshot: SearchAggregationDiagnostics): SearchL
         suggestedQueries: snapshot.suggestedQueries || [],
         approvedQueries: [],
         aiSuggestion: null,
+        approvalBaseline: null,
         lastSeenAt: snapshot.generatedAt,
         reviewedAt: null,
         reviewedBy: null,
@@ -180,6 +189,41 @@ function summarizeEntries(entries: SearchLearningEntry[]): SearchLearningQueue['
     };
 }
 
+function buildApprovalBaseline(entry: Pick<SearchLearningEntry, 'occurrenceCount' | 'lowFitCount' | 'zeroResultCount'>, approvedAt: string): SearchLearningApprovalBaseline {
+    return {
+        approvedAt,
+        occurrenceCount: entry.occurrenceCount,
+        lowFitCount: entry.lowFitCount,
+        zeroResultCount: entry.zeroResultCount,
+    };
+}
+
+function parseApprovalBaseline(raw: Record<string, unknown> | null | undefined): SearchLearningApprovalBaseline | null {
+    if (!raw) {
+        return null;
+    }
+
+    return {
+        approvedAt: typeof raw.approvedAt === 'string' ? raw.approvedAt : new Date(0).toISOString(),
+        occurrenceCount: typeof raw.occurrenceCount === 'number' ? raw.occurrenceCount : 0,
+        lowFitCount: typeof raw.lowFitCount === 'number' ? raw.lowFitCount : 0,
+        zeroResultCount: typeof raw.zeroResultCount === 'number' ? raw.zeroResultCount : 0,
+    };
+}
+
+function serializeApprovalBaseline(baseline: SearchLearningApprovalBaseline | null): Record<string, unknown> | null {
+    if (!baseline) {
+        return null;
+    }
+
+    return {
+        approvedAt: baseline.approvedAt,
+        occurrenceCount: baseline.occurrenceCount,
+        lowFitCount: baseline.lowFitCount,
+        zeroResultCount: baseline.zeroResultCount,
+    };
+}
+
 function serializeSuggestion(suggestion: SearchLearningSuggestion | null): Record<string, unknown> | null {
     if (!suggestion) {
         return null;
@@ -224,6 +268,7 @@ function parseEntry(id: string, raw: Record<string, unknown>): SearchLearningEnt
         suggestedQueries: Array.isArray(raw.suggestedQueries) ? raw.suggestedQueries.filter((entry): entry is string => typeof entry === 'string') : [],
         approvedQueries: Array.isArray(raw.approvedQueries) ? raw.approvedQueries.filter((entry): entry is string => typeof entry === 'string') : [],
         aiSuggestion: parseSuggestion(typeof raw.aiSuggestion === 'object' && raw.aiSuggestion ? raw.aiSuggestion as Record<string, unknown> : null),
+        approvalBaseline: parseApprovalBaseline(typeof raw.approvalBaseline === 'object' && raw.approvalBaseline ? raw.approvalBaseline as Record<string, unknown> : null),
         lastSeenAt: typeof raw.lastSeenAt === 'string' ? raw.lastSeenAt : new Date(0).toISOString(),
         reviewedAt: typeof raw.reviewedAt === 'string' ? raw.reviewedAt : null,
         reviewedBy: typeof raw.reviewedBy === 'string' ? raw.reviewedBy : null,
@@ -247,6 +292,7 @@ function serializeEntry(entry: SearchLearningEntry): Record<string, unknown> {
         suggestedQueries: entry.suggestedQueries,
         approvedQueries: entry.approvedQueries,
         aiSuggestion: serializeSuggestion(entry.aiSuggestion),
+        approvalBaseline: serializeApprovalBaseline(entry.approvalBaseline),
         lastSeenAt: entry.lastSeenAt,
         reviewedAt: entry.reviewedAt,
         reviewedBy: entry.reviewedBy,
@@ -279,6 +325,7 @@ function buildSeedEntry(query: string, timestamp: string): SearchLearningEntry {
         suggestedQueries,
         approvedQueries: [],
         aiSuggestion: null,
+        approvalBaseline: null,
         lastSeenAt: timestamp,
         reviewedAt: null,
         reviewedBy: null,
@@ -316,7 +363,7 @@ export function recordSearchLearningCandidate(snapshot: SearchAggregationDiagnos
     }
 
     const entries = getMemoryEntries();
-    const id = buildSearchLearningDocId(snapshot.effectiveQuery || snapshot.query);
+    const id = buildSearchLearningDocId(snapshot.query);
     const next = mergeEntry(entries.get(id), snapshot);
     entries.set(id, next);
     evictMemoryEntries(entries);
@@ -354,7 +401,7 @@ export async function persistSearchLearningCandidate(snapshot: SearchAggregation
         return { enabled: false, persisted: false };
     }
 
-    const id = buildSearchLearningDocId(snapshot.effectiveQuery || snapshot.query);
+    const id = buildSearchLearningDocId(snapshot.query);
     const ref = db.collection(SEARCH_LEARNING_COLLECTION).doc(id);
     await db.runTransaction(async (transaction) => {
         const existingSnap = await transaction.get(ref);
@@ -648,6 +695,14 @@ export async function reviewSearchLearningEntry(
 
     const entries = getMemoryEntries();
     const memoryEntry = entries.get(entryId);
+    const currentEntry = memoryEntry || await loadSearchLearningEntry(entryId);
+    const approvalBaseline = status === 'approved'
+        ? (currentEntry?.approvalBaseline || buildApprovalBaseline(currentEntry || {
+            occurrenceCount: 0,
+            lowFitCount: 0,
+            zeroResultCount: 0,
+        }, reviewedAt))
+        : null;
     if (memoryEntry) {
         entries.set(entryId, {
             ...memoryEntry,
@@ -655,6 +710,7 @@ export async function reviewSearchLearningEntry(
             approvedQueries: nextApprovedQueries,
             reviewedAt,
             reviewedBy,
+            approvalBaseline,
             updatedAt: reviewedAt,
         });
     }
@@ -670,6 +726,7 @@ export async function reviewSearchLearningEntry(
         approvedQueries: nextApprovedQueries,
         reviewedAt,
         reviewedBy,
+        approvalBaseline: serializeApprovalBaseline(approvalBaseline),
         updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
 

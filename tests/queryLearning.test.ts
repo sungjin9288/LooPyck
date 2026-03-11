@@ -91,8 +91,63 @@ test('bulk review approves queued search learning entries with learned queries',
     assert.equal(reviewed.length, 1);
     assert.equal(reviewed[0]?.status, 'approved');
     assert.equal(reviewed[0]?.reviewedBy, 'admin-user');
+    assert.ok(reviewed[0]?.approvalBaseline);
+    assert.equal(reviewed[0]?.approvalBaseline?.occurrenceCount, 1);
     assert.ok(reviewed[0]?.approvedQueries.includes('후드집업'));
     assert.ok(reviewed[0]?.approvedQueries.includes('트레이닝 후드집업'));
+});
+
+test('approval baseline stays fixed while post-approval observations accumulate', async () => {
+    resetSearchLearningEntries();
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T13:00:00.000Z',
+        effectiveQuery: '운동용 후드',
+        queryIntent: 'fashion',
+        resultQuality: 'weak',
+        exactMatchCount: 0,
+        strongMatchCount: 0,
+        suggestedQueries: ['후드집업'],
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const queue = await loadSearchLearningQueue(10);
+    const entry = queue.entries[0];
+    assert.ok(entry);
+
+    const [approved] = await reviewSearchLearningEntries([entry.id], 'approved', 'admin-user');
+    assert.ok(approved?.approvalBaseline);
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T13:05:00.000Z',
+        effectiveQuery: '운동용 후드집업',
+        queryIntent: 'fashion',
+        resultQuality: 'mixed',
+        exactMatchCount: 1,
+        strongMatchCount: 2,
+        suggestedQueries: ['후드집업'],
+        totalProducts: 12,
+        directSourceCount: 1,
+        fallbackSourceCount: 0,
+        sources: [],
+    });
+
+    const updated = await loadSearchLearningQueue(10);
+    const approvedEntry = updated.entries.find((current) => current.id === entry.id);
+
+    assert.ok(approvedEntry?.approvalBaseline);
+    assert.equal(approvedEntry?.approvalBaseline?.occurrenceCount, 1);
+    assert.equal(approvedEntry?.occurrenceCount, 2);
+    assert.equal(approvedEntry?.status, 'approved');
 });
 
 test('bulk suggestion generation attaches AI or heuristic suggestions to selected queue entries', async () => {

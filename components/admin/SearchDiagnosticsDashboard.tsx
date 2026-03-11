@@ -339,6 +339,12 @@ type SearchLearningEntry = {
     suggestedQueries: string[];
     approvedQueries: string[];
     aiSuggestion: SearchLearningSuggestion | null;
+    approvalBaseline: {
+        approvedAt: string;
+        occurrenceCount: number;
+        lowFitCount: number;
+        zeroResultCount: number;
+    } | null;
     lastSeenAt: string;
     reviewedAt: string | null;
     reviewedBy: string | null;
@@ -534,6 +540,39 @@ function mergeSearchLearningEntries(
     });
 
     return merged.sort((left, right) => right.lastSeenAt.localeCompare(left.lastSeenAt));
+}
+
+function formatPercent(value: number | null): string {
+    if (value === null || Number.isNaN(value)) {
+        return '-';
+    }
+
+    return `${Math.round(value * 100)}%`;
+}
+
+function buildSearchLearningImpact(entry: SearchLearningEntry): {
+    postApprovalSamples: number;
+    beforeLowFitRate: number | null;
+    afterLowFitRate: number | null;
+    beforeZeroRate: number | null;
+    afterZeroRate: number | null;
+} | null {
+    const baseline = entry.approvalBaseline;
+    if (!baseline) {
+        return null;
+    }
+
+    const postApprovalSamples = Math.max(entry.occurrenceCount - baseline.occurrenceCount, 0);
+    const postApprovalLowFit = Math.max(entry.lowFitCount - baseline.lowFitCount, 0);
+    const postApprovalZero = Math.max(entry.zeroResultCount - baseline.zeroResultCount, 0);
+
+    return {
+        postApprovalSamples,
+        beforeLowFitRate: baseline.occurrenceCount > 0 ? baseline.lowFitCount / baseline.occurrenceCount : null,
+        afterLowFitRate: postApprovalSamples > 0 ? postApprovalLowFit / postApprovalSamples : null,
+        beforeZeroRate: baseline.occurrenceCount > 0 ? baseline.zeroResultCount / baseline.occurrenceCount : null,
+        afterZeroRate: postApprovalSamples > 0 ? postApprovalZero / postApprovalSamples : null,
+    };
 }
 
 function formatTime(value: string | null | undefined): string {
@@ -3646,7 +3685,9 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 </button>
                             </div>
                             <div className="mt-4 grid gap-4 xl:grid-cols-2">
-                                {searchLearningEntries.slice(0, 8).map((entry) => (
+                                {searchLearningEntries.slice(0, 8).map((entry) => {
+                                    const impact = buildSearchLearningImpact(entry);
+                                    return (
                                     <div key={entry.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex items-start gap-3">
@@ -3709,6 +3750,37 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                                 </div>
                                             </div>
                                         )}
+                                        {impact && (
+                                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/80 p-3">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-violet-300">Approval Impact</p>
+                                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] text-slate-300">
+                                                        since {formatTime(entry.approvalBaseline?.approvedAt)}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">New Samples</p>
+                                                        <p className="mt-2 text-xl font-black text-white">{impact.postApprovalSamples}</p>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Low-fit</p>
+                                                        <p className="mt-2 text-sm font-semibold text-slate-100">
+                                                            {formatPercent(impact.beforeLowFitRate)} → {formatPercent(impact.afterLowFitRate)}
+                                                        </p>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Zero-result</p>
+                                                        <p className="mt-2 text-sm font-semibold text-slate-100">
+                                                            {formatPercent(impact.beforeZeroRate)} → {formatPercent(impact.afterZeroRate)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {impact.postApprovalSamples === 0 && (
+                                                    <p className="mt-3 text-xs text-slate-500">승인 후 아직 새 관측 데이터가 없습니다.</p>
+                                                )}
+                                            </div>
+                                        )}
                                         <div className="mt-4 flex flex-wrap gap-2">
                                             <button
                                                 type="button"
@@ -3736,7 +3808,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                             </button>
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                                 {searchLearningEntries.length === 0 && (
                                     <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
                                         아직 저장된 학습 대상 query가 없습니다.
