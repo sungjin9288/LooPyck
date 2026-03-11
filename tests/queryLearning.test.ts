@@ -21,6 +21,10 @@ import {
     buildSearchLearningImpactClusterSummaries,
     buildSearchLearningImpactSummary,
 } from '../lib/search/searchLearningImpact.ts';
+import {
+    buildSearchLearningRewriteRecommendationSummary,
+    buildSearchLearningRewriteRecommendations,
+} from '../lib/search/searchLearningRewriteRecommendations.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -139,6 +143,91 @@ test('approved semantic rewrite plan can be loaded from search learning storage'
 
     assert.ok((learnedPlan.NAVER || []).includes('후드집업'));
     assert.ok((learnedPlan.FARFETCH || []).includes('zip hoodie'));
+});
+
+test('rewrite pack recommendations classify promote and rollback candidates from cluster impact', async () => {
+    resetSearchLearningEntries();
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T11:20:00.000Z',
+        effectiveQuery: '운동용 후드',
+        queryIntent: 'fashion',
+        resultQuality: 'weak',
+        exactMatchCount: 0,
+        strongMatchCount: 0,
+        suggestedQueries: ['후드집업'],
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+    recordSearchLearningCandidate({
+        query: '등산 바지',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T11:21:00.000Z',
+        effectiveQuery: '등산 바지',
+        queryIntent: 'fashion',
+        resultQuality: 'mixed',
+        exactMatchCount: 0,
+        strongMatchCount: 1,
+        suggestedQueries: ['카고 팬츠'],
+        totalProducts: 4,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const queue = await loadSearchLearningQueue(10);
+    await reviewSearchLearningEntries(queue.entries.map((entry) => entry.id), 'approved', 'admin-user');
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T11:25:00.000Z',
+        effectiveQuery: '운동용 후드집업',
+        queryIntent: 'fashion',
+        resultQuality: 'mixed',
+        exactMatchCount: 2,
+        strongMatchCount: 4,
+        suggestedQueries: ['후드집업'],
+        totalProducts: 18,
+        directSourceCount: 1,
+        fallbackSourceCount: 0,
+        sources: [],
+    });
+    recordSearchLearningCandidate({
+        query: '등산 바지',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T11:26:00.000Z',
+        effectiveQuery: '등산 팬츠',
+        queryIntent: 'fashion',
+        resultQuality: 'mixed',
+        exactMatchCount: 0,
+        strongMatchCount: 1,
+        suggestedQueries: ['카고 팬츠'],
+        totalProducts: 3,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const updated = await loadSearchLearningQueue(10);
+    const recommendations = buildSearchLearningRewriteRecommendations(
+        buildSearchLearningRewritePacks(updated.entries),
+        buildSearchLearningImpactClusterSummaries(updated.entries)
+    );
+    const summary = buildSearchLearningRewriteRecommendationSummary(recommendations);
+
+    assert.equal(summary.promote, 1);
+    assert.equal(summary.rollback, 1);
+    assert.equal(summary.topPromote[0]?.clusterId, 'hoodie_training');
+    assert.equal(summary.topRollback[0]?.clusterId, 'other');
 });
 
 test('query learning queue records low-fit snapshots in memory', async () => {

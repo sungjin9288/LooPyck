@@ -11,6 +11,10 @@ import {
     buildSearchLearningImpactSummary,
 } from '@/lib/search/searchLearningImpact';
 import { buildSearchLearningRewritePacks } from '@/lib/search/searchLearningRewritePacks';
+import {
+    buildSearchLearningRewriteRecommendationSummary,
+    buildSearchLearningRewriteRecommendations,
+} from '@/lib/search/searchLearningRewriteRecommendations';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1209,6 +1213,11 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const searchLearningImpactClusterRollup = buildSearchLearningImpactClusterRollup(searchLearningEntries);
     const searchLearningImpactClusters = buildSearchLearningImpactClusterSummaries(searchLearningEntries).slice(0, 6);
     const searchLearningRewritePacks = buildSearchLearningRewritePacks(searchLearningEntries).slice(0, 6);
+    const searchLearningRewriteRecommendations = buildSearchLearningRewriteRecommendations(
+        buildSearchLearningRewritePacks(searchLearningEntries),
+        buildSearchLearningImpactClusterSummaries(searchLearningEntries)
+    );
+    const searchLearningRewriteRecommendationSummary = buildSearchLearningRewriteRecommendationSummary(searchLearningRewriteRecommendations);
     const totalSources = summary?.sources.length || 0;
     const directSources = summary?.sources.filter((entry) => entry.collectionMode === 'direct').length || 0;
     const fallbackSources = summary?.sources.filter((entry) => entry.fallbackHits > 0).length || 0;
@@ -4333,6 +4342,138 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     {searchLearningRewritePacks.length === 0 && (
                                         <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-2">
                                             아직 rewrite pack으로 승격된 승인 query가 없습니다.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-white">Rewrite Pack Recommendations</h3>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            semantic cluster impact를 기준으로 rewrite pack의 승격, 유지, rollback 후보를 자동 추천합니다.
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                        tracked {searchLearningRewriteRecommendationSummary.tracked}
+                                    </span>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningRewriteRecommendationSummary.topPromote.flatMap((entry) => entry.entryIds),
+                                            `${searchLearningRewriteRecommendationSummary.topPromote.length}개의 승격 후보 rewrite pack query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningRewriteRecommendationSummary.topPromote.length === 0}
+                                        className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        승격 후보 선택 ({searchLearningRewriteRecommendationSummary.topPromote.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningRewriteRecommendationSummary.topRollback.flatMap((entry) => entry.entryIds),
+                                            `${searchLearningRewriteRecommendationSummary.topRollback.length}개의 rollback 후보 rewrite pack query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningRewriteRecommendationSummary.topRollback.length === 0}
+                                        className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        rollback 후보 선택 ({searchLearningRewriteRecommendationSummary.topRollback.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningRewriteRecommendationSummary.topAwaiting.flatMap((entry) => entry.entryIds),
+                                            `${searchLearningRewriteRecommendationSummary.topAwaiting.length}개의 표본 대기 rewrite pack query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningRewriteRecommendationSummary.topAwaiting.length === 0}
+                                        className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        표본 대기 선택 ({searchLearningRewriteRecommendationSummary.topAwaiting.length})
+                                    </button>
+                                </div>
+                                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Promote</p>
+                                        <p className="mt-3 text-3xl font-black text-emerald-300">{searchLearningRewriteRecommendationSummary.promote}</p>
+                                        <p className="mt-1 text-xs text-slate-400">안정적으로 유지 가능한 rewrite pack</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Hold</p>
+                                        <p className="mt-3 text-3xl font-black text-sky-300">{searchLearningRewriteRecommendationSummary.hold}</p>
+                                        <p className="mt-1 text-xs text-slate-400">유지하되 표본을 더 모을 rewrite pack</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Rollback</p>
+                                        <p className="mt-3 text-3xl font-black text-rose-300">{searchLearningRewriteRecommendationSummary.rollback}</p>
+                                        <p className="mt-1 text-xs text-slate-400">조정 또는 rollback이 필요한 pack</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Awaiting</p>
+                                        <p className="mt-3 text-3xl font-black text-amber-300">{searchLearningRewriteRecommendationSummary.awaitingSamples}</p>
+                                        <p className="mt-1 text-xs text-slate-400">승인 후 새 표본이 아직 부족함</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                                    {searchLearningRewriteRecommendations.slice(0, 6).map((recommendation) => {
+                                        const toneClass =
+                                            recommendation.recommendation === 'promote'
+                                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                                                : recommendation.recommendation === 'rollback'
+                                                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+                                                    : recommendation.recommendation === 'awaiting_samples'
+                                                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                                                        : 'border-sky-500/30 bg-sky-500/10 text-sky-200';
+
+                                        return (
+                                            <div key={`rewrite_recommendation_${recommendation.clusterId}`} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-white">{recommendation.clusterLabel}</p>
+                                                        <p className="mt-1 text-xs text-slate-500">
+                                                            measured {recommendation.measured} · improved {recommendation.improved} · no improvement {recommendation.noImprovement}
+                                                        </p>
+                                                    </div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${toneClass}`}>
+                                                        {recommendation.recommendation}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-3 text-xs leading-6 text-slate-400">{recommendation.reason}</p>
+                                                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Low-fit</p>
+                                                        <p className="mt-2 text-sm font-semibold text-slate-100">
+                                                            {formatPercent(recommendation.beforeLowFitRate)} → {formatPercent(recommendation.afterLowFitRate)}
+                                                        </p>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Zero-result</p>
+                                                        <p className="mt-2 text-sm font-semibold text-slate-100">
+                                                            {formatPercent(recommendation.beforeZeroRate)} → {formatPercent(recommendation.afterZeroRate)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {recommendation.commonQueries.slice(0, 5).map((query) => (
+                                                        <span key={`${recommendation.clusterId}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(recommendation.entryIds, `${recommendation.clusterLabel} rewrite pack query를 선택했습니다.`)}
+                                                    className="mt-4 rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                >
+                                                    관련 query 선택
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                    {searchLearningRewriteRecommendations.length === 0 && (
+                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-3">
+                                            아직 추천할 rewrite pack이 없습니다.
                                         </div>
                                     )}
                                 </div>
