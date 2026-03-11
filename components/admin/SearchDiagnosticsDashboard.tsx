@@ -31,6 +31,10 @@ import {
     buildSearchLearningRewriteSourceActionReviewQueue,
     buildSearchLearningRewriteSourceActionReviewSummary,
 } from '@/lib/search/searchLearningRewriteSourceActionReview';
+import {
+    buildSearchLearningRewriteSourceApprovalQueue,
+    buildSearchLearningRewriteSourceApprovalQueueSummary,
+} from '@/lib/search/searchLearningRewriteSourceApprovalQueue';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1250,6 +1254,13 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const searchLearningRewriteSourceActionReviewSummary = buildSearchLearningRewriteSourceActionReviewSummary(
         searchLearningRewriteSourceActionReviewQueue
     );
+    const searchLearningRewriteSourceApprovalQueue = buildSearchLearningRewriteSourceApprovalQueue(
+        searchLearningRewriteSourceActionDrafts,
+        searchLearningRewriteSourceActionReviewQueue
+    );
+    const searchLearningRewriteSourceApprovalQueueSummary = buildSearchLearningRewriteSourceApprovalQueueSummary(
+        searchLearningRewriteSourceApprovalQueue
+    );
     const totalSources = summary?.sources.length || 0;
     const directSources = summary?.sources.filter((entry) => entry.collectionMode === 'direct').length || 0;
     const fallbackSources = summary?.sources.filter((entry) => entry.fallbackHits > 0).length || 0;
@@ -1971,6 +1982,25 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             'source_action_review_approve',
             (count) => `${count}개의 source action review query를 일괄 승인했습니다.`,
             'source action review 승인에 실패했습니다.'
+        );
+    }
+
+    async function handleGenerateSourceApprovalRollbackSuggestions() {
+        await handleBulkGenerateSearchLearningSuggestionsForIds(
+            searchLearningRewriteSourceApprovalQueueSummary.topRollbackCandidates.flatMap((entry) => entry.primaryEntryIds),
+            'source_approval_rollback_generate',
+            (count) => `${count}개의 rollback approval 후보 query에 AI 제안을 생성했습니다.`,
+            'rollback approval 후보 query AI 제안을 생성하지 못했습니다.'
+        );
+    }
+
+    async function handleApproveSourceApprovalReviewPending() {
+        await handleBulkReviewSearchLearningForIds(
+            searchLearningRewriteSourceApprovalQueueSummary.topReviewPending.flatMap((entry) => entry.primaryEntryIds),
+            'bulk_approve',
+            'source_approval_review_approve',
+            (count) => `${count}개의 review pending source approval query를 승인했습니다.`,
+            'review pending source approval 승인에 실패했습니다.'
         );
     }
 
@@ -3823,6 +3853,132 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     <p className="mt-1 text-xs text-slate-400">
                                         uncovered curated queries
                                     </p>
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-white">Source Approval Queue</h3>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            source action과 review 상태를 합쳐 자동 승격 후보, rollback 후보, review pending 후보를 운영 승인 큐로 정리합니다.
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                        queue {searchLearningRewriteSourceApprovalQueueSummary.total}
+                                    </span>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningRewriteSourceApprovalQueueSummary.topPromoteCandidates.flatMap((entry) => entry.primaryEntryIds),
+                                            `${searchLearningRewriteSourceApprovalQueueSummary.topPromoteCandidates.length}개의 승격 후보 query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningRewriteSourceApprovalQueueSummary.topPromoteCandidates.length === 0}
+                                        className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        승격 후보 선택 ({searchLearningRewriteSourceApprovalQueueSummary.topPromoteCandidates.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleApproveSourceApprovalReviewPending}
+                                        disabled={searchLearningRewriteSourceApprovalQueueSummary.topReviewPending.length === 0 || processingSearchLearningId === 'source_approval_review_approve'}
+                                        className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {processingSearchLearningId === 'source_approval_review_approve'
+                                            ? '승인 중...'
+                                            : `review pending 승인 (${searchLearningRewriteSourceApprovalQueueSummary.topReviewPending.length})`}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleGenerateSourceApprovalRollbackSuggestions}
+                                        disabled={searchLearningRewriteSourceApprovalQueueSummary.topRollbackCandidates.length === 0 || processingSearchLearningId === 'source_approval_rollback_generate'}
+                                        className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {processingSearchLearningId === 'source_approval_rollback_generate'
+                                            ? '생성 중...'
+                                            : `rollback 후보 AI 제안 (${searchLearningRewriteSourceApprovalQueueSummary.topRollbackCandidates.length})`}
+                                    </button>
+                                </div>
+                                <div className="mt-4 grid gap-4 md:grid-cols-4">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Promote Candidates</p>
+                                        <p className="mt-3 text-3xl font-black text-emerald-300">{searchLearningRewriteSourceApprovalQueueSummary.promoteCandidates}</p>
+                                        <p className="mt-1 text-xs text-slate-400">안정적으로 유지/확대 가능한 source action</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Rollback Candidates</p>
+                                        <p className="mt-3 text-3xl font-black text-rose-300">{searchLearningRewriteSourceApprovalQueueSummary.rollbackCandidates}</p>
+                                        <p className="mt-1 text-xs text-slate-400">재생성 또는 rollback 재검토가 필요한 action</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Review Pending</p>
+                                        <p className="mt-3 text-3xl font-black text-cyan-300">{searchLearningRewriteSourceApprovalQueueSummary.reviewPending}</p>
+                                        <p className="mt-1 text-xs text-slate-400">이미 AI draft가 있어 승인만 남은 action</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Observe Pending</p>
+                                        <p className="mt-3 text-3xl font-black text-sky-300">{searchLearningRewriteSourceApprovalQueueSummary.observePending}</p>
+                                        <p className="mt-1 text-xs text-slate-400">추가 표본 관측이 더 필요한 action</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                                    {searchLearningRewriteSourceApprovalQueue.slice(0, 6).map((item) => {
+                                        const toneClass =
+                                            item.decision === 'promote_candidate'
+                                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                                                : item.decision === 'rollback_candidate'
+                                                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+                                                    : item.decision === 'review_pending'
+                                                        ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-200'
+                                                        : 'border-sky-500/30 bg-sky-500/10 text-sky-200';
+
+                                        return (
+                                            <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-white">{item.source}</p>
+                                                        <p className="mt-1 text-xs text-slate-500">
+                                                            {item.title} · ready {item.readyReviewCount} · regenerate {item.generationNeededCount}
+                                                        </p>
+                                                    </div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${toneClass}`}>
+                                                        {item.decision}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-3 text-xs leading-6 text-slate-400">{item.reason}</p>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {item.topClusters.map((cluster) => (
+                                                        <span key={`${item.id}_${cluster}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {cluster}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {item.topQueries.slice(0, 4).map((query) => (
+                                                        <span key={`${item.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(
+                                                        item.primaryEntryIds.length > 0 ? item.primaryEntryIds : item.entryIds,
+                                                        `${item.source} / ${item.title} approval query를 선택했습니다.`
+                                                    )}
+                                                    className="mt-4 rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                >
+                                                    approval queue 선택
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                    {searchLearningRewriteSourceApprovalQueue.length === 0 && (
+                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-3">
+                                            아직 source approval queue가 없습니다.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">

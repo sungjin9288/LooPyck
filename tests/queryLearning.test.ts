@@ -41,6 +41,10 @@ import {
     buildSearchLearningRewriteSourceActionReviewQueue,
     buildSearchLearningRewriteSourceActionReviewSummary,
 } from '../lib/search/searchLearningRewriteSourceActionReview.ts';
+import {
+    buildSearchLearningRewriteSourceApprovalQueue,
+    buildSearchLearningRewriteSourceApprovalQueueSummary,
+} from '../lib/search/searchLearningRewriteSourceApprovalQueue.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -531,6 +535,87 @@ test('source action review queue highlights approved entries with fresh AI sugge
     assert.equal(summary.topReadyReview[0]?.readyReviewCount, 1);
     assert.equal(reviewQueue[0]?.reviewState, 'ready_review');
     assert.deepEqual(reviewQueue[0]?.readyReviewEntryIds, ['entry-1']);
+});
+
+test('source approval queue promotes stable actions and flags rollback candidates', () => {
+    const drafts = buildSearchLearningRewriteSourceActionDrafts([
+        {
+            id: 'NAVER:promote',
+            source: 'NAVER',
+            action: 'promote',
+            draftCount: 1,
+            clusterCount: 1,
+            entryIds: ['entry-1'],
+            queryCount: 1,
+            measured: 4,
+            improved: 3,
+            noImprovement: 0,
+            awaitingSamples: 0,
+            avgImprovedRate: 0.75,
+            topClusters: ['후드/후드집업'],
+            topQueries: ['운동용 후드'],
+        },
+        {
+            id: 'MUSINSA:rollback',
+            source: 'MUSINSA',
+            action: 'rollback',
+            draftCount: 1,
+            clusterCount: 1,
+            entryIds: ['entry-2'],
+            queryCount: 1,
+            measured: 3,
+            improved: 0,
+            noImprovement: 3,
+            awaitingSamples: 0,
+            avgImprovedRate: 0,
+            topClusters: ['트레이닝/조거 팬츠'],
+            topQueries: ['트레이닝 팬츠'],
+        },
+    ]);
+
+    const reviewQueue = buildSearchLearningRewriteSourceActionReviewQueue(drafts, [
+        {
+            id: 'NAVER:promote:review',
+            source: 'NAVER',
+            action: 'promote_confirm',
+            title: '승격 유지 확인',
+            reviewState: 'stable_followup',
+            reason: 'stable',
+            entryIds: ['entry-1'],
+            readyReviewEntryIds: [],
+            generationNeededEntryIds: [],
+            readyReviewCount: 0,
+            generationNeededCount: 0,
+            stableCount: 1,
+            topClusters: ['후드/후드집업'],
+            topQueries: ['운동용 후드'],
+        },
+        {
+            id: 'MUSINSA:rollback:review',
+            source: 'MUSINSA',
+            action: 'rollback_regenerate',
+            title: 'AI 재생성 필요',
+            reviewState: 'generation_needed',
+            reason: 'regen',
+            entryIds: ['entry-2'],
+            readyReviewEntryIds: [],
+            generationNeededEntryIds: ['entry-2'],
+            readyReviewCount: 0,
+            generationNeededCount: 1,
+            stableCount: 0,
+            topClusters: ['트레이닝/조거 팬츠'],
+            topQueries: ['트레이닝 팬츠'],
+        },
+    ]);
+
+    const queue = buildSearchLearningRewriteSourceApprovalQueue(drafts, reviewQueue);
+    const summary = buildSearchLearningRewriteSourceApprovalQueueSummary(queue);
+
+    assert.equal(summary.total, 2);
+    assert.equal(summary.promoteCandidates, 1);
+    assert.equal(summary.rollbackCandidates, 1);
+    assert.equal(queue.find((entry) => entry.source === 'NAVER')?.decision, 'promote_candidate');
+    assert.equal(queue.find((entry) => entry.source === 'MUSINSA')?.decision, 'rollback_candidate');
 });
 
 test('query learning queue records low-fit snapshots in memory', async () => {
