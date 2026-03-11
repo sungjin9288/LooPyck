@@ -1885,6 +1885,16 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         );
     }
 
+    function selectImpactClusters(
+        clusters: Array<{ entryIds: string[] }>,
+        message: string
+    ) {
+        selectSearchLearningEntries(
+            clusters.flatMap((cluster) => cluster.entryIds),
+            message
+        );
+    }
+
     async function handleGenerateImpactNoImprovementSuggestions() {
         await handleBulkGenerateSearchLearningSuggestionsForIds(
             searchLearningImpactSummary.topNeedsAttention.map((impact) => impact.entryId),
@@ -1900,6 +1910,24 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             'impact_awaiting_generate',
             (count) => `${count}개의 샘플 대기 query에 AI 제안을 생성했습니다.`,
             '샘플 대기 query AI 제안을 생성하지 못했습니다.'
+        );
+    }
+
+    async function handleGenerateImpactNoImprovementClusterSuggestions() {
+        await handleBulkGenerateSearchLearningSuggestionsForIds(
+            searchLearningImpactClusterRollup.topNeedsAttention.flatMap((cluster) => cluster.entryIds),
+            'impact_cluster_no_improvement_generate',
+            (count) => `${count}개의 개선 없음 클러스터 query에 재학습 AI 제안을 생성했습니다.`,
+            '개선 없음 클러스터 재학습 AI 제안을 생성하지 못했습니다.'
+        );
+    }
+
+    async function handleGenerateImpactAwaitingClusterSuggestions() {
+        await handleBulkGenerateSearchLearningSuggestionsForIds(
+            searchLearningImpactClusterRollup.topAwaitingSamples.flatMap((cluster) => cluster.entryIds),
+            'impact_cluster_awaiting_generate',
+            (count) => `${count}개의 샘플 대기 클러스터 query에 AI 제안을 생성했습니다.`,
+            '샘플 대기 클러스터 AI 제안을 생성하지 못했습니다.'
         );
     }
 
@@ -3991,6 +4019,50 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
                                         tracked {searchLearningImpactClusterRollup.tracked}
                                     </span>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => selectImpactClusters(
+                                            searchLearningImpactClusterRollup.topNeedsAttention,
+                                            `${searchLearningImpactClusterRollup.topNeedsAttention.length}개의 개선 없음 semantic cluster query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningImpactClusterRollup.topNeedsAttention.length === 0}
+                                        className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        개선 없음 클러스터 선택 ({searchLearningImpactClusterRollup.topNeedsAttention.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleGenerateImpactNoImprovementClusterSuggestions}
+                                        disabled={searchLearningImpactClusterRollup.topNeedsAttention.length === 0 || processingSearchLearningId === 'impact_cluster_no_improvement_generate'}
+                                        className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs font-bold text-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {processingSearchLearningId === 'impact_cluster_no_improvement_generate'
+                                            ? '클러스터 제안 생성 중...'
+                                            : `개선 없음 클러스터 AI 제안 (${searchLearningImpactClusterRollup.topNeedsAttention.length})`}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectImpactClusters(
+                                            searchLearningImpactClusterRollup.topAwaitingSamples,
+                                            `${searchLearningImpactClusterRollup.topAwaitingSamples.length}개의 샘플 대기 semantic cluster query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningImpactClusterRollup.topAwaitingSamples.length === 0}
+                                        className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        샘플 대기 클러스터 선택 ({searchLearningImpactClusterRollup.topAwaitingSamples.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleGenerateImpactAwaitingClusterSuggestions}
+                                        disabled={searchLearningImpactClusterRollup.topAwaitingSamples.length === 0 || processingSearchLearningId === 'impact_cluster_awaiting_generate'}
+                                        className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-xs font-bold text-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {processingSearchLearningId === 'impact_cluster_awaiting_generate'
+                                            ? '대기 클러스터 제안 생성 중...'
+                                            : `샘플 대기 클러스터 AI 제안 (${searchLearningImpactClusterRollup.topAwaitingSamples.length})`}
+                                    </button>
                                 </div>
                                 <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
