@@ -25,6 +25,10 @@ import {
     buildSearchLearningRewriteRecommendationSummary,
     buildSearchLearningRewriteRecommendations,
 } from '../lib/search/searchLearningRewriteRecommendations.ts';
+import {
+    buildSearchLearningRewriteSourceDraftSummary,
+    buildSearchLearningRewriteSourceDrafts,
+} from '../lib/search/searchLearningRewriteSourceDrafts.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -228,6 +232,64 @@ test('rewrite pack recommendations classify promote and rollback candidates from
     assert.equal(summary.rollback, 1);
     assert.equal(summary.topPromote[0]?.clusterId, 'hoodie_training');
     assert.equal(summary.topRollback[0]?.clusterId, 'other');
+});
+
+test('source rewrite drafts expand rewrite pack recommendations into source-level actions', async () => {
+    resetSearchLearningEntries();
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T11:00:00.000Z',
+        effectiveQuery: '운동용 후드',
+        queryIntent: 'fashion',
+        resultQuality: 'weak',
+        exactMatchCount: 0,
+        strongMatchCount: 0,
+        suggestedQueries: ['후드집업', '트레이닝 후드집업'],
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const queue = await loadSearchLearningQueue(10);
+    await reviewSearchLearningEntries(queue.entries.map((entry) => entry.id), 'approved', 'admin-user');
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T11:10:00.000Z',
+        effectiveQuery: '후드집업',
+        queryIntent: 'fashion',
+        resultQuality: 'strong',
+        exactMatchCount: 2,
+        strongMatchCount: 2,
+        suggestedQueries: ['후드집업'],
+        totalProducts: 12,
+        directSourceCount: 1,
+        fallbackSourceCount: 0,
+        sources: [],
+    });
+
+    const updated = await loadSearchLearningQueue(10);
+    const packs = buildSearchLearningRewritePacks(updated.entries);
+    const recommendations = buildSearchLearningRewriteRecommendations(
+        packs,
+        buildSearchLearningImpactClusterSummaries(updated.entries)
+    );
+    const drafts = buildSearchLearningRewriteSourceDrafts(recommendations, packs);
+    const summary = buildSearchLearningRewriteSourceDraftSummary(drafts);
+    const naverDraft = drafts.find((entry) => entry.source === 'NAVER');
+
+    assert.ok(drafts.length > 0);
+    assert.equal(summary.tracked, drafts.length);
+    assert.ok(drafts.every((entry) => ['promote', 'hold', 'rollback', 'awaiting_samples'].includes(entry.action)));
+    assert.ok(naverDraft);
+    assert.ok((naverDraft?.queries.length || 0) > 0);
+    assert.ok((naverDraft?.queries || []).some((query) => query.includes('후드')));
 });
 
 test('query learning queue records low-fit snapshots in memory', async () => {
