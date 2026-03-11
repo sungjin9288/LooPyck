@@ -255,6 +255,61 @@ function serializeEntry(entry: SearchLearningEntry): Record<string, unknown> {
     };
 }
 
+function buildSeedEntry(query: string, timestamp: string): SearchLearningEntry {
+    const analysis = analyzeFashionQuery(query);
+    const plan = buildSourceAwareSearchPlan(analysis);
+    const suggestedQueries = uniqueOrdered([
+        analysis.normalizedQuery || analysis.originalQuery,
+        ...(plan.NAVER || []),
+        ...analysis.suggestedQueries,
+    ]).slice(0, 8);
+
+    return {
+        id: buildSearchLearningDocId(query),
+        query,
+        normalizedQuery: normalizeSearchLearningQuery(query),
+        effectiveQuery: analysis.normalizedQuery || normalizeSearchLearningQuery(query),
+        queryIntent: analysis.intent,
+        status: 'pending',
+        occurrenceCount: 1,
+        lowFitCount: 1,
+        zeroResultCount: 1,
+        lastResultQuality: 'weak',
+        lastTotalProducts: 0,
+        suggestedQueries,
+        approvedQueries: [],
+        aiSuggestion: null,
+        lastSeenAt: timestamp,
+        reviewedAt: null,
+        reviewedBy: null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+    };
+}
+
+function mergeSeedEntry(existing: SearchLearningEntry | undefined, query: string, timestamp: string): SearchLearningEntry {
+    const seed = buildSeedEntry(query, timestamp);
+    if (!existing) {
+        return seed;
+    }
+
+    return {
+        ...existing,
+        query,
+        normalizedQuery: seed.normalizedQuery,
+        effectiveQuery: seed.effectiveQuery,
+        queryIntent: seed.queryIntent || existing.queryIntent,
+        occurrenceCount: existing.occurrenceCount + 1,
+        lowFitCount: existing.lowFitCount + 1,
+        zeroResultCount: existing.zeroResultCount + 1,
+        lastResultQuality: 'weak',
+        lastTotalProducts: 0,
+        suggestedQueries: uniqueOrdered([...(existing.suggestedQueries || []), ...seed.suggestedQueries]).slice(0, 8),
+        lastSeenAt: timestamp,
+        updatedAt: timestamp,
+    };
+}
+
 export function recordSearchLearningCandidate(snapshot: SearchAggregationDiagnostics): void {
     if (!shouldRecordSnapshot(snapshot)) {
         return;
@@ -510,6 +565,45 @@ export async function generateSearchLearningSuggestions(entryIds: string[]): Pro
 
             const suggestion = await generateSearchLearningSuggestion(entry);
             return await saveSearchLearningSuggestion(entryId, suggestion);
+        })
+    );
+
+    return updatedEntries.filter((entry): entry is SearchLearningEntry => Boolean(entry));
+}
+
+export async function seedSearchLearningEntries(queries: string[]): Promise<SearchLearningEntry[]> {
+    const normalizedQueries = uniqueOrdered(
+        queries.map((query) => normalizeTitle(query).trim()).filter(Boolean)
+    ).slice(0, 24);
+
+    if (normalizedQueries.length === 0) {
+        return [];
+    }
+
+    const timestamp = new Date().toISOString();
+    const memory = getMemoryEntries();
+    const db = getAdminDb();
+
+    const updatedEntries = await Promise.all(
+        normalizedQueries.map(async (query) => {
+            const entryId = buildSearchLearningDocId(query);
+            const existing = await loadSearchLearningEntry(entryId);
+            const next = mergeSeedEntry(existing || memory.get(entryId), query, timestamp);
+
+            memory.set(entryId, next);
+            evictMemoryEntries(memory);
+
+            if (!db) {
+                return next;
+            }
+
+            await db.collection(SEARCH_LEARNING_COLLECTION).doc(entryId).set({
+                ...serializeEntry(next),
+                createdAt: existing?.createdAt || timestamp,
+                updatedAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+
+            return await loadSearchLearningEntry(entryId);
         })
     );
 

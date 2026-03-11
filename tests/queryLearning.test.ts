@@ -7,6 +7,7 @@ import {
     recordSearchLearningCandidate,
     reviewSearchLearningEntries,
     resetSearchLearningEntries,
+    seedSearchLearningEntries,
     loadSearchLearningQueue,
 } from '../lib/search/queryLearning.ts';
 
@@ -123,4 +124,19 @@ test('bulk suggestion generation attaches AI or heuristic suggestions to selecte
     assert.equal(updated.length, 1);
     assert.ok(updated[0]?.aiSuggestion);
     assert.ok(updated[0]?.aiSuggestion?.suggestedQueries.includes('후드집업'));
+});
+
+test('coverage seed adds missing queries directly into search learning queue', async () => {
+    resetSearchLearningEntries();
+
+    const updated = await seedSearchLearningEntries(['운동용 후드', '트레이닝 팬츠']);
+
+    assert.equal(updated.length, 2);
+    assert.equal(updated[0]?.status, 'pending');
+    assert.equal(updated[0]?.lastResultQuality, 'weak');
+
+    const queue = await loadSearchLearningQueue(10);
+    assert.equal(queue.summary.pending, 2);
+    assert.ok(queue.entries.some((entry) => entry.query === '운동용 후드'));
+    assert.ok(queue.entries.some((entry) => entry.query === '트레이닝 팬츠'));
 });

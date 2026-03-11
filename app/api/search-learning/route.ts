@@ -9,6 +9,7 @@ import {
     reviewSearchLearningEntry,
     reviewSearchLearningEntries,
     saveSearchLearningSuggestion,
+    seedSearchLearningEntries,
 } from '@/lib/search/queryLearning';
 
 export const runtime = 'nodejs';
@@ -22,6 +23,11 @@ const GenerateSuggestionSchema = z.object({
 const BulkGenerateSuggestionSchema = z.object({
     action: z.literal('bulk_generate'),
     entryIds: z.array(z.string().trim().min(1).max(180)).min(1).max(12),
+});
+
+const SeedCoverageQueriesSchema = z.object({
+    action: z.literal('seed_queries'),
+    queries: z.array(z.string().trim().min(1).max(80)).min(1).max(24),
 });
 
 const ReviewEntrySchema = z.object({
@@ -51,6 +57,12 @@ export async function POST(request: NextRequest) {
         }
 
         const raw = await request.json();
+        const seedPayload = SeedCoverageQueriesSchema.safeParse(raw);
+        if (seedPayload.success) {
+            const entries = await seedSearchLearningEntries(seedPayload.data.queries);
+            return NextResponse.json({ entries });
+        }
+
         const bulkPayload = BulkGenerateSuggestionSchema.safeParse(raw);
         if (bulkPayload.success) {
             const entries = await generateSearchLearningSuggestions(bulkPayload.data.entryIds);

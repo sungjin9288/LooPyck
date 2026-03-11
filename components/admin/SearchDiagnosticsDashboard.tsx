@@ -519,6 +519,23 @@ function summarizeSearchLearningEntries(entries: SearchLearningEntry[]): Diagnos
     };
 }
 
+function mergeSearchLearningEntries(
+    currentEntries: SearchLearningEntry[],
+    updatedEntries: SearchLearningEntry[]
+): SearchLearningEntry[] {
+    const updatedMap = new Map(updatedEntries.map((entry) => [entry.id, entry]));
+    const merged = currentEntries.map((entry) => updatedMap.get(entry.id) || entry);
+    const existingIds = new Set(currentEntries.map((entry) => entry.id));
+
+    updatedEntries.forEach((entry) => {
+        if (!existingIds.has(entry.id)) {
+            merged.unshift(entry);
+        }
+    });
+
+    return merged.sort((left, right) => right.lastSeenAt.localeCompare(left.lastSeenAt));
+}
+
 function formatTime(value: string | null | undefined): string {
     if (!value) return '-';
     return new Date(value).toLocaleString('ko-KR', {
@@ -1643,8 +1660,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                     return current;
                 }
 
-                const updatedMap = new Map(updatedEntries.map((entry) => [entry.id, entry]));
-                const entries = current.searchLearning.entries.map((entry) => updatedMap.get(entry.id) || entry);
+                const entries = mergeSearchLearningEntries(current.searchLearning.entries, updatedEntries);
                 return {
                     ...current,
                     searchLearning: {
@@ -1657,6 +1673,55 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             setSearchLearningMessage(`${updatedEntries.length}개의 학습 query에 AI 제안을 생성했습니다.`);
         } catch (bulkError) {
             setSearchLearningMessage(bulkError instanceof Error ? bulkError.message : '검색 학습 AI 제안을 일괄 생성하지 못했습니다.');
+        } finally {
+            setProcessingSearchLearningId(null);
+        }
+    }
+
+    async function handleSeedCoverageQueries() {
+        if (!user || !data || data.searchQualityCoverage.uncoveredQueries.length === 0) {
+            return;
+        }
+
+        setProcessingSearchLearningId('seed_queries');
+        setSearchLearningMessage(null);
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/search-learning', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'seed_queries',
+                    queries: data.searchQualityCoverage.uncoveredQueries.map((entry) => entry.query),
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || '미커버 query를 학습 큐에 추가하지 못했습니다.');
+            }
+
+            const updatedEntries = Array.isArray(payload.entries) ? payload.entries as SearchLearningEntry[] : [];
+            setData((current) => {
+                if (!current) {
+                    return current;
+                }
+
+                const entries = mergeSearchLearningEntries(current.searchLearning.entries, updatedEntries);
+                return {
+                    ...current,
+                    searchLearning: {
+                        ...current.searchLearning,
+                        entries,
+                        summary: summarizeSearchLearningEntries(entries),
+                    },
+                };
+            });
+            setSearchLearningMessage(`${updatedEntries.length}개의 미커버 query를 학습 큐에 추가했습니다.`);
+        } catch (seedError) {
+            setSearchLearningMessage(seedError instanceof Error ? seedError.message : '미커버 query를 학습 큐에 추가하지 못했습니다.');
         } finally {
             setProcessingSearchLearningId(null);
         }
@@ -3421,6 +3486,18 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                         NAVER {Math.round((data?.searchQualityCoverage.naverCoverageRate ?? 0) * 100)}%
                                     </span>
                                 </div>
+                            </div>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleSeedCoverageQueries}
+                                    disabled={(data?.searchQualityCoverage.uncoveredQueries.length ?? 0) === 0 || processingSearchLearningId === 'seed_queries'}
+                                    className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {processingSearchLearningId === 'seed_queries'
+                                        ? '큐 적재 중...'
+                                        : `미커버 query 큐 추가 (${data?.searchQualityCoverage.uncoveredQueries.length ?? 0})`}
+                                </button>
                             </div>
                             <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                                 <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
