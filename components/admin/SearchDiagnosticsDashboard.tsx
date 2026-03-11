@@ -10,6 +10,7 @@ import {
     buildSearchLearningImpactClusterSummaries,
     buildSearchLearningImpactSummary,
 } from '@/lib/search/searchLearningImpact';
+import { buildSearchLearningRewritePacks } from '@/lib/search/searchLearningRewritePacks';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1207,6 +1208,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const searchLearningImpactSummary = buildSearchLearningImpactSummary(searchLearningEntries);
     const searchLearningImpactClusterRollup = buildSearchLearningImpactClusterRollup(searchLearningEntries);
     const searchLearningImpactClusters = buildSearchLearningImpactClusterSummaries(searchLearningEntries).slice(0, 6);
+    const searchLearningRewritePacks = buildSearchLearningRewritePacks(searchLearningEntries).slice(0, 6);
     const totalSources = summary?.sources.length || 0;
     const directSources = summary?.sources.filter((entry) => entry.collectionMode === 'direct').length || 0;
     const fallbackSources = summary?.sources.filter((entry) => entry.fallbackHits > 0).length || 0;
@@ -4268,6 +4270,69 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     {searchLearningImpactClusters.length === 0 && (
                                         <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-3">
                                             semantic cluster 기준으로 집계할 승인 query가 아직 없습니다.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-white">Approved Rewrite Packs</h3>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            승인된 query를 semantic cluster 기준 source-aware rewrite pack으로 자동 승격합니다.
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                        top {searchLearningRewritePacks.length}
+                                    </span>
+                                </div>
+                                <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                    {searchLearningRewritePacks.map((pack) => (
+                                        <div key={`rewrite_pack_${pack.clusterId}`} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-sm font-semibold text-white">{pack.clusterLabel}</p>
+                                                    <p className="mt-1 text-xs text-slate-500">
+                                                        approved entries {pack.entryCount} · promoted queries {pack.approvedQueryCount} · active sources {pack.sourceCount}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(pack.entryIds, `${pack.clusterLabel} rewrite pack query를 선택했습니다.`)}
+                                                    className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200"
+                                                >
+                                                    선택
+                                                </button>
+                                            </div>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {pack.commonQueries.slice(0, 6).map((query) => (
+                                                    <span key={`${pack.clusterId}_${query}`} className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100">
+                                                        {query}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <div className="mt-4 space-y-3">
+                                                {Object.entries(pack.sourceQueries)
+                                                    .filter(([, queries]) => (queries || []).length > 0)
+                                                    .slice(0, 3)
+                                                    .map(([source, queries]) => (
+                                                        <div key={`${pack.clusterId}_${source}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">{source}</p>
+                                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                                {(queries || []).slice(0, 4).map((query) => (
+                                                                    <span key={`${pack.clusterId}_${source}_${query}`} className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-[11px] text-sky-100">
+                                                                        {query}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {searchLearningRewritePacks.length === 0 && (
+                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-2">
+                                            아직 rewrite pack으로 승격된 승인 query가 없습니다.
                                         </div>
                                     )}
                                 </div>

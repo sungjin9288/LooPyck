@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     buildFallbackSearchLearningSuggestion,
     generateSearchLearningSuggestions,
+    loadApprovedSearchLearningRewritePlan,
     mergeLearnedQueriesIntoPlan,
     recordSearchLearningCandidate,
     reviewSearchLearningEntries,
@@ -10,6 +11,11 @@ import {
     seedSearchLearningEntries,
     loadSearchLearningQueue,
 } from '../lib/search/queryLearning.ts';
+import { analyzeFashionQuery } from '../lib/search/fashionQueryAssistant.ts';
+import {
+    buildSearchLearningRewritePacks,
+    buildSearchLearningRewritePlanForAnalysis,
+} from '../lib/search/searchLearningRewritePacks.ts';
 import {
     buildSearchLearningImpactClusterRollup,
     buildSearchLearningImpactClusterSummaries,
@@ -38,6 +44,101 @@ test('merge learned queries appends approved candidates to existing search plan'
 
     assert.deepEqual(merged.NAVER, ['운동용 후드', '후드집업', '스포츠 후드집업', '트레이닝 후드집업']);
     assert.deepEqual(merged.MUSINSA, ['운동용 후드', '스포츠 후드집업', '트레이닝 후드집업']);
+});
+
+test('approved search learning entries build source-aware rewrite packs by semantic cluster', async () => {
+    resetSearchLearningEntries();
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T11:00:00.000Z',
+        effectiveQuery: '운동용 후드',
+        queryIntent: 'fashion',
+        resultQuality: 'weak',
+        exactMatchCount: 0,
+        strongMatchCount: 0,
+        suggestedQueries: ['후드집업', '트레이닝 후드집업'],
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const queue = await loadSearchLearningQueue(10);
+    await reviewSearchLearningEntries(queue.entries.map((entry) => entry.id), 'approved', 'admin-user');
+
+    const updated = await loadSearchLearningQueue(10);
+    const packs = buildSearchLearningRewritePacks(updated.entries);
+    const hoodiePack = packs.find((pack) => pack.clusterId === 'hoodie_training');
+
+    assert.ok(hoodiePack);
+    assert.equal(hoodiePack?.clusterLabel, '후드/후드집업');
+    assert.ok(hoodiePack?.commonQueries.includes('후드집업'));
+    assert.ok((hoodiePack?.sourceQueries.NAVER || []).includes('후드집업'));
+    assert.ok((hoodiePack?.sourceQueries.FARFETCH || []).includes('zip hoodie'));
+});
+
+test('semantic rewrite packs merge into current query analysis automatically', async () => {
+    resetSearchLearningEntries();
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T11:05:00.000Z',
+        effectiveQuery: '운동용 후드',
+        queryIntent: 'fashion',
+        resultQuality: 'weak',
+        exactMatchCount: 0,
+        strongMatchCount: 0,
+        suggestedQueries: ['후드집업', '트레이닝 후드집업'],
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const queue = await loadSearchLearningQueue(10);
+    await reviewSearchLearningEntries(queue.entries.map((entry) => entry.id), 'approved', 'admin-user');
+
+    const updated = await loadSearchLearningQueue(10);
+    const packs = buildSearchLearningRewritePacks(updated.entries);
+    const plan = buildSearchLearningRewritePlanForAnalysis(analyzeFashionQuery('남자 후드'), packs);
+
+    assert.ok((plan.NAVER || []).includes('후드집업'));
+    assert.ok((plan.MUSINSA || []).includes('후드집업'));
+    assert.ok((plan.FARFETCH || []).includes('zip hoodie'));
+});
+
+test('approved semantic rewrite plan can be loaded from search learning storage', async () => {
+    resetSearchLearningEntries();
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T11:10:00.000Z',
+        effectiveQuery: '운동용 후드',
+        queryIntent: 'fashion',
+        resultQuality: 'weak',
+        exactMatchCount: 0,
+        strongMatchCount: 0,
+        suggestedQueries: ['후드집업'],
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const queue = await loadSearchLearningQueue(10);
+    await reviewSearchLearningEntries(queue.entries.map((entry) => entry.id), 'approved', 'admin-user');
+
+    const learnedPlan = await loadApprovedSearchLearningRewritePlan(analyzeFashionQuery('남자 후드'));
+
+    assert.ok((learnedPlan.NAVER || []).includes('후드집업'));
+    assert.ok((learnedPlan.FARFETCH || []).includes('zip hoodie'));
 });
 
 test('query learning queue records low-fit snapshots in memory', async () => {

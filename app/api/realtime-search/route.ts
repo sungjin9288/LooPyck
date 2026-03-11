@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { aggregateRealtimeSearchDetailed, aggregateRealtimeSearchNaverOnly, type SearchAggregationDiagnostics, type SearchSourceDiagnostic, type UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import { persistSearchDiagnostics, recordSearchDiagnostics } from '@/lib/api/searchDiagnostics';
 import { analyzeFashionQuery, buildSourceAwareSearchPlan, rerankProductsByFashionRelevance } from '@/lib/search/fashionQueryAssistant';
-import { loadApprovedSearchLearningQueries, mergeLearnedQueriesIntoPlan, persistSearchLearningCandidate, recordSearchLearningCandidate } from '@/lib/search/queryLearning';
+import { loadApprovedSearchLearningQueries, loadApprovedSearchLearningRewritePlan, mergeLearnedQueriesIntoPlan, persistSearchLearningCandidate, recordSearchLearningCandidate } from '@/lib/search/queryLearning';
+import { mergeSourceQueryPlans } from '@/lib/search/searchLearningRewritePacks';
 import { SearchSort, ALLOWED_SORTS } from '@/types/searchSort';
 import { checkRateLimit, getRateLimitKey, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
 import { persistPriceHistorySnapshot, searchTrackedProductsByFashionQuery } from '@/lib/server/priceHistoryStore';
@@ -145,9 +146,13 @@ export async function GET(request: NextRequest) {
     try {
         const effectiveQuery = queryAnalysis.normalizedQuery || query;
         const learnedQueries = await loadApprovedSearchLearningQueries([effectiveQuery, queryAnalysis.originalQuery, query]);
-        const sourceQueryPlan = mergeLearnedQueriesIntoPlan(
-            buildSourceAwareSearchPlan(queryAnalysis),
-            learnedQueries
+        const learnedRewritePlan = await loadApprovedSearchLearningRewritePlan(queryAnalysis);
+        const sourceQueryPlan = mergeSourceQueryPlans(
+            mergeLearnedQueriesIntoPlan(
+                buildSourceAwareSearchPlan(queryAnalysis),
+                learnedQueries
+            ),
+            learnedRewritePlan
         );
         let fallbackMode: 'full' | 'naver_only' | 'tracked_catalog' = 'full';
         let aggregation = await withTimeout(

@@ -5,6 +5,11 @@ import { parseGeminiJson, normalizeKeywordList } from '../ai/geminiJson.ts';
 import { normalizeTitle } from '../core/dataNormalizer.ts';
 import { getAdminDb } from '../server/firebaseAdmin.ts';
 import { analyzeFashionQuery, buildSourceAwareSearchPlan } from './fashionQueryAssistant.ts';
+import {
+    buildSearchLearningRewritePacks,
+    buildSearchLearningRewritePlanForAnalysis,
+    type SearchLearningRewritePack,
+} from './searchLearningRewritePacks.ts';
 
 const SEARCH_LEARNING_COLLECTION = 'searchLearningQueries';
 const MAX_MEMORY_ENTRIES = 80;
@@ -14,6 +19,7 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 const globalSearchLearning = globalThis as typeof globalThis & {
     __loopyckSearchLearningEntries?: Map<string, SearchLearningEntry>;
     __loopyckSearchLearningApprovedCache?: Map<string, { queries: string[]; expiresAt: number }>;
+    __loopyckSearchLearningRewritePackCache?: { packs: SearchLearningRewritePack[]; expiresAt: number };
 };
 
 export type SearchLearningStatus = 'pending' | 'approved' | 'ignored';
@@ -90,6 +96,18 @@ function getApprovedCache(): Map<string, { queries: string[]; expiresAt: number 
     }
 
     return globalSearchLearning.__loopyckSearchLearningApprovedCache;
+}
+
+function getRewritePackCache(): { packs: SearchLearningRewritePack[]; expiresAt: number } | null {
+    return globalSearchLearning.__loopyckSearchLearningRewritePackCache || null;
+}
+
+function setRewritePackCache(packs: SearchLearningRewritePack[], expiresAt: number): void {
+    globalSearchLearning.__loopyckSearchLearningRewritePackCache = { packs, expiresAt };
+}
+
+function invalidateRewritePackCache(): void {
+    delete globalSearchLearning.__loopyckSearchLearningRewritePackCache;
 }
 
 function normalizeSearchLearningQuery(query: string): string {
@@ -507,6 +525,46 @@ export async function loadApprovedSearchLearningQueries(queries: string[]): Prom
     }
 }
 
+async function loadApprovedSearchLearningEntries(): Promise<SearchLearningEntry[]> {
+    const db = getAdminDb();
+    if (!db) {
+        return Array.from(getMemoryEntries().values()).filter((entry) => entry.status === 'approved' && entry.approvedQueries.length > 0);
+    }
+
+    const snapshot = await db.collection(SEARCH_LEARNING_COLLECTION)
+        .where('status', '==', 'approved')
+        .limit(120)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => parseEntry(doc.id, doc.data() as Record<string, unknown>))
+        .filter((entry) => entry.approvedQueries.length > 0);
+}
+
+export async function loadApprovedSearchLearningRewritePacks(): Promise<SearchLearningRewritePack[]> {
+    const now = Date.now();
+    const cached = getRewritePackCache();
+    if (cached && cached.expiresAt > now) {
+        return cached.packs;
+    }
+
+    const approvedEntries = await loadApprovedSearchLearningEntries();
+    const packs = buildSearchLearningRewritePacks(approvedEntries);
+    setRewritePackCache(packs, now + APPROVED_CACHE_TTL_MS);
+    return packs;
+}
+
+export async function loadApprovedSearchLearningRewritePlan(
+    analysis: ReturnType<typeof analyzeFashionQuery>
+): Promise<Partial<Record<string, string[]>>> {
+    if (analysis.semanticClusterIds.length === 0 && analysis.categorySignals.length === 0) {
+        return {};
+    }
+
+    const packs = await loadApprovedSearchLearningRewritePacks();
+    return buildSearchLearningRewritePlanForAnalysis(analysis, packs);
+}
+
 export function mergeLearnedQueriesIntoPlan(
     plan: Partial<Record<string, string[]>>,
     learnedQueries: string[]
@@ -692,6 +750,7 @@ export async function reviewSearchLearningEntry(
     const nextApprovedQueries = status === 'approved' ? uniqueOrdered(approvedQueries).slice(0, 8) : [];
     const cache = getApprovedCache();
     cache.delete(entryId);
+    invalidateRewritePackCache();
 
     const entries = getMemoryEntries();
     const memoryEntry = entries.get(entryId);
@@ -768,4 +827,5 @@ export async function reviewSearchLearningEntries(
 export function resetSearchLearningEntries(): void {
     getMemoryEntries().clear();
     getApprovedCache().clear();
+    invalidateRewritePackCache();
 }
