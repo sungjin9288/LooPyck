@@ -33,6 +33,10 @@ import {
     buildSearchLearningRewriteSourceOps,
     buildSearchLearningRewriteSourceOpsSummary,
 } from '../lib/search/searchLearningRewriteSourceOps.ts';
+import {
+    buildSearchLearningRewriteSourceActionDrafts,
+    buildSearchLearningRewriteSourceActionDraftSummary,
+} from '../lib/search/searchLearningRewriteSourceActionDrafts.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -375,6 +379,62 @@ test('source rewrite ops summarize promote and rollback drafts by source', () =>
     assert.ok((naverPromote?.topQueries || []).includes('후드집업'));
     assert.ok(naverRollback);
     assert.equal(naverRollback?.noImprovement, 2);
+});
+
+test('source action drafts derive direct ops actions from source summaries', () => {
+    const ops = buildSearchLearningRewriteSourceOps([
+        {
+            id: 'NAVER:promote',
+            clusterId: 'hoodie_training',
+            clusterLabel: '후드/후드집업',
+            source: 'NAVER',
+            action: 'promote',
+            reason: 'good',
+            entryIds: ['entry-1'],
+            queries: ['후드집업'],
+            queryCount: 1,
+            measured: 4,
+            improved: 3,
+            noImprovement: 0,
+            awaitingSamples: 0,
+            improvedRate: 0.75,
+            beforeLowFitRate: 1,
+            afterLowFitRate: 0.2,
+            beforeZeroRate: 1,
+            afterZeroRate: 0,
+            topQuery: '운동용 후드',
+        },
+        {
+            id: 'NAVER:rollback',
+            clusterId: 'other',
+            clusterLabel: '기타 패션 검색어',
+            source: 'NAVER',
+            action: 'rollback',
+            reason: 'bad',
+            entryIds: ['entry-2'],
+            queries: ['등산 바지'],
+            queryCount: 1,
+            measured: 2,
+            improved: 0,
+            noImprovement: 2,
+            awaitingSamples: 0,
+            improvedRate: 0,
+            beforeLowFitRate: 0.5,
+            afterLowFitRate: 0.5,
+            beforeZeroRate: 0.5,
+            afterZeroRate: 0.5,
+            topQuery: '등산 바지',
+        },
+    ]);
+
+    const drafts = buildSearchLearningRewriteSourceActionDrafts(ops);
+    const summary = buildSearchLearningRewriteSourceActionDraftSummary(drafts);
+
+    assert.equal(summary.total, 2);
+    assert.equal(summary.promoteConfirm, 1);
+    assert.equal(summary.rollbackRegenerate, 1);
+    assert.equal(drafts.find((entry) => entry.action === 'promote_confirm')?.title, '승격 유지 확인');
+    assert.equal(drafts.find((entry) => entry.action === 'rollback_regenerate')?.title, 'AI 재생성 필요');
 });
 
 test('query learning queue records low-fit snapshots in memory', async () => {

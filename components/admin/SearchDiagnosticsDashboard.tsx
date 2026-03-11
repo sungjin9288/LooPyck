@@ -23,6 +23,10 @@ import {
     buildSearchLearningRewriteSourceOps,
     buildSearchLearningRewriteSourceOpsSummary,
 } from '@/lib/search/searchLearningRewriteSourceOps';
+import {
+    buildSearchLearningRewriteSourceActionDrafts,
+    buildSearchLearningRewriteSourceActionDraftSummary,
+} from '@/lib/search/searchLearningRewriteSourceActionDrafts';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1233,6 +1237,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const searchLearningRewriteSourceDraftSummary = buildSearchLearningRewriteSourceDraftSummary(searchLearningRewriteSourceDrafts);
     const searchLearningRewriteSourceOps = buildSearchLearningRewriteSourceOps(searchLearningRewriteSourceDrafts);
     const searchLearningRewriteSourceOpsSummary = buildSearchLearningRewriteSourceOpsSummary(searchLearningRewriteSourceOps);
+    const searchLearningRewriteSourceActionDrafts = buildSearchLearningRewriteSourceActionDrafts(searchLearningRewriteSourceOps);
+    const searchLearningRewriteSourceActionDraftSummary = buildSearchLearningRewriteSourceActionDraftSummary(searchLearningRewriteSourceActionDrafts);
     const totalSources = summary?.sources.length || 0;
     const directSources = summary?.sources.filter((entry) => entry.collectionMode === 'direct').length || 0;
     const fallbackSources = summary?.sources.filter((entry) => entry.fallbackHits > 0).length || 0;
@@ -1926,6 +1932,15 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         selectSearchLearningEntries(
             clusters.flatMap((cluster) => cluster.entryIds),
             message
+        );
+    }
+
+    async function handleGenerateSourceRollbackDraftSuggestions() {
+        await handleBulkGenerateSearchLearningSuggestionsForIds(
+            searchLearningRewriteSourceActionDraftSummary.topRollbackRegenerate.flatMap((draft) => draft.entryIds),
+            'source_ops_rollback_generate',
+            (count) => `${count}개의 rollback source ops query에 AI 제안을 재생성했습니다.`,
+            'rollback source ops query AI 제안을 재생성하지 못했습니다.'
         );
     }
 
@@ -3758,6 +3773,130 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     <p className="mt-1 text-xs text-slate-400">
                                         uncovered curated queries
                                     </p>
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-white">Source Action Drafts</h3>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            source ops 결과를 실제 운영 액션으로 변환한 draft입니다. rollback 후보는 바로 AI 재생성을 실행할 수 있습니다.
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                        drafts {searchLearningRewriteSourceActionDraftSummary.total}
+                                    </span>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningRewriteSourceActionDraftSummary.topPromoteConfirm.flatMap((entry) => entry.entryIds),
+                                            `${searchLearningRewriteSourceActionDraftSummary.topPromoteConfirm.length}개의 승격 유지 확인 query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningRewriteSourceActionDraftSummary.topPromoteConfirm.length === 0}
+                                        className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        승격 유지 선택 ({searchLearningRewriteSourceActionDraftSummary.topPromoteConfirm.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleGenerateSourceRollbackDraftSuggestions}
+                                        disabled={searchLearningRewriteSourceActionDraftSummary.topRollbackRegenerate.length === 0 || processingSearchLearningId === 'source_ops_rollback_generate'}
+                                        className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {processingSearchLearningId === 'source_ops_rollback_generate'
+                                            ? '재생성 중...'
+                                            : `rollback AI 재생성 (${searchLearningRewriteSourceActionDraftSummary.topRollbackRegenerate.length})`}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningRewriteSourceActionDraftSummary.topAwaitingObserve.flatMap((entry) => entry.entryIds),
+                                            `${searchLearningRewriteSourceActionDraftSummary.topAwaitingObserve.length}개의 샘플 대기 query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningRewriteSourceActionDraftSummary.topAwaitingObserve.length === 0}
+                                        className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        샘플 대기 선택 ({searchLearningRewriteSourceActionDraftSummary.topAwaitingObserve.length})
+                                    </button>
+                                </div>
+                                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Promote Confirm</p>
+                                        <p className="mt-3 text-3xl font-black text-emerald-300">{searchLearningRewriteSourceActionDraftSummary.promoteConfirm}</p>
+                                        <p className="mt-1 text-xs text-slate-400">유지 확인만 필요한 source action</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Rollback Regenerate</p>
+                                        <p className="mt-3 text-3xl font-black text-rose-300">{searchLearningRewriteSourceActionDraftSummary.rollbackRegenerate}</p>
+                                        <p className="mt-1 text-xs text-slate-400">AI 재생성이 필요한 source action</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Awaiting Observe</p>
+                                        <p className="mt-3 text-3xl font-black text-amber-300">{searchLearningRewriteSourceActionDraftSummary.awaitingObserve}</p>
+                                        <p className="mt-1 text-xs text-slate-400">실제 표본을 더 모아야 하는 source action</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Hold Review</p>
+                                        <p className="mt-3 text-3xl font-black text-sky-300">{searchLearningRewriteSourceActionDraftSummary.holdReview}</p>
+                                        <p className="mt-1 text-xs text-slate-400">유지하며 추가 검토할 source action</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                                    {searchLearningRewriteSourceActionDrafts.slice(0, 6).map((draft) => {
+                                        const toneClass =
+                                            draft.action === 'promote_confirm'
+                                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                                                : draft.action === 'rollback_regenerate'
+                                                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+                                                    : draft.action === 'awaiting_observe'
+                                                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                                                        : 'border-sky-500/30 bg-sky-500/10 text-sky-200';
+
+                                        return (
+                                            <div key={draft.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-white">{draft.source}</p>
+                                                        <p className="mt-1 text-xs text-slate-500">
+                                                            {draft.title} · measured {draft.measured} · queries {draft.queryCount}
+                                                        </p>
+                                                    </div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${toneClass}`}>
+                                                        {draft.action}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-3 text-xs leading-6 text-slate-400">{draft.reason}</p>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {draft.topClusters.map((cluster) => (
+                                                        <span key={`${draft.id}_${cluster}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {cluster}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {draft.topQueries.slice(0, 4).map((query) => (
+                                                        <span key={`${draft.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(draft.entryIds, `${draft.source} / ${draft.title} query를 선택했습니다.`)}
+                                                    className="mt-4 rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                >
+                                                    action draft 선택
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                    {searchLearningRewriteSourceActionDrafts.length === 0 && (
+                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-3">
+                                            아직 source action draft가 없습니다.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
