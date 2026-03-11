@@ -10,6 +10,7 @@ import {
     seedSearchLearningEntries,
     loadSearchLearningQueue,
 } from '../lib/search/queryLearning.ts';
+import { buildSearchLearningImpactSummary } from '../lib/search/searchLearningImpact.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -148,6 +149,91 @@ test('approval baseline stays fixed while post-approval observations accumulate'
     assert.equal(approvedEntry?.approvalBaseline?.occurrenceCount, 1);
     assert.equal(approvedEntry?.occurrenceCount, 2);
     assert.equal(approvedEntry?.status, 'approved');
+});
+
+test('search learning impact summary separates improved queries from no-improvement queries', async () => {
+    resetSearchLearningEntries();
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T14:00:00.000Z',
+        effectiveQuery: '운동용 후드',
+        queryIntent: 'fashion',
+        resultQuality: 'weak',
+        exactMatchCount: 0,
+        strongMatchCount: 0,
+        suggestedQueries: ['후드집업'],
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    recordSearchLearningCandidate({
+        query: '등산 바지',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T14:01:00.000Z',
+        effectiveQuery: '등산 바지',
+        queryIntent: 'fashion',
+        resultQuality: 'mixed',
+        exactMatchCount: 0,
+        strongMatchCount: 1,
+        suggestedQueries: ['등산 팬츠'],
+        totalProducts: 4,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const queue = await loadSearchLearningQueue(10);
+    await reviewSearchLearningEntries(queue.entries.map((entry) => entry.id), 'approved', 'admin-user');
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T14:05:00.000Z',
+        effectiveQuery: '운동용 후드집업',
+        queryIntent: 'fashion',
+        resultQuality: 'mixed',
+        exactMatchCount: 2,
+        strongMatchCount: 4,
+        suggestedQueries: ['후드집업'],
+        totalProducts: 18,
+        directSourceCount: 1,
+        fallbackSourceCount: 0,
+        sources: [],
+    });
+
+    recordSearchLearningCandidate({
+        query: '등산 바지',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T14:06:00.000Z',
+        effectiveQuery: '등산 팬츠',
+        queryIntent: 'fashion',
+        resultQuality: 'mixed',
+        exactMatchCount: 0,
+        strongMatchCount: 1,
+        suggestedQueries: ['등산 팬츠'],
+        totalProducts: 3,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const updated = await loadSearchLearningQueue(10);
+    const summary = buildSearchLearningImpactSummary(updated.entries);
+
+    assert.equal(summary.approvedTracked, 2);
+    assert.equal(summary.improved, 1);
+    assert.equal(summary.noImprovement, 1);
+    assert.equal(summary.awaitingSamples, 0);
+    assert.equal(summary.topImproved[0]?.query, '운동용 후드');
+    assert.equal(summary.topNeedsAttention[0]?.query, '등산 바지');
 });
 
 test('bulk suggestion generation attaches AI or heuristic suggestions to selected queue entries', async () => {

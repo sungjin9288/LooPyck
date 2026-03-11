@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { DEFAULT_ALERT_TUNING_CONFIG, type AlertBehaviorMode, type AlertTuningConfig } from '@/lib/favorites/alertPersonalization';
 import { buildAlertRolloutRecommendations, buildAlertTuningSuggestions } from '@/lib/favorites/alertRecommendations';
+import { buildSearchLearningImpact, buildSearchLearningImpactSummary } from '@/lib/search/searchLearningImpact';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -548,31 +549,6 @@ function formatPercent(value: number | null): string {
     }
 
     return `${Math.round(value * 100)}%`;
-}
-
-function buildSearchLearningImpact(entry: SearchLearningEntry): {
-    postApprovalSamples: number;
-    beforeLowFitRate: number | null;
-    afterLowFitRate: number | null;
-    beforeZeroRate: number | null;
-    afterZeroRate: number | null;
-} | null {
-    const baseline = entry.approvalBaseline;
-    if (!baseline) {
-        return null;
-    }
-
-    const postApprovalSamples = Math.max(entry.occurrenceCount - baseline.occurrenceCount, 0);
-    const postApprovalLowFit = Math.max(entry.lowFitCount - baseline.lowFitCount, 0);
-    const postApprovalZero = Math.max(entry.zeroResultCount - baseline.zeroResultCount, 0);
-
-    return {
-        postApprovalSamples,
-        beforeLowFitRate: baseline.occurrenceCount > 0 ? baseline.lowFitCount / baseline.occurrenceCount : null,
-        afterLowFitRate: postApprovalSamples > 0 ? postApprovalLowFit / postApprovalSamples : null,
-        beforeZeroRate: baseline.occurrenceCount > 0 ? baseline.zeroResultCount / baseline.occurrenceCount : null,
-        afterZeroRate: postApprovalSamples > 0 ? postApprovalZero / postApprovalSamples : null,
-    };
 }
 
 function formatTime(value: string | null | undefined): string {
@@ -1201,6 +1177,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const summary = data?.summary;
     const searchLearning = data?.searchLearning;
     const searchLearningEntries = searchLearning?.entries || [];
+    const searchLearningImpactSummary = buildSearchLearningImpactSummary(searchLearningEntries);
     const totalSources = summary?.sources.length || 0;
     const directSources = summary?.sources.filter((entry) => entry.collectionMode === 'direct').length || 0;
     const fallbackSources = summary?.sources.filter((entry) => entry.fallbackHits > 0).length || 0;
@@ -3613,6 +3590,140 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                         현재 curated 검색어 평가셋은 모두 커버되고 있습니다.
                                     </div>
                                 )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Impact</h2>
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        승인된 학습 query가 실제로 low-fit/0건 비율을 얼마나 줄였는지 요약합니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        tracked {searchLearningImpactSummary.approvedTracked}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+                                        improved {searchLearningImpactSummary.improved}
+                                    </span>
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-200">
+                                        needs attention {searchLearningImpactSummary.noImprovement}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Approved Tracked</p>
+                                    <p className="mt-3 text-3xl font-black text-white">{searchLearningImpactSummary.approvedTracked}</p>
+                                    <p className="mt-1 text-xs text-slate-400">baseline이 있는 승인 query</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Improved Queries</p>
+                                    <p className="mt-3 text-3xl font-black text-emerald-300">{searchLearningImpactSummary.improved}</p>
+                                    <p className="mt-1 text-xs text-slate-400">
+                                        measured {searchLearningImpactSummary.measured} · success {Math.round(searchLearningImpactSummary.improvedRate * 100)}%
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">No Improvement</p>
+                                    <p className="mt-3 text-3xl font-black text-rose-300">{searchLearningImpactSummary.noImprovement}</p>
+                                    <p className="mt-1 text-xs text-slate-400">
+                                        unchanged {searchLearningImpactSummary.unchanged} · regressed {searchLearningImpactSummary.regressed}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Awaiting Samples</p>
+                                    <p className="mt-3 text-3xl font-black text-amber-300">{searchLearningImpactSummary.awaitingSamples}</p>
+                                    <p className="mt-1 text-xs text-slate-400">승인 후 새 관측이 아직 없는 query</p>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <h3 className="text-sm font-semibold text-white">Improved Since Approval</h3>
+                                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-200">
+                                            top {searchLearningImpactSummary.topImproved.length}
+                                        </span>
+                                    </div>
+                                    <div className="mt-4 space-y-3">
+                                        {searchLearningImpactSummary.topImproved.map((impact) => (
+                                            <div key={`improved_${impact.entryId}`} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-white">{impact.query}</p>
+                                                        <p className="mt-1 text-xs text-slate-500">since {formatTime(impact.approvedAt)} · new samples {impact.postApprovalSamples}</p>
+                                                    </div>
+                                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-200">
+                                                        improved
+                                                    </span>
+                                                </div>
+                                                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Low-fit</p>
+                                                        <p className="mt-2 text-sm font-semibold text-slate-100">
+                                                            {formatPercent(impact.beforeLowFitRate)} → {formatPercent(impact.afterLowFitRate)}
+                                                        </p>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Zero-result</p>
+                                                        <p className="mt-2 text-sm font-semibold text-slate-100">
+                                                            {formatPercent(impact.beforeZeroRate)} → {formatPercent(impact.afterZeroRate)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {searchLearningImpactSummary.topImproved.length === 0 && (
+                                            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500">
+                                                아직 승인 후 개선이 확인된 query가 없습니다.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <h3 className="text-sm font-semibold text-white">Still Needs Tuning</h3>
+                                        <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[10px] font-bold text-rose-200">
+                                            top {searchLearningImpactSummary.topNeedsAttention.length}
+                                        </span>
+                                    </div>
+                                    <div className="mt-4 space-y-3">
+                                        {searchLearningImpactSummary.topNeedsAttention.map((impact) => (
+                                            <div key={`attention_${impact.entryId}`} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-white">{impact.query}</p>
+                                                        <p className="mt-1 text-xs text-slate-500">since {formatTime(impact.approvedAt)} · new samples {impact.postApprovalSamples}</p>
+                                                    </div>
+                                                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${impact.outcome === 'regressed' ? 'bg-rose-500/15 text-rose-200' : 'bg-amber-500/15 text-amber-200'}`}>
+                                                        {impact.outcome === 'regressed' ? 'regressed' : 'unchanged'}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Low-fit</p>
+                                                        <p className="mt-2 text-sm font-semibold text-slate-100">
+                                                            {formatPercent(impact.beforeLowFitRate)} → {formatPercent(impact.afterLowFitRate)}
+                                                        </p>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Zero-result</p>
+                                                        <p className="mt-2 text-sm font-semibold text-slate-100">
+                                                            {formatPercent(impact.beforeZeroRate)} → {formatPercent(impact.afterZeroRate)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {searchLearningImpactSummary.topNeedsAttention.length === 0 && (
+                                            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500">
+                                                승인 후에도 계속 개선이 없는 query는 아직 없습니다.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </section>
 
