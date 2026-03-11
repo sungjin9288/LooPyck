@@ -1650,7 +1650,25 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             return;
         }
 
-        setProcessingSearchLearningId('bulk_generate');
+        await handleBulkGenerateSearchLearningSuggestionsForIds(
+            selectedSearchLearningIds,
+            'bulk_generate',
+            (count) => `${count}개의 학습 query에 AI 제안을 생성했습니다.`,
+            '검색 학습 AI 제안을 일괄 생성하지 못했습니다.'
+        );
+    }
+
+    async function handleBulkGenerateSearchLearningSuggestionsForIds(
+        entryIds: string[],
+        processingKey: string,
+        successMessage: (count: number) => string,
+        fallbackErrorMessage: string
+    ) {
+        if (!user || entryIds.length === 0) {
+            return;
+        }
+
+        setProcessingSearchLearningId(processingKey);
         setSearchLearningMessage(null);
         try {
             const token = await user.getIdToken();
@@ -1662,12 +1680,12 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                 },
                 body: JSON.stringify({
                     action: 'bulk_generate',
-                    entryIds: selectedSearchLearningIds,
+                    entryIds,
                 }),
             });
             const payload = await response.json();
             if (!response.ok) {
-                throw new Error(payload.error || '검색 학습 AI 제안을 일괄 생성하지 못했습니다.');
+                throw new Error(payload.error || fallbackErrorMessage);
             }
 
             const updatedEntries = Array.isArray(payload.entries) ? payload.entries as SearchLearningEntry[] : [];
@@ -1686,9 +1704,9 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                     },
                 };
             });
-            setSearchLearningMessage(`${updatedEntries.length}개의 학습 query에 AI 제안을 생성했습니다.`);
+            setSearchLearningMessage(successMessage(updatedEntries.length));
         } catch (bulkError) {
-            setSearchLearningMessage(bulkError instanceof Error ? bulkError.message : '검색 학습 AI 제안을 일괄 생성하지 못했습니다.');
+            setSearchLearningMessage(bulkError instanceof Error ? bulkError.message : fallbackErrorMessage);
         } finally {
             setProcessingSearchLearningId(null);
         }
@@ -1782,6 +1800,24 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         selectSearchLearningEntries(
             searchLearningImpactSummary.topAwaitingSamples.map((impact) => impact.entryId),
             `${searchLearningImpactSummary.topAwaitingSamples.length}개의 샘플 대기 query를 선택했습니다.`
+        );
+    }
+
+    async function handleGenerateImpactNoImprovementSuggestions() {
+        await handleBulkGenerateSearchLearningSuggestionsForIds(
+            searchLearningImpactSummary.topNeedsAttention.map((impact) => impact.entryId),
+            'impact_no_improvement_generate',
+            (count) => `${count}개의 개선 없음 query에 재학습 AI 제안을 생성했습니다.`,
+            '개선 없음 query 재학습 AI 제안을 생성하지 못했습니다.'
+        );
+    }
+
+    async function handleGenerateImpactAwaitingSuggestions() {
+        await handleBulkGenerateSearchLearningSuggestionsForIds(
+            searchLearningImpactSummary.topAwaitingSamples.map((impact) => impact.entryId),
+            'impact_awaiting_generate',
+            (count) => `${count}개의 샘플 대기 query에 AI 제안을 생성했습니다.`,
+            '샘플 대기 query AI 제안을 생성하지 못했습니다.'
         );
     }
 
@@ -3690,6 +3726,26 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     개선 query 선택 ({searchLearningImpactSummary.topImproved.length})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleGenerateImpactNoImprovementSuggestions}
+                                    disabled={searchLearningImpactSummary.topNeedsAttention.length === 0 || processingSearchLearningId === 'impact_no_improvement_generate'}
+                                    className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs font-bold text-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {processingSearchLearningId === 'impact_no_improvement_generate'
+                                        ? '재학습 제안 생성 중...'
+                                        : `개선 없음 AI 제안 (${searchLearningImpactSummary.topNeedsAttention.length})`}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleGenerateImpactAwaitingSuggestions}
+                                    disabled={searchLearningImpactSummary.topAwaitingSamples.length === 0 || processingSearchLearningId === 'impact_awaiting_generate'}
+                                    className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-xs font-bold text-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {processingSearchLearningId === 'impact_awaiting_generate'
+                                        ? '샘플 대기 제안 생성 중...'
+                                        : `샘플 대기 AI 제안 (${searchLearningImpactSummary.topAwaitingSamples.length})`}
                                 </button>
                             </div>
                             <div className="mt-4 grid gap-4 xl:grid-cols-2">
