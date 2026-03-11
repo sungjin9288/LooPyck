@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { DEFAULT_ALERT_TUNING_CONFIG, type AlertBehaviorMode, type AlertTuningConfig } from '@/lib/favorites/alertPersonalization';
 import { buildAlertRolloutRecommendations, buildAlertTuningSuggestions } from '@/lib/favorites/alertRecommendations';
-import { buildSearchLearningImpact, buildSearchLearningImpactSummary } from '@/lib/search/searchLearningImpact';
+import { buildSearchLearningImpact, buildSearchLearningImpactClusterSummaries, buildSearchLearningImpactSummary } from '@/lib/search/searchLearningImpact';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1178,6 +1178,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const searchLearning = data?.searchLearning;
     const searchLearningEntries = searchLearning?.entries || [];
     const searchLearningImpactSummary = buildSearchLearningImpactSummary(searchLearningEntries);
+    const searchLearningImpactClusters = buildSearchLearningImpactClusterSummaries(searchLearningEntries).slice(0, 6);
     const totalSources = summary?.sources.length || 0;
     const directSources = summary?.sources.filter((entry) => entry.collectionMode === 'direct').length || 0;
     const fallbackSources = summary?.sources.filter((entry) => entry.fallbackHits > 0).length || 0;
@@ -1800,6 +1801,13 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         selectSearchLearningEntries(
             searchLearningImpactSummary.topAwaitingSamples.map((impact) => impact.entryId),
             `${searchLearningImpactSummary.topAwaitingSamples.length}개의 샘플 대기 query를 선택했습니다.`
+        );
+    }
+
+    function selectImpactClusterEntries(entryIds: string[], clusterLabel: string) {
+        selectSearchLearningEntries(
+            entryIds,
+            `${clusterLabel} 클러스터의 ${entryIds.length}개 query를 선택했습니다.`
         );
     }
 
@@ -3851,6 +3859,61 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     </div>
                                 </div>
                             )}
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <h3 className="text-sm font-semibold text-white">Semantic Cluster Triage</h3>
+                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                        top {searchLearningImpactClusters.length}
+                                    </span>
+                                </div>
+                                <div className="mt-4 grid gap-3 xl:grid-cols-3">
+                                    {searchLearningImpactClusters.map((cluster) => (
+                                        <div key={cluster.clusterId} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-sm font-semibold text-white">{cluster.clusterLabel}</p>
+                                                    <p className="mt-1 text-xs text-slate-500">
+                                                        queries {cluster.queryCount} · measured {cluster.measured}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectImpactClusterEntries(cluster.entryIds, cluster.clusterLabel)}
+                                                    className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200"
+                                                >
+                                                    선택
+                                                </button>
+                                            </div>
+                                            <div className="mt-3 grid grid-cols-2 gap-3">
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Improved</p>
+                                                    <p className="mt-2 text-lg font-black text-emerald-300">{cluster.improved}</p>
+                                                </div>
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Needs Attention</p>
+                                                    <p className="mt-2 text-lg font-black text-rose-300">{cluster.noImprovement}</p>
+                                                </div>
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Awaiting</p>
+                                                    <p className="mt-2 text-lg font-black text-amber-300">{cluster.awaitingSamples}</p>
+                                                </div>
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Improved Rate</p>
+                                                    <p className="mt-2 text-lg font-black text-sky-300">{Math.round(cluster.improvedRate * 100)}%</p>
+                                                </div>
+                                            </div>
+                                            <p className="mt-3 text-xs text-slate-500">
+                                                대표 query: {cluster.topQuery || '-'}
+                                            </p>
+                                        </div>
+                                    ))}
+                                    {searchLearningImpactClusters.length === 0 && (
+                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-3">
+                                            semantic cluster 기준으로 집계할 승인 query가 아직 없습니다.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </section>
 
                         <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">

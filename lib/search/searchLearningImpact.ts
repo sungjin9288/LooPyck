@@ -1,3 +1,5 @@
+import { getSemanticFashionClusterLabel, resolveSemanticFashionExpansion } from './fashionOntology.ts';
+
 export type SearchLearningImpactBaseline = {
     approvedAt: string;
     occurrenceCount: number;
@@ -44,6 +46,19 @@ export type SearchLearningImpactSummary = {
     topAwaitingSamples: SearchLearningImpactMetrics[];
 };
 
+export type SearchLearningImpactClusterSummary = {
+    clusterId: string;
+    clusterLabel: string;
+    queryCount: number;
+    measured: number;
+    improved: number;
+    noImprovement: number;
+    awaitingSamples: number;
+    improvedRate: number;
+    entryIds: string[];
+    topQuery: string | null;
+};
+
 function rate(count: number, total: number): number | null {
     if (total <= 0) {
         return null;
@@ -58,6 +73,30 @@ function numericDelta(before: number | null, after: number | null): number {
     }
 
     return before - after;
+}
+
+function resolveImpactCluster(entry: Pick<SearchLearningImpactEntryLike, 'query'>): { clusterId: string; clusterLabel: string } {
+    const semantic = resolveSemanticFashionExpansion(entry.query);
+    const primaryClusterId = semantic.matchedClusterIds[0];
+    if (primaryClusterId) {
+        return {
+            clusterId: primaryClusterId,
+            clusterLabel: getSemanticFashionClusterLabel(primaryClusterId),
+        };
+    }
+
+    const primaryCategory = semantic.categories[0];
+    if (primaryCategory) {
+        return {
+            clusterId: `category:${primaryCategory}`,
+            clusterLabel: primaryCategory,
+        };
+    }
+
+    return {
+        clusterId: 'other',
+        clusterLabel: '기타 패션 검색어',
+    };
 }
 
 export function buildSearchLearningImpact(entry: SearchLearningImpactEntryLike): SearchLearningImpactMetrics | null {
@@ -143,4 +182,62 @@ export function buildSearchLearningImpactSummary(entries: SearchLearningImpactEn
             .sort((left, right) => right.approvedAt.localeCompare(left.approvedAt))
             .slice(0, 5),
     };
+}
+
+export function buildSearchLearningImpactClusterSummaries(entries: SearchLearningImpactEntryLike[]): SearchLearningImpactClusterSummary[] {
+    const impacts = entries
+        .map((entry) => buildSearchLearningImpact(entry))
+        .filter((impact): impact is SearchLearningImpactMetrics => Boolean(impact));
+
+    const clusters = new Map<string, SearchLearningImpactClusterSummary>();
+
+    impacts.forEach((impact) => {
+        const { clusterId, clusterLabel } = resolveImpactCluster({ query: impact.query });
+        const current = clusters.get(clusterId) || {
+            clusterId,
+            clusterLabel,
+            queryCount: 0,
+            measured: 0,
+            improved: 0,
+            noImprovement: 0,
+            awaitingSamples: 0,
+            improvedRate: 0,
+            entryIds: [],
+            topQuery: null,
+        };
+
+        current.queryCount += 1;
+        current.entryIds = Array.from(new Set([...current.entryIds, impact.entryId]));
+        if (impact.outcome === 'awaiting_samples') {
+            current.awaitingSamples += 1;
+        } else {
+            current.measured += 1;
+            if (impact.outcome === 'improved') {
+                current.improved += 1;
+            } else {
+                current.noImprovement += 1;
+            }
+        }
+
+        if (!current.topQuery || impact.postApprovalSamples > 0) {
+            current.topQuery = impact.query;
+        }
+
+        clusters.set(clusterId, current);
+    });
+
+    return Array.from(clusters.values())
+        .map((cluster) => ({
+            ...cluster,
+            improvedRate: cluster.measured > 0 ? cluster.improved / cluster.measured : 0,
+        }))
+        .sort((left, right) => {
+            if (right.noImprovement !== left.noImprovement) {
+                return right.noImprovement - left.noImprovement;
+            }
+            if (right.awaitingSamples !== left.awaitingSamples) {
+                return right.awaitingSamples - left.awaitingSamples;
+            }
+            return right.queryCount - left.queryCount;
+        });
 }

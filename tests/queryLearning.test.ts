@@ -10,7 +10,7 @@ import {
     seedSearchLearningEntries,
     loadSearchLearningQueue,
 } from '../lib/search/queryLearning.ts';
-import { buildSearchLearningImpactSummary } from '../lib/search/searchLearningImpact.ts';
+import { buildSearchLearningImpactClusterSummaries, buildSearchLearningImpactSummary } from '../lib/search/searchLearningImpact.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -267,6 +267,75 @@ test('search learning impact summary tracks approved queries waiting for new sam
     assert.equal(summary.awaitingSamples, 1);
     assert.equal(summary.measured, 0);
     assert.equal(summary.topAwaitingSamples[0]?.query, '러닝 자켓');
+});
+
+test('search learning impact cluster summaries group related fashion queries', async () => {
+    resetSearchLearningEntries();
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T16:00:00.000Z',
+        effectiveQuery: '운동용 후드',
+        queryIntent: 'fashion',
+        resultQuality: 'weak',
+        exactMatchCount: 0,
+        strongMatchCount: 0,
+        suggestedQueries: ['후드집업'],
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    recordSearchLearningCandidate({
+        query: '남자 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T16:01:00.000Z',
+        effectiveQuery: '남자 후드',
+        queryIntent: 'fashion',
+        resultQuality: 'weak',
+        exactMatchCount: 0,
+        strongMatchCount: 0,
+        suggestedQueries: ['남성 후드집업'],
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const queue = await loadSearchLearningQueue(10);
+    await reviewSearchLearningEntries(queue.entries.map((entry) => entry.id), 'approved', 'admin-user');
+
+    recordSearchLearningCandidate({
+        query: '운동용 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T16:05:00.000Z',
+        effectiveQuery: '운동용 후드집업',
+        queryIntent: 'fashion',
+        resultQuality: 'mixed',
+        exactMatchCount: 1,
+        strongMatchCount: 2,
+        suggestedQueries: ['후드집업'],
+        totalProducts: 12,
+        directSourceCount: 1,
+        fallbackSourceCount: 0,
+        sources: [],
+    });
+
+    const updated = await loadSearchLearningQueue(10);
+    const clusters = buildSearchLearningImpactClusterSummaries(updated.entries);
+    const hoodieCluster = clusters.find((cluster) => cluster.clusterId === 'hoodie_training');
+
+    assert.ok(hoodieCluster);
+    assert.equal(hoodieCluster?.clusterLabel, '후드/후드집업');
+    assert.equal(hoodieCluster?.queryCount, 2);
+    assert.equal(hoodieCluster?.improved, 1);
+    assert.equal(hoodieCluster?.awaitingSamples, 1);
+    assert.equal(hoodieCluster?.entryIds.length, 2);
 });
 
 test('bulk suggestion generation attaches AI or heuristic suggestions to selected queue entries', async () => {

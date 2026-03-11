@@ -53,6 +53,25 @@ export const SEMANTIC_FASHION_CLUSTERS: SemanticFashionCluster[] = [
     },
 ];
 
+export function getSemanticFashionClusterLabel(clusterId: string): string {
+    switch (clusterId) {
+        case 'hoodie_training':
+            return '후드/후드집업';
+        case 'training_pants':
+            return '트레이닝/조거 팬츠';
+        case 'windbreaker':
+            return '바람막이/러닝 자켓';
+        case 'wide_pants':
+            return '와이드 팬츠';
+        case 'fleece':
+            return '플리스';
+        case 'running_shoes':
+            return '러닝화/스니커즈';
+        default:
+            return clusterId;
+    }
+}
+
 function normalizeOntologyText(text: string): string {
     return normalizeTitle(text)
         .toLowerCase()
