@@ -1201,6 +1201,9 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const summary = data?.summary;
     const searchLearning = data?.searchLearning;
     const searchLearningEntries = searchLearning?.entries || [];
+    const searchLearningDraftEntries = searchLearningEntries.filter((entry) =>
+        entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
+    );
     const searchLearningImpactSummary = buildSearchLearningImpactSummary(searchLearningEntries);
     const searchLearningImpactClusterRollup = buildSearchLearningImpactClusterRollup(searchLearningEntries);
     const searchLearningImpactClusters = buildSearchLearningImpactClusterSummaries(searchLearningEntries).slice(0, 6);
@@ -1849,6 +1852,11 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             .filter((entry) => entry.status === 'pending')
             .map((entry) => entry.id)
             .slice(0, 24));
+    }
+
+    function selectDraftSearchLearningEntries() {
+        setSelectedSearchLearningIds(searchLearningDraftEntries.map((entry) => entry.id).slice(0, 24));
+        setSearchLearningMessage(`${Math.min(searchLearningDraftEntries.length, 24)}개의 AI draft query를 선택했습니다.`);
     }
 
     function selectSearchLearningEntries(entryIds: string[], message: string) {
@@ -4284,6 +4292,9 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-200">
                                         approved {searchLearning?.summary.approved ?? 0}
                                     </span>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-200">
+                                        drafts {searchLearningDraftEntries.length}
+                                    </span>
                                     <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-200">
                                         zero-result {searchLearning?.summary.zeroResult ?? 0}
                                     </span>
@@ -4301,6 +4312,14 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     className="rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-200"
                                 >
                                     pending 전체 선택
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={selectDraftSearchLearningEntries}
+                                    disabled={searchLearningDraftEntries.length === 0}
+                                    className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs font-bold text-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    draft 전체 선택 ({searchLearningDraftEntries.length})
                                 </button>
                                 <button
                                     type="button"
@@ -4333,6 +4352,82 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 >
                                     {processingSearchLearningId === 'bulk_ignore' ? '보류 중...' : `선택 보류 (${selectedSearchLearningIds.length})`}
                                 </button>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <h3 className="text-sm font-semibold text-white">Draft Review Queue</h3>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-[10px] font-bold text-sky-200">
+                                        top {Math.min(searchLearningDraftEntries.length, 6)}
+                                    </span>
+                                </div>
+                                <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                    {searchLearningDraftEntries.slice(0, 6).map((entry) => (
+                                        <div key={`draft_${entry.id}`} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="flex items-start gap-3">
+                                                    <label className="mt-0.5 flex items-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedSearchLearningIds.includes(entry.id)}
+                                                            onChange={() => toggleSearchLearningSelection(entry.id)}
+                                                            className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-sky-400 focus:ring-sky-400"
+                                                        />
+                                                    </label>
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-white">{entry.query}</p>
+                                                        <p className="mt-1 text-xs text-slate-500">
+                                                            fit {entry.lastResultQuality || '-'} · products {entry.lastTotalProducts} · seen {formatTime(entry.lastSeenAt)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-[10px] font-bold text-sky-200">
+                                                    draft
+                                                </span>
+                                            </div>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {entry.aiSuggestion?.suggestedQueries.map((query) => (
+                                                    <span key={`draft_${entry.id}_${query}`} className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-[11px] text-sky-100">
+                                                        {query}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            {entry.aiSuggestion?.rationale && (
+                                                <p className="mt-3 text-xs leading-6 text-slate-400">{entry.aiSuggestion.rationale}</p>
+                                            )}
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleReviewSearchLearningEntry(entry, 'approve')}
+                                                    disabled={processingSearchLearningId === entry.id}
+                                                    className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    승인
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleGenerateSearchLearningSuggestion(entry.id)}
+                                                    disabled={processingSearchLearningId === entry.id}
+                                                    className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs font-bold text-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    재생성
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleReviewSearchLearningEntry(entry, 'ignore')}
+                                                    disabled={processingSearchLearningId === entry.id}
+                                                    className="rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300 disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    보류
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {searchLearningDraftEntries.length === 0 && (
+                                        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-2">
+                                            아직 AI draft가 생성된 pending query가 없습니다.
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             <div className="mt-4 grid gap-4 xl:grid-cols-2">
                                 {searchLearningEntries.slice(0, 8).map((entry) => {
