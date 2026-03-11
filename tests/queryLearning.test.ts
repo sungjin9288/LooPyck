@@ -234,6 +234,39 @@ test('search learning impact summary separates improved queries from no-improvem
     assert.equal(summary.awaitingSamples, 0);
     assert.equal(summary.topImproved[0]?.query, '운동용 후드');
     assert.equal(summary.topNeedsAttention[0]?.query, '등산 바지');
+    assert.equal(summary.topAwaitingSamples.length, 0);
+});
+
+test('search learning impact summary tracks approved queries waiting for new samples', async () => {
+    resetSearchLearningEntries();
+
+    recordSearchLearningCandidate({
+        query: '러닝 자켓',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-03-10T15:00:00.000Z',
+        effectiveQuery: '러닝 자켓',
+        queryIntent: 'fashion',
+        resultQuality: 'weak',
+        exactMatchCount: 0,
+        strongMatchCount: 0,
+        suggestedQueries: ['러닝 재킷'],
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [],
+    });
+
+    const queue = await loadSearchLearningQueue(10);
+    await reviewSearchLearningEntries(queue.entries.map((entry) => entry.id), 'approved', 'admin-user');
+
+    const updated = await loadSearchLearningQueue(10);
+    const summary = buildSearchLearningImpactSummary(updated.entries);
+
+    assert.equal(summary.approvedTracked, 1);
+    assert.equal(summary.awaitingSamples, 1);
+    assert.equal(summary.measured, 0);
+    assert.equal(summary.topAwaitingSamples[0]?.query, '러닝 자켓');
 });
 
 test('bulk suggestion generation attaches AI or heuristic suggestions to selected queue entries', async () => {

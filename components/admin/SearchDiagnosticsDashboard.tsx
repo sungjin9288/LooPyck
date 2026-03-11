@@ -1758,6 +1758,33 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             .slice(0, 24));
     }
 
+    function selectSearchLearningEntries(entryIds: string[], message: string) {
+        const nextIds = Array.from(new Set(entryIds.filter(Boolean))).slice(0, 24);
+        setSelectedSearchLearningIds(nextIds);
+        setSearchLearningMessage(message);
+    }
+
+    function selectImpactNoImprovementEntries() {
+        selectSearchLearningEntries(
+            searchLearningImpactSummary.topNeedsAttention.map((impact) => impact.entryId),
+            `${searchLearningImpactSummary.topNeedsAttention.length}개의 개선 없음 query를 선택했습니다.`
+        );
+    }
+
+    function selectImpactImprovedEntries() {
+        selectSearchLearningEntries(
+            searchLearningImpactSummary.topImproved.map((impact) => impact.entryId),
+            `${searchLearningImpactSummary.topImproved.length}개의 개선 query를 선택했습니다.`
+        );
+    }
+
+    function selectImpactAwaitingEntries() {
+        selectSearchLearningEntries(
+            searchLearningImpactSummary.topAwaitingSamples.map((impact) => impact.entryId),
+            `${searchLearningImpactSummary.topAwaitingSamples.length}개의 샘플 대기 query를 선택했습니다.`
+        );
+    }
+
     function clearSearchLearningSelection() {
         setSelectedSearchLearningIds([]);
     }
@@ -3639,6 +3666,32 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     <p className="mt-1 text-xs text-slate-400">승인 후 새 관측이 아직 없는 query</p>
                                 </div>
                             </div>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    onClick={selectImpactNoImprovementEntries}
+                                    disabled={searchLearningImpactSummary.topNeedsAttention.length === 0}
+                                    className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    개선 없음 선택 ({searchLearningImpactSummary.topNeedsAttention.length})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={selectImpactAwaitingEntries}
+                                    disabled={searchLearningImpactSummary.topAwaitingSamples.length === 0}
+                                    className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    샘플 대기 선택 ({searchLearningImpactSummary.topAwaitingSamples.length})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={selectImpactImprovedEntries}
+                                    disabled={searchLearningImpactSummary.topImproved.length === 0}
+                                    className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    개선 query 선택 ({searchLearningImpactSummary.topImproved.length})
+                                </button>
+                            </div>
                             <div className="mt-4 grid gap-4 xl:grid-cols-2">
                                 <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
                                     <div className="flex items-center justify-between gap-3">
@@ -3725,6 +3778,23 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     </div>
                                 </div>
                             </div>
+                            {searchLearningImpactSummary.topAwaitingSamples.length > 0 && (
+                                <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <h3 className="text-sm font-semibold text-white">Awaiting Post-Approval Samples</h3>
+                                        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-200">
+                                            top {searchLearningImpactSummary.topAwaitingSamples.length}
+                                        </span>
+                                    </div>
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        {searchLearningImpactSummary.topAwaitingSamples.map((impact) => (
+                                            <span key={`awaiting_${impact.entryId}`} className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                                                {impact.query}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </section>
 
                         <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">

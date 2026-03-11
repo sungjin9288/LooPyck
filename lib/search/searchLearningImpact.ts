@@ -41,6 +41,7 @@ export type SearchLearningImpactSummary = {
     improvedRate: number;
     topImproved: SearchLearningImpactMetrics[];
     topNeedsAttention: SearchLearningImpactMetrics[];
+    topAwaitingSamples: SearchLearningImpactMetrics[];
 };
 
 function rate(count: number, total: number): number | null {
@@ -137,6 +138,9 @@ export function buildSearchLearningImpactSummary(entries: SearchLearningImpactEn
             .slice(0, 5),
         topNeedsAttention: noImprovement
             .sort((left, right) => left.improvementScore - right.improvementScore)
+            .slice(0, 5),
+        topAwaitingSamples: awaitingSamples
+            .sort((left, right) => right.approvedAt.localeCompare(left.approvedAt))
             .slice(0, 5),
     };
 }
