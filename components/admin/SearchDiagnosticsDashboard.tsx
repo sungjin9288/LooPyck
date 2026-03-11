@@ -405,6 +405,25 @@ type DiagnosticsResponse = {
             globalMatched: string[];
             globalMissing: string[];
         }>;
+        clusters: Array<{
+            clusterId: string;
+            clusterLabel: string;
+            totalQueries: number;
+            globalTargetQueries: number;
+            naverCovered: number;
+            globalCovered: number;
+            fullyCovered: number;
+            naverCoverageRate: number;
+            globalCoverageRate: number;
+            fullCoverageRate: number;
+            uncoveredQueries: Array<{
+                query: string;
+                naverMatched: string[];
+                naverMissing: string[];
+                globalMatched: string[];
+                globalMissing: string[];
+            }>;
+        }>;
     };
     pdp: {
         summary: {
@@ -1757,6 +1776,55 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             setSearchLearningMessage(`${updatedEntries.length}개의 미커버 query를 학습 큐에 추가했습니다.`);
         } catch (seedError) {
             setSearchLearningMessage(seedError instanceof Error ? seedError.message : '미커버 query를 학습 큐에 추가하지 못했습니다.');
+        } finally {
+            setProcessingSearchLearningId(null);
+        }
+    }
+
+    async function handleSeedCoverageClusterQueries(clusterId: string, clusterLabel: string, queries: string[]) {
+        if (!user || queries.length === 0) {
+            return;
+        }
+
+        setProcessingSearchLearningId(`seed_cluster_${clusterId}`);
+        setSearchLearningMessage(null);
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/search-learning', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'seed_queries',
+                    queries,
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || `${clusterLabel} query를 학습 큐에 추가하지 못했습니다.`);
+            }
+
+            const updatedEntries = Array.isArray(payload.entries) ? payload.entries as SearchLearningEntry[] : [];
+            setData((current) => {
+                if (!current) {
+                    return current;
+                }
+
+                const entries = mergeSearchLearningEntries(current.searchLearning.entries, updatedEntries);
+                return {
+                    ...current,
+                    searchLearning: {
+                        ...current.searchLearning,
+                        entries,
+                        summary: summarizeSearchLearningEntries(entries),
+                    },
+                };
+            });
+            setSearchLearningMessage(`${clusterLabel} 클러스터의 ${updatedEntries.length}개 query를 학습 큐에 추가했습니다.`);
+        } catch (seedError) {
+            setSearchLearningMessage(seedError instanceof Error ? seedError.message : `${clusterLabel} query를 학습 큐에 추가하지 못했습니다.`);
         } finally {
             setProcessingSearchLearningId(null);
         }
@@ -3622,6 +3690,58 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     <p className="mt-1 text-xs text-slate-400">
                                         uncovered curated queries
                                     </p>
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <h3 className="text-sm font-semibold text-white">Semantic Coverage Clusters</h3>
+                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                        top {(data?.searchQualityCoverage.clusters || []).slice(0, 6).length}
+                                    </span>
+                                </div>
+                                <div className="mt-4 grid gap-3 xl:grid-cols-3">
+                                    {(data?.searchQualityCoverage.clusters || []).slice(0, 6).map((cluster) => (
+                                        <div key={cluster.clusterId} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-sm font-semibold text-white">{cluster.clusterLabel}</p>
+                                                    <p className="mt-1 text-xs text-slate-500">
+                                                        total {cluster.totalQueries} · uncovered {cluster.uncoveredQueries.length}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSeedCoverageClusterQueries(cluster.clusterId, cluster.clusterLabel, cluster.uncoveredQueries.map((entry) => entry.query))}
+                                                    disabled={cluster.uncoveredQueries.length === 0 || processingSearchLearningId === `seed_cluster_${cluster.clusterId}`}
+                                                    className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    {processingSearchLearningId === `seed_cluster_${cluster.clusterId}`
+                                                        ? '큐 적재 중...'
+                                                        : `큐 추가 (${cluster.uncoveredQueries.length})`}
+                                                </button>
+                                            </div>
+                                            <div className="mt-3 grid grid-cols-2 gap-3">
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">NAVER</p>
+                                                    <p className="mt-2 text-lg font-black text-emerald-300">{Math.round(cluster.naverCoverageRate * 100)}%</p>
+                                                </div>
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Full</p>
+                                                    <p className="mt-2 text-lg font-black text-violet-300">{Math.round(cluster.fullCoverageRate * 100)}%</p>
+                                                </div>
+                                            </div>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {cluster.uncoveredQueries.slice(0, 3).map((entry) => (
+                                                    <span key={`${cluster.clusterId}_${entry.query}`} className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-100">
+                                                        {entry.query}
+                                                    </span>
+                                                ))}
+                                                {cluster.uncoveredQueries.length === 0 && (
+                                                    <span className="text-xs text-slate-500">현재 uncovered query가 없습니다.</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                             <div className="mt-4 grid gap-4 xl:grid-cols-2">

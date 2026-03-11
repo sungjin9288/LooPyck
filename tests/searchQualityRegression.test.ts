@@ -140,4 +140,10 @@ test('search quality coverage summary reports curated dataset coverage and outst
     assert.ok(summary.naverCoverageRate > 0.8);
     assert.ok(summary.globalCoverageRate > 0.7);
     assert.ok(summary.uncoveredQueries.length >= 0);
+    assert.ok(summary.clusters.length > 0);
+
+    const hoodieCluster = summary.clusters.find((cluster) => cluster.clusterId === 'hoodie_training');
+    assert.ok(hoodieCluster);
+    assert.equal(hoodieCluster.clusterLabel, '후드/후드집업');
+    assert.ok(hoodieCluster.totalQueries >= 2);
 });
