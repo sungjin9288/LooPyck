@@ -62,6 +62,7 @@ import { buildSearchLearningOpsPlaybookOutcomes } from '../lib/search/searchLear
 import { buildSearchLearningOpsPlaybookRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendations.ts';
 import { buildSearchLearningOpsPlaybookRecommendationQueue } from '../lib/search/searchLearningOpsPlaybookRecommendationQueue.ts';
 import { buildSearchLearningOpsPlaybookRecommendationActivity } from '../lib/search/searchLearningOpsPlaybookRecommendationActivity.ts';
+import { buildSearchLearningOpsPlaybookRecommendationOutcomes } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomes.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -2458,6 +2459,100 @@ test('search learning ops playbook recommendation activity tracks review and ret
     assert.equal(activity.uniqueQueries, 3);
     assert.equal(activity.recentRuns[0]?.action, 'retrain_now');
     assert.equal(activity.recentRuns[1]?.action, 'review_now');
+});
+
+test('search learning ops playbook recommendation outcomes classify review and retrain follow-ups', () => {
+    const outcomes = buildSearchLearningOpsPlaybookRecommendationOutcomes(
+        [
+            {
+                id: 'event-1',
+                outcomeId: 'playbook_outcome:ready-review',
+                action: 'review_now',
+                title: 'Recommendation Review Run',
+                description: 'review run',
+                actionLabel: 'review 즉시 승인',
+                priority: 'critical',
+                context: 'ops_playbook_recommendation_review_playbook_outcome:ready-review',
+                count: 2,
+                entryIds: ['entry-1', 'entry-2'],
+                queries: ['운동용 후드', '남자 후드'],
+                actorUid: 'admin-a',
+                createdAt: '2026-03-12T10:00:00.000Z',
+            },
+            {
+                id: 'event-2',
+                outcomeId: 'playbook_outcome:needs-attention',
+                action: 'retrain_now',
+                title: 'Recommendation Retrain Run',
+                description: 'retrain run',
+                actionLabel: '재학습 AI 제안',
+                priority: 'high',
+                context: 'ops_playbook_recommendation_retrain_playbook_outcome:needs-attention',
+                count: 1,
+                entryIds: ['entry-3'],
+                queries: ['트레이닝 팬츠'],
+                actorUid: 'admin-b',
+                createdAt: '2026-03-12T10:05:00.000Z',
+            },
+        ],
+        [
+            {
+                id: 'entry-1',
+                query: '운동용 후드',
+                status: 'approved',
+                aiSuggestion: null,
+                approvalBaseline: {
+                    approvedAt: '2026-03-12T09:00:00.000Z',
+                    occurrenceCount: 2,
+                    lowFitCount: 2,
+                    zeroResultCount: 1,
+                },
+                occurrenceCount: 4,
+                lowFitCount: 2,
+                zeroResultCount: 0,
+            },
+            {
+                id: 'entry-2',
+                query: '남자 후드',
+                status: 'approved',
+                aiSuggestion: null,
+                approvalBaseline: {
+                    approvedAt: '2026-03-12T09:00:00.000Z',
+                    occurrenceCount: 2,
+                    lowFitCount: 2,
+                    zeroResultCount: 1,
+                },
+                occurrenceCount: 2,
+                lowFitCount: 2,
+                zeroResultCount: 1,
+            },
+            {
+                id: 'entry-3',
+                query: '트레이닝 팬츠',
+                status: 'pending',
+                aiSuggestion: {
+                    normalizedQuery: '트레이닝 팬츠',
+                    categoryHint: '트랙 팬츠',
+                    suggestedQueries: ['트랙 팬츠'],
+                    rationale: 'training pants',
+                    model: 'heuristic',
+                    generatedAt: '2026-03-12T10:05:00.000Z',
+                },
+                approvalBaseline: null,
+                occurrenceCount: 1,
+                lowFitCount: 1,
+                zeroResultCount: 1,
+            },
+        ]
+    );
+
+    assert.equal(outcomes.total, 2);
+    assert.equal(outcomes.validated, 0);
+    assert.equal(outcomes.readyReview, 1);
+    assert.equal(outcomes.needsAttention, 0);
+    assert.equal(outcomes.awaitingSamples, 1);
+    assert.equal(outcomes.topAwaitingSamples[0]?.queries[0], '운동용 후드');
+    assert.equal(outcomes.topReadyReview[0]?.queries[0], '트레이닝 팬츠');
 });
 
 test('coverage seed adds missing queries directly into search learning queue', async () => {

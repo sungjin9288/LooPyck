@@ -52,6 +52,7 @@
 - [x] `Search Learning Ops Playbook Recommendations`
 - [x] `Search Learning Ops Playbook Recommendation Queue`
 - [x] `Search Learning Ops Playbook Recommendation Activity`
+- [x] `Search Learning Ops Playbook Recommendation Outcomes`
 
 **[2] Verify**
 - [x] `npm run typecheck`
