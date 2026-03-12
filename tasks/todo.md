@@ -47,6 +47,7 @@
 - [x] `Activity Outcome Follow-up`
 - [x] `Search Learning Ops Center`
 - [x] `Search Learning Ops Playbooks`
+- [x] `Search Learning Ops Playbook Activity`
 
 **[2] Verify**
 - [x] `npm run typecheck`
@@ -55,7 +56,7 @@
 
 **[3] Next**
 - [ ] production redeploy
-- [ ] `/admin`에서 `Search Learning Ops Playbooks` 확인
+- [ ] `/admin`에서 `Search Learning Ops Playbooks` / `Playbook Activity` 확인
 - [ ] 실제 검색 후 playbook 기반 triage 루프 검증
 
 ---
