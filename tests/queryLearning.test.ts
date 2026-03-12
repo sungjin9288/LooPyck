@@ -68,6 +68,7 @@ import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue 
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity.ts';
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes.ts';
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations.ts';
+import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -2951,6 +2952,107 @@ test('search learning ops playbook recommendation outcome recommendation outcome
     assert.equal(recommendations.observe, 1);
     assert.equal(recommendations.topReviewNow[0]?.action, 'review_now');
     assert.equal(recommendations.topRetrainNow[0]?.action, 'retrain_now');
+});
+
+test('search learning ops playbook recommendation outcome recommendation outcome recommendation queue prioritizes execute and review items', () => {
+    const queue = buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue({
+        total: 4,
+        reviewNow: 1,
+        retrainNow: 1,
+        collectSamples: 1,
+        observe: 1,
+        critical: 1,
+        highPriority: 1,
+        topReviewNow: [
+            {
+                id: 'recommendation-1',
+                outcomeId: 'hoodie-review',
+                title: 'Review Recommendation',
+                description: 'review',
+                reason: 'ready review',
+                action: 'review_now',
+                actionLabel: 'review 즉시 승인',
+                priority: 'high',
+                outcomeStatus: 'ready_review',
+                createdAt: '2026-03-12T10:10:00.000Z',
+                entryIds: ['entry-1'],
+                queries: ['운동용 후드'],
+                improvedCount: 0,
+                noImprovementCount: 0,
+                awaitingSamplesCount: 0,
+                readyReviewCount: 1,
+            },
+        ],
+        topRetrainNow: [
+            {
+                id: 'recommendation-2',
+                outcomeId: 'pants-retrain',
+                title: 'Retrain Recommendation',
+                description: 'retrain',
+                reason: 'needs attention',
+                action: 'retrain_now',
+                actionLabel: '재학습 AI 제안',
+                priority: 'critical',
+                outcomeStatus: 'needs_attention',
+                createdAt: '2026-03-12T10:11:00.000Z',
+                entryIds: ['entry-2'],
+                queries: ['트레이닝 팬츠'],
+                improvedCount: 0,
+                noImprovementCount: 2,
+                awaitingSamplesCount: 0,
+                readyReviewCount: 0,
+            },
+        ],
+        topCollectSamples: [
+            {
+                id: 'recommendation-3',
+                outcomeId: 'runner-awaiting',
+                title: 'Collect Samples Recommendation',
+                description: 'awaiting',
+                reason: 'samples',
+                action: 'collect_samples',
+                actionLabel: '표본 수집 대상 선택',
+                priority: 'medium',
+                outcomeStatus: 'awaiting_samples',
+                createdAt: '2026-03-12T10:09:00.000Z',
+                entryIds: ['entry-3'],
+                queries: ['러닝 자켓'],
+                improvedCount: 0,
+                noImprovementCount: 0,
+                awaitingSamplesCount: 1,
+                readyReviewCount: 0,
+            },
+        ],
+        topObserve: [
+            {
+                id: 'recommendation-4',
+                outcomeId: 'validated',
+                title: 'Observe Recommendation',
+                description: 'observe',
+                reason: 'validated',
+                action: 'observe',
+                actionLabel: '개선 query 선택',
+                priority: 'low',
+                outcomeStatus: 'validated',
+                createdAt: '2026-03-12T10:08:00.000Z',
+                entryIds: ['entry-4'],
+                queries: ['와이드 팬츠'],
+                improvedCount: 2,
+                noImprovementCount: 0,
+                awaitingSamplesCount: 0,
+                readyReviewCount: 0,
+            },
+        ],
+    });
+
+    assert.equal(queue.total, 4);
+    assert.equal(queue.executeNow, 1);
+    assert.equal(queue.needsReview, 1);
+    assert.equal(queue.sampleCollection, 1);
+    assert.equal(queue.observe, 1);
+    assert.equal(queue.urgent, 2);
+    assert.equal(queue.topExecuteNow[0]?.queueState, 'execute_now');
+    assert.equal(queue.topNeedsReview[0]?.queueState, 'needs_review');
 });
 
 test('coverage seed adds missing queries directly into search learning queue', async () => {
