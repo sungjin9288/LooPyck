@@ -41,6 +41,10 @@ import {
 } from '@/lib/search/searchLearningRewriteSourceApprovalActivity';
 import { buildSearchLearningActivitySummary } from '@/lib/search/searchLearningActivitySummary';
 import { buildSearchLearningActivityRecommendations } from '@/lib/search/searchLearningActivityRecommendations';
+import {
+    buildSearchLearningActivityOpsQueue,
+    type SearchLearningActivityOpsQueueItem,
+} from '@/lib/search/searchLearningActivityOpsQueue';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1297,6 +1301,10 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningActivity,
         searchLearningEntries
     );
+    const searchLearningActivityOpsQueue = buildSearchLearningActivityOpsQueue(
+        searchLearningActivity,
+        searchLearningEntries
+    );
     const searchLearningDraftEntries = searchLearningEntries.filter((entry) =>
         entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
     );
@@ -2143,6 +2151,31 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             (count) => `${count}개의 샘플 대기 클러스터 query에 AI 제안을 생성했습니다.`,
             '샘플 대기 클러스터 AI 제안을 생성하지 못했습니다.'
         );
+    }
+
+    async function handleActivityOpsQueueItemAction(item: SearchLearningActivityOpsQueueItem) {
+        if (item.action === 'review_pending') {
+            await handleBulkReviewSearchLearningForIds(
+                item.entryIds,
+                'bulk_approve',
+                `activity_ops_review_${item.id}`,
+                (count) => `${count}개의 activity review query를 승인했습니다.`,
+                'activity review query 승인에 실패했습니다.'
+            );
+            return;
+        }
+
+        if (item.action === 'generate_needed') {
+            await handleBulkGenerateSearchLearningSuggestionsForIds(
+                item.entryIds,
+                `activity_ops_generate_${item.id}`,
+                (count) => `${count}개의 activity query에 AI 제안을 생성했습니다.`,
+                'activity query AI 제안 생성에 실패했습니다.'
+            );
+            return;
+        }
+
+        selectSearchLearningEntries(item.entryIds, `${item.title}의 ${item.entryIds.length}개 query를 선택했습니다.`);
     }
 
     function clearSearchLearningSelection() {
@@ -5741,6 +5774,121 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-white">Activity Ops Queue</h3>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            최근 activity 추천을 긴급도 기준으로 다시 정렬해, 바로 생성·승인·표본 수집 액션으로 연결합니다.
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                        top {searchLearningActivityOpsQueue.topItems.length}
+                                    </span>
+                                </div>
+                                <div className="mt-4 grid gap-4 md:grid-cols-4">
+                                    <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose-200">Critical</p>
+                                        <p className="mt-3 text-3xl font-black text-rose-100">{searchLearningActivityOpsQueue.critical}</p>
+                                        <p className="mt-1 text-xs text-rose-100/70">즉시 처리 권장</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-200">High</p>
+                                        <p className="mt-3 text-3xl font-black text-orange-100">{searchLearningActivityOpsQueue.high}</p>
+                                        <p className="mt-1 text-xs text-orange-100/70">반복 실패/반복 생성 대상</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-200">Medium</p>
+                                        <p className="mt-3 text-3xl font-black text-sky-100">{searchLearningActivityOpsQueue.medium}</p>
+                                        <p className="mt-1 text-xs text-sky-100/70">추가 triage 필요</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-700 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Low</p>
+                                        <p className="mt-3 text-3xl font-black text-slate-100">{searchLearningActivityOpsQueue.low}</p>
+                                        <p className="mt-1 text-xs text-slate-500">관찰 위주</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                    {searchLearningActivityOpsQueue.topItems.map((item) => {
+                                        const priorityClasses = item.priority === 'critical'
+                                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                            : item.priority === 'high'
+                                                ? 'border-orange-500/30 bg-orange-500/10 text-orange-100'
+                                                : item.priority === 'medium'
+                                                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                    : 'border-slate-700 bg-slate-950/70 text-slate-300';
+
+                                        return (
+                                            <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${priorityClasses}`}>
+                                                                {item.priority}
+                                                            </span>
+                                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                                score {item.urgencyScore}
+                                                            </span>
+                                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                                {item.action}
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                                        <p className="mt-1 text-xs text-slate-500">
+                                                            {formatTime(item.lastSeenAt)}
+                                                            {item.context ? ` · ${item.context}` : ''}
+                                                        </p>
+                                                    </div>
+                                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                        {item.count}건
+                                                    </span>
+                                                </div>
+                                                <p className="mt-3 text-xs leading-6 text-slate-400">{item.description}</p>
+                                                <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-300">
+                                                    <span className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1">
+                                                        repeated {item.repeatedQueryCount}
+                                                    </span>
+                                                    <span className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1">
+                                                        zero-result {item.zeroResultCount}
+                                                    </span>
+                                                    <span className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1">
+                                                        low-fit {item.lowFitCount}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {item.queries.slice(0, 5).map((query) => (
+                                                        <span key={`${item.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-950/70 px-2 py-1 text-[11px] text-slate-200">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className="mt-4 flex flex-wrap gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleActivityOpsQueueItemAction(item)}
+                                                        disabled={processingSearchLearningId === `activity_ops_review_${item.id}` || processingSearchLearningId === `activity_ops_generate_${item.id}`}
+                                                        className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                                    >
+                                                        {item.actionLabel}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => selectSearchLearningEntries(item.entryIds, `${item.title}의 ${item.entryIds.length}개 query를 선택했습니다.`)}
+                                                        className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                    >
+                                                        queue 선택
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {searchLearningActivityOpsQueue.topItems.length === 0 && (
+                                        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500 xl:col-span-2">
+                                            아직 activity ops queue가 없습니다.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="mt-4 grid gap-4 xl:grid-cols-2">
