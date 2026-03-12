@@ -52,6 +52,10 @@ import {
 } from '@/lib/search/searchLearningOpsCenter';
 import { buildSearchLearningOpsPlaybooks, type SearchLearningOpsPlaybook } from '@/lib/search/searchLearningOpsPlaybooks';
 import { buildSearchLearningOpsPlaybookActivity } from '@/lib/search/searchLearningOpsPlaybookActivity';
+import {
+    buildSearchLearningOpsPlaybookOutcomes,
+    type SearchLearningOpsPlaybookOutcome,
+} from '@/lib/search/searchLearningOpsPlaybookOutcomes';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1323,6 +1327,10 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     );
     const searchLearningOpsPlaybooks = buildSearchLearningOpsPlaybooks(searchLearningOpsCenter);
     const searchLearningOpsPlaybookActivity = buildSearchLearningOpsPlaybookActivity(searchLearningActivity);
+    const searchLearningOpsPlaybookOutcomes = buildSearchLearningOpsPlaybookOutcomes(
+        searchLearningOpsPlaybookActivity.recentRuns,
+        searchLearningEntries
+    );
     const searchLearningDraftEntries = searchLearningEntries.filter((entry) =>
         entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
     );
@@ -2258,6 +2266,36 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         }
 
         selectSearchLearningEntries(playbook.entryIds, `${playbook.title}의 ${playbook.entryIds.length}개 query를 선택했습니다.`);
+    }
+
+    async function handleSearchLearningOpsPlaybookOutcomeAction(outcome: SearchLearningOpsPlaybookOutcome) {
+        if (outcome.status === 'ready_review') {
+            const reviewableIds = outcome.entryIds.filter((entryId) => {
+                const entry = searchLearningEntries.find((candidate) => candidate.id === entryId);
+                return entry?.status === 'pending' && Boolean(entry.aiSuggestion?.suggestedQueries?.length);
+            });
+
+            await handleBulkReviewSearchLearningForIds(
+                reviewableIds,
+                'bulk_approve',
+                `ops_playbook_outcome_review_${outcome.id}`,
+                (count) => `${count}개의 playbook outcome query를 승인했습니다.`,
+                'playbook outcome review 승인에 실패했습니다.'
+            );
+            return;
+        }
+
+        if (outcome.status === 'needs_attention') {
+            await handleBulkGenerateSearchLearningSuggestionsForIds(
+                outcome.entryIds,
+                `ops_playbook_outcome_retrain_${outcome.id}`,
+                (count) => `${count}개의 playbook outcome query에 재학습 AI 제안을 생성했습니다.`,
+                'playbook outcome 재학습 AI 제안 생성에 실패했습니다.'
+            );
+            return;
+        }
+
+        selectSearchLearningEntries(outcome.entryIds, `${outcome.title} outcome query를 선택했습니다.`);
     }
 
     function clearSearchLearningSelection() {
@@ -5789,6 +5827,137 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 {searchLearningOpsPlaybookActivity.recentRuns.length === 0 && (
                                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-2">
                                         아직 기록된 search learning playbook activity가 없습니다.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Ops Playbook Outcomes</h2>
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        실행된 playbook이 실제로 review 승인 대기인지, 재학습이 필요한지, 표본을 더 모아야 하는지 다시 묶어서 보여줍니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        total {searchLearningOpsPlaybookOutcomes.total}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        review {searchLearningOpsPlaybookOutcomes.readyReview}
+                                    </span>
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-100">
+                                        attention {searchLearningOpsPlaybookOutcomes.needsAttention}
+                                    </span>
+                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-100">
+                                        awaiting {searchLearningOpsPlaybookOutcomes.awaitingSamples}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-4">
+                                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">Ready Review</p>
+                                    <p className="mt-3 text-3xl font-black text-emerald-100">{searchLearningOpsPlaybookOutcomes.readyReview}</p>
+                                    <p className="mt-1 text-xs text-emerald-100/70">draft review/승인으로 바로 이어질 batch</p>
+                                </div>
+                                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose-200">Needs Attention</p>
+                                    <p className="mt-3 text-3xl font-black text-rose-100">{searchLearningOpsPlaybookOutcomes.needsAttention}</p>
+                                    <p className="mt-1 text-xs text-rose-100/70">재학습 또는 rewrite 보정이 필요한 batch</p>
+                                </div>
+                                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-200">Awaiting Samples</p>
+                                    <p className="mt-3 text-3xl font-black text-amber-100">{searchLearningOpsPlaybookOutcomes.awaitingSamples}</p>
+                                    <p className="mt-1 text-xs text-amber-100/70">표본이 더 필요한 batch</p>
+                                </div>
+                                <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-200">Validated</p>
+                                    <p className="mt-3 text-3xl font-black text-sky-100">{searchLearningOpsPlaybookOutcomes.validated}</p>
+                                    <p className="mt-1 text-xs text-sky-100/70">안정적으로 개선된 batch</p>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                {[...searchLearningOpsPlaybookOutcomes.topReadyReview, ...searchLearningOpsPlaybookOutcomes.topNeedsAttention, ...searchLearningOpsPlaybookOutcomes.topAwaitingSamples, ...searchLearningOpsPlaybookOutcomes.topValidated]
+                                    .slice(0, 6)
+                                    .map((outcome) => {
+                                        const badgeClass = outcome.status === 'ready_review'
+                                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                            : outcome.status === 'needs_attention'
+                                                ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                                : outcome.status === 'awaiting_samples'
+                                                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                    : 'border-sky-500/30 bg-sky-500/10 text-sky-100';
+
+                                        return (
+                                            <div key={outcome.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${badgeClass}`}>
+                                                                {outcome.status}
+                                                            </span>
+                                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                                {outcome.entryIds.length} queries
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-3 text-sm font-semibold text-white">{outcome.title}</p>
+                                                        <p className="mt-1 text-[11px] text-slate-500">
+                                                            {formatTime(outcome.createdAt)} · {outcome.context}
+                                                        </p>
+                                                    </div>
+                                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                        {outcome.action}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-3 text-xs leading-6 text-slate-400">{outcome.description}</p>
+                                                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Review</p>
+                                                        <p className="mt-2 text-sm font-semibold text-emerald-100">{outcome.readyReviewCount}</p>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Needs Attention</p>
+                                                        <p className="mt-2 text-sm font-semibold text-rose-100">{outcome.noImprovementCount}</p>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Awaiting</p>
+                                                        <p className="mt-2 text-sm font-semibold text-amber-100">{outcome.awaitingSamplesCount}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {outcome.queries.map((query) => (
+                                                        <span key={`${outcome.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className="mt-4 flex flex-wrap gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSearchLearningOpsPlaybookOutcomeAction(outcome)}
+                                                        className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100"
+                                                    >
+                                                        {outcome.status === 'ready_review'
+                                                            ? 'review 즉시 승인'
+                                                            : outcome.status === 'needs_attention'
+                                                                ? '재학습 AI 제안'
+                                                                : 'queue 선택'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => selectSearchLearningEntries(outcome.entryIds, `${outcome.title} outcome query를 선택했습니다.`)}
+                                                        className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                    >
+                                                        상세 queue 선택
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                {searchLearningOpsPlaybookOutcomes.total === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-2">
+                                        아직 평가 가능한 search learning playbook outcome이 없습니다.
                                     </div>
                                 )}
                             </div>
