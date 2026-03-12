@@ -70,6 +70,7 @@ import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcom
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations.ts';
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue.ts';
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity.ts';
+import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -3089,6 +3090,77 @@ test('search learning ops playbook recommendation outcome recommendation outcome
     assert.equal(activity.recentRuns[0]?.action, 'retrain_now');
     assert.equal(activity.recentRuns[0]?.outcomeId, 'outcome:retrain');
     assert.equal(activity.recentRuns[1]?.action, 'review_now');
+});
+
+test('search learning ops playbook recommendation outcome recommendation outcome recommendation outcomes classify review and retrain runs', () => {
+    const outcomes = buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes(
+        buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity([
+            {
+                id: 'activity-1',
+                type: 'review_entries',
+                context: 'ops_playbook_recommendation_outcome_recommendation_outcome_recommendation_review_outcome:ready-review',
+                reviewedStatus: 'approved',
+                count: 1,
+                entryIds: ['entry-1'],
+                queries: ['운동용 후드'],
+                actorUid: 'admin-a',
+                createdAt: '2026-03-12T10:20:00.000Z',
+            },
+            {
+                id: 'activity-2',
+                type: 'generate_suggestions',
+                context: 'ops_playbook_recommendation_outcome_recommendation_outcome_recommendation_retrain_outcome:needs-attention',
+                reviewedStatus: null,
+                count: 1,
+                entryIds: ['entry-2'],
+                queries: ['트레이닝 팬츠'],
+                actorUid: 'admin-b',
+                createdAt: '2026-03-12T10:25:00.000Z',
+            },
+        ]).recentRuns,
+        [
+            {
+                id: 'entry-1',
+                query: '운동용 후드',
+                status: 'pending',
+                aiSuggestion: {
+                    normalizedQuery: '운동용 후드',
+                    categoryHint: '후드집업',
+                    suggestedQueries: ['후드집업'],
+                    rationale: 'hoodie',
+                    model: 'heuristic',
+                    generatedAt: '2026-03-12T10:20:00.000Z',
+                },
+                approvalBaseline: null,
+                occurrenceCount: 2,
+                lowFitCount: 1,
+                zeroResultCount: 1,
+            },
+            {
+                id: 'entry-2',
+                query: '트레이닝 팬츠',
+                status: 'approved',
+                aiSuggestion: null,
+                approvalBaseline: {
+                    approvedAt: '2026-03-12T09:00:00.000Z',
+                    occurrenceCount: 1,
+                    lowFitCount: 1,
+                    zeroResultCount: 1,
+                },
+                occurrenceCount: 2,
+                lowFitCount: 2,
+                zeroResultCount: 2,
+            },
+        ]
+    );
+
+    assert.equal(outcomes.total, 2);
+    assert.equal(outcomes.readyReview, 1);
+    assert.equal(outcomes.needsAttention, 1);
+    assert.equal(outcomes.awaitingSamples, 0);
+    assert.equal(outcomes.validated, 0);
+    assert.equal(outcomes.topReadyReview[0]?.status, 'ready_review');
+    assert.equal(outcomes.topNeedsAttention[0]?.status, 'needs_attention');
 });
 
 test('coverage seed adds missing queries directly into search learning queue', async () => {
