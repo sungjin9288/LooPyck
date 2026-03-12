@@ -70,6 +70,7 @@ import {
     buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendations,
     type SearchLearningOpsPlaybookRecommendationOutcomeRecommendation,
 } from '@/lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendations';
+import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue } from '@/lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1360,6 +1361,9 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     );
     const searchLearningOpsPlaybookRecommendationOutcomeRecommendations = buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendations(
         searchLearningOpsPlaybookRecommendationOutcomes
+    );
+    const searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue = buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue(
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendations
     );
     const searchLearningDraftEntries = searchLearningEntries.filter((entry) =>
         entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
@@ -5360,6 +5364,137 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 {searchLearningOpsPlaybookRecommendationOutcomeRecommendations.total === 0 && (
                                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-2">
                                         아직 실행 가능한 recommendation outcome recommendation이 없습니다.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Ops Playbook Recommendation Outcome Recommendation Queue</h2>
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        outcome recommendation을 다시 실행 우선순위 큐로 정렬해서, 지금 당장 처리할 항목과 관찰 대상으로 남길 항목을 분리합니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        total {searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.total}
+                                    </span>
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-100">
+                                        urgent {searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.urgent}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        execute {searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.executeNow}
+                                    </span>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-100">
+                                        review {searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.needsReview}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-4">
+                                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">Execute Now</p>
+                                    <p className="mt-3 text-3xl font-black text-emerald-100">{searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.executeNow}</p>
+                                    <p className="mt-1 text-xs text-emerald-100/70">즉시 재학습/실행할 항목</p>
+                                </div>
+                                <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-200">Needs Review</p>
+                                    <p className="mt-3 text-3xl font-black text-sky-100">{searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.needsReview}</p>
+                                    <p className="mt-1 text-xs text-sky-100/70">즉시 승인 review 대상</p>
+                                </div>
+                                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-200">Sample Collection</p>
+                                    <p className="mt-3 text-3xl font-black text-amber-100">{searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.sampleCollection}</p>
+                                    <p className="mt-1 text-xs text-amber-100/70">추가 샘플이 필요한 항목</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Observe</p>
+                                    <p className="mt-3 text-3xl font-black text-slate-100">{searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.observe}</p>
+                                    <p className="mt-1 text-xs text-slate-400">개선 상태를 관찰할 항목</p>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                {[
+                                    ...searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.topExecuteNow,
+                                    ...searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.topNeedsReview,
+                                    ...searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.topSampleCollection,
+                                    ...searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.topObserve,
+                                ]
+                                    .slice(0, 6)
+                                    .map((item) => {
+                                        const badgeClass = item.queueState === 'execute_now'
+                                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                            : item.queueState === 'needs_review'
+                                                ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                : item.queueState === 'sample_collection'
+                                                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                    : 'border-slate-700 bg-slate-950/70 text-slate-300';
+
+                                        return (
+                                            <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${badgeClass}`}>
+                                                                {item.queueState}
+                                                            </span>
+                                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                                {item.priority}
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                                        <p className="mt-1 text-[11px] text-slate-500">
+                                                            {formatTime(item.createdAt)} · {item.outcomeStatus}
+                                                        </p>
+                                                    </div>
+                                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                        {item.entryIds.length} queries
+                                                    </span>
+                                                </div>
+                                                <p className="mt-3 text-xs leading-6 text-slate-400">{item.description}</p>
+                                                <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+                                                    {item.reason}
+                                                </p>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {item.queries.map((query) => (
+                                                        <span key={`${item.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className="mt-4 flex flex-wrap gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const recommendation = [
+                                                                ...searchLearningOpsPlaybookRecommendationOutcomeRecommendations.topReviewNow,
+                                                                ...searchLearningOpsPlaybookRecommendationOutcomeRecommendations.topRetrainNow,
+                                                                ...searchLearningOpsPlaybookRecommendationOutcomeRecommendations.topCollectSamples,
+                                                                ...searchLearningOpsPlaybookRecommendationOutcomeRecommendations.topObserve,
+                                                            ].find((candidate) => candidate.id === item.recommendationId);
+                                                            if (recommendation) {
+                                                                void handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationAction(recommendation);
+                                                            }
+                                                        }}
+                                                        className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100"
+                                                    >
+                                                        {item.actionLabel}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => selectSearchLearningEntries(item.entryIds, `${item.title} queue query를 선택했습니다.`)}
+                                                        className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                    >
+                                                        queue 선택
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                {searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.total === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-2">
+                                        아직 실행 가능한 recommendation outcome recommendation queue가 없습니다.
                                     </div>
                                 )}
                             </div>

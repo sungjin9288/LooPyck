@@ -64,6 +64,7 @@ import { buildSearchLearningOpsPlaybookRecommendationQueue } from '../lib/search
 import { buildSearchLearningOpsPlaybookRecommendationActivity } from '../lib/search/searchLearningOpsPlaybookRecommendationActivity.ts';
 import { buildSearchLearningOpsPlaybookRecommendationOutcomes } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomes.ts';
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendations.ts';
+import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -2652,6 +2653,105 @@ test('search learning ops playbook recommendation outcome recommendations conver
     assert.equal(summary.highPriority, 1);
     assert.equal(summary.topReviewNow[0]?.action, 'review_now');
     assert.equal(summary.topCollectSamples[0]?.action, 'collect_samples');
+});
+
+test('search learning ops playbook recommendation outcome recommendation queue prioritizes review and sample collection', () => {
+    const queue = buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue(
+        buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendations(
+            buildSearchLearningOpsPlaybookRecommendationOutcomes(
+                [
+                    {
+                        id: 'event-1',
+                        outcomeId: 'playbook_outcome:ready-review',
+                        action: 'review_now',
+                        title: 'Recommendation Review Run',
+                        description: 'review run',
+                        actionLabel: 'review 즉시 승인',
+                        priority: 'critical',
+                        context: 'ops_playbook_recommendation_review_playbook_outcome:ready-review',
+                        count: 2,
+                        entryIds: ['entry-1', 'entry-2'],
+                        queries: ['운동용 후드', '남자 후드'],
+                        actorUid: 'admin-a',
+                        createdAt: '2026-03-12T10:00:00.000Z',
+                    },
+                    {
+                        id: 'event-2',
+                        outcomeId: 'playbook_outcome:awaiting',
+                        action: 'observe',
+                        title: 'Recommendation Observe Run',
+                        description: 'observe run',
+                        actionLabel: '개선 query 선택',
+                        priority: 'high',
+                        context: 'ops_playbook_recommendation_review_playbook_outcome:awaiting',
+                        count: 1,
+                        entryIds: ['entry-3'],
+                        queries: ['러닝 자켓'],
+                        actorUid: 'admin-b',
+                        createdAt: '2026-03-12T10:05:00.000Z',
+                    },
+                ],
+                [
+                    {
+                        id: 'entry-1',
+                        query: '운동용 후드',
+                        status: 'pending',
+                        aiSuggestion: {
+                            normalizedQuery: '운동용 후드',
+                            categoryHint: '후드집업',
+                            suggestedQueries: ['후드집업'],
+                            rationale: 'hoodie',
+                            model: 'heuristic',
+                            generatedAt: '2026-03-12T10:00:00.000Z',
+                        },
+                        approvalBaseline: null,
+                        occurrenceCount: 2,
+                        lowFitCount: 1,
+                        zeroResultCount: 1,
+                    },
+                    {
+                        id: 'entry-2',
+                        query: '남자 후드',
+                        status: 'approved',
+                        aiSuggestion: null,
+                        approvalBaseline: {
+                            approvedAt: '2026-03-12T09:00:00.000Z',
+                            occurrenceCount: 2,
+                            lowFitCount: 2,
+                            zeroResultCount: 1,
+                        },
+                        occurrenceCount: 2,
+                        lowFitCount: 2,
+                        zeroResultCount: 1,
+                    },
+                    {
+                        id: 'entry-3',
+                        query: '러닝 자켓',
+                        status: 'approved',
+                        aiSuggestion: null,
+                        approvalBaseline: {
+                            approvedAt: '2026-03-12T09:00:00.000Z',
+                            occurrenceCount: 1,
+                            lowFitCount: 0,
+                            zeroResultCount: 0,
+                        },
+                        occurrenceCount: 1,
+                        lowFitCount: 0,
+                        zeroResultCount: 0,
+                    },
+                ]
+            )
+        )
+    );
+
+    assert.equal(queue.total, 2);
+    assert.equal(queue.executeNow, 0);
+    assert.equal(queue.needsReview, 1);
+    assert.equal(queue.sampleCollection, 1);
+    assert.equal(queue.observe, 0);
+    assert.equal(queue.urgent, 1);
+    assert.equal(queue.topNeedsReview[0]?.action, 'review_now');
+    assert.equal(queue.topSampleCollection[0]?.action, 'collect_samples');
 });
 
 test('coverage seed adds missing queries directly into search learning queue', async () => {
