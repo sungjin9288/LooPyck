@@ -39,6 +39,27 @@
 
 ## 🚧 In Progress (진행 중)
 
+### Phase 34: Search Learning Ops Automation 🧠 🚧 IN PROGRESS
+
+**[1] Execute - Search Learning Ops Layer**
+- [x] `Search Learning Queue` + `Draft Review Queue`
+- [x] `Search Learning Activity` / `Recommendations` / `Ops Queue`
+- [x] `Activity Outcome Follow-up`
+- [x] `Search Learning Ops Center`
+- [x] `Search Learning Ops Playbooks`
+
+**[2] Verify**
+- [x] `npm run typecheck`
+- [x] `npm run test:adapters`
+- [x] `npm run build`
+
+**[3] Next**
+- [ ] production redeploy
+- [ ] `/admin`에서 `Search Learning Ops Playbooks` 확인
+- [ ] 실제 검색 후 playbook 기반 triage 루프 검증
+
+---
+
 ### Phase 33: AI Evolution & Stability Fixes 🧠 ✅ COMPLETED
 
 **[1] Plan**

@@ -50,6 +50,7 @@ import {
     buildSearchLearningOpsCenter,
     type SearchLearningOpsCenterItem,
 } from '@/lib/search/searchLearningOpsCenter';
+import { buildSearchLearningOpsPlaybooks, type SearchLearningOpsPlaybook } from '@/lib/search/searchLearningOpsPlaybooks';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1319,6 +1320,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningActivityOpsQueue,
         searchLearningActivityFollowups
     );
+    const searchLearningOpsPlaybooks = buildSearchLearningOpsPlaybooks(searchLearningOpsCenter);
     const searchLearningDraftEntries = searchLearningEntries.filter((entry) =>
         entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
     );
@@ -2229,6 +2231,31 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         }
 
         selectSearchLearningEntries(item.entryIds, `${item.title}의 ${item.entryIds.length}개 query를 선택했습니다.`);
+    }
+
+    async function handleSearchLearningOpsPlaybookAction(playbook: SearchLearningOpsPlaybook) {
+        if (playbook.action === 'approve_batch') {
+            await handleBulkReviewSearchLearningForIds(
+                playbook.entryIds,
+                'bulk_approve',
+                `ops_playbook_approve_${playbook.id}`,
+                (count) => `${count}개의 search learning playbook query를 승인했습니다.`,
+                'search learning playbook 승인에 실패했습니다.'
+            );
+            return;
+        }
+
+        if (playbook.action === 'generate_batch' || playbook.action === 'retrain_batch') {
+            await handleBulkGenerateSearchLearningSuggestionsForIds(
+                playbook.entryIds,
+                `ops_playbook_generate_${playbook.id}`,
+                (count) => `${count}개의 search learning playbook query에 AI 제안을 생성했습니다.`,
+                'search learning playbook AI 제안 생성에 실패했습니다.'
+            );
+            return;
+        }
+
+        selectSearchLearningEntries(playbook.entryIds, `${playbook.title}의 ${playbook.entryIds.length}개 query를 선택했습니다.`);
     }
 
     function clearSearchLearningSelection() {
@@ -5558,6 +5585,102 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Ops Playbooks</h2>
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        승인, AI 생성, 재학습, 표본 수집을 배치 실행 단위로 묶은 빠른 운영 플레이북입니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        ready {searchLearningOpsPlaybooks.readyBatches}
+                                    </span>
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-100">
+                                        urgent {searchLearningOpsPlaybooks.urgentBatches}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        validated {searchLearningOpsPlaybooks.stableValidated}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-3">
+                                <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Ready Batches</p>
+                                    <p className="mt-3 text-3xl font-black text-slate-100">{searchLearningOpsPlaybooks.readyBatches}</p>
+                                    <p className="mt-1 text-xs text-slate-400">실행 가능한 playbook 수</p>
+                                </div>
+                                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose-200">Urgent Batches</p>
+                                    <p className="mt-3 text-3xl font-black text-rose-100">{searchLearningOpsPlaybooks.urgentBatches}</p>
+                                    <p className="mt-1 text-xs text-rose-100/70">즉시 처리 권장 batch</p>
+                                </div>
+                                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">Stable Validated</p>
+                                    <p className="mt-3 text-3xl font-black text-emerald-100">{searchLearningOpsPlaybooks.stableValidated}</p>
+                                    <p className="mt-1 text-xs text-emerald-100/70">안정 상태 승인 query</p>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                {searchLearningOpsPlaybooks.topPlaybooks.map((playbook) => {
+                                    const badgeClass = playbook.priority === 'critical'
+                                        ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                        : playbook.priority === 'high'
+                                            ? 'border-orange-500/30 bg-orange-500/10 text-orange-100'
+                                            : playbook.priority === 'medium'
+                                                ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                : 'border-slate-700 bg-slate-950/70 text-slate-300';
+
+                                    return (
+                                        <div key={playbook.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${badgeClass}`}>
+                                                            {playbook.priority}
+                                                        </span>
+                                                        <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                            {playbook.queryCount} queries
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{playbook.title}</p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {playbook.action}
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{playbook.description}</p>
+                                            <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+                                                {playbook.reason}
+                                            </p>
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSearchLearningOpsPlaybookAction(playbook)}
+                                                    className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100"
+                                                >
+                                                    {playbook.actionLabel}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(playbook.entryIds, `${playbook.title}의 ${playbook.entryIds.length}개 query를 선택했습니다.`)}
+                                                    className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                >
+                                                    queue 선택
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {searchLearningOpsPlaybooks.topPlaybooks.length === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-2">
+                                        아직 실행 가능한 search learning playbook이 없습니다.
+                                    </div>
+                                )}
                             </div>
                         </section>
 

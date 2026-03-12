@@ -56,6 +56,7 @@ import { buildSearchLearningActivityRecommendations } from '../lib/search/search
 import { buildSearchLearningActivityOpsQueue } from '../lib/search/searchLearningActivityOpsQueue.ts';
 import { buildSearchLearningActivityFollowups } from '../lib/search/searchLearningActivityFollowups.ts';
 import { buildSearchLearningOpsCenter } from '../lib/search/searchLearningOpsCenter.ts';
+import { buildSearchLearningOpsPlaybooks } from '../lib/search/searchLearningOpsPlaybooks.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -1881,6 +1882,33 @@ test('search learning ops center combines activity actions into one triage summa
     assert.equal(opsCenter.sampleCollectionEntryIds[0], 'approved-entry');
     assert.equal(opsCenter.topUrgentNow[0]?.title, 'bulk_generate draft review');
     assert.equal(opsCenter.topValidated.length, 0);
+});
+
+test('search learning ops playbooks condense ops center actions into batch runbooks', () => {
+    const playbooks = buildSearchLearningOpsPlaybooks({
+        urgentNow: 3,
+        reviewPending: 2,
+        generateNeeded: 1,
+        sampleCollection: 1,
+        retrainNeeded: 1,
+        validated: 4,
+        reviewPendingEntryIds: ['draft-1', 'draft-2'],
+        generateNeededEntryIds: ['seed-1'],
+        sampleCollectionEntryIds: ['approved-1'],
+        retrainNeededEntryIds: ['approved-2'],
+        validatedEntryIds: ['stable-1', 'stable-2'],
+        topUrgentNow: [],
+        topRetrainNeeded: [],
+        topValidated: [],
+    });
+
+    assert.equal(playbooks.readyBatches, 4);
+    assert.equal(playbooks.urgentBatches, 3);
+    assert.equal(playbooks.stableValidated, 4);
+    assert.equal(playbooks.topPlaybooks[0]?.action, 'approve_batch');
+    assert.equal(playbooks.topPlaybooks[1]?.action, 'retrain_batch');
+    assert.equal(playbooks.topPlaybooks[2]?.action, 'generate_batch');
+    assert.equal(playbooks.topPlaybooks[3]?.action, 'sample_batch');
 });
 
 test('coverage seed adds missing queries directly into search learning queue', async () => {
