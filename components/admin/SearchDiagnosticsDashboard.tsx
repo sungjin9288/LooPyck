@@ -46,6 +46,10 @@ import {
     type SearchLearningActivityOpsQueueItem,
 } from '@/lib/search/searchLearningActivityOpsQueue';
 import { buildSearchLearningActivityFollowups } from '@/lib/search/searchLearningActivityFollowups';
+import {
+    buildSearchLearningOpsCenter,
+    type SearchLearningOpsCenterItem,
+} from '@/lib/search/searchLearningOpsCenter';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1310,6 +1314,11 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningActivity,
         searchLearningEntries
     );
+    const searchLearningOpsCenter = buildSearchLearningOpsCenter(
+        searchLearningActivityRecommendations,
+        searchLearningActivityOpsQueue,
+        searchLearningActivityFollowups
+    );
     const searchLearningDraftEntries = searchLearningEntries.filter((entry) =>
         entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
     );
@@ -2195,6 +2204,31 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         }
 
         selectSearchLearningEntries(entryIds, `${title}의 ${entryIds.length}개 query를 선택했습니다.`);
+    }
+
+    async function handleSearchLearningOpsCenterAction(item: SearchLearningOpsCenterItem) {
+        if (item.action === 'approve_now') {
+            await handleBulkReviewSearchLearningForIds(
+                item.entryIds,
+                'bulk_approve',
+                `ops_center_review_${item.id}`,
+                (count) => `${count}개의 ops center query를 즉시 승인했습니다.`,
+                'ops center query 즉시 승인에 실패했습니다.'
+            );
+            return;
+        }
+
+        if (item.action === 'generate_now' || item.action === 'retrain_now') {
+            await handleBulkGenerateSearchLearningSuggestionsForIds(
+                item.entryIds,
+                `ops_center_generate_${item.id}`,
+                (count) => `${count}개의 ops center query에 AI 제안을 생성했습니다.`,
+                'ops center query AI 제안 생성에 실패했습니다.'
+            );
+            return;
+        }
+
+        selectSearchLearningEntries(item.entryIds, `${item.title}의 ${item.entryIds.length}개 query를 선택했습니다.`);
     }
 
     function clearSearchLearningSelection() {
@@ -5524,6 +5558,192 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Ops Center</h2>
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        최근 activity triage와 승인 후 follow-up을 한 번에 보고, 가장 먼저 처리할 검색 학습 액션으로 바로 이어집니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningOpsCenter.reviewPendingEntryIds,
+                                            `${searchLearningOpsCenter.reviewPendingEntryIds.length}개의 review pending query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningOpsCenter.reviewPendingEntryIds.length === 0}
+                                        className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        review pending 선택 ({searchLearningOpsCenter.reviewPendingEntryIds.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleBulkGenerateSearchLearningSuggestionsForIds(
+                                            searchLearningOpsCenter.generateNeededEntryIds,
+                                            'ops_center_generate_needed',
+                                            (count) => `${count}개의 ops center generate query에 AI 제안을 생성했습니다.`,
+                                            'ops center generate query AI 제안 생성에 실패했습니다.'
+                                        )}
+                                        disabled={searchLearningOpsCenter.generateNeededEntryIds.length === 0}
+                                        className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-2 font-bold text-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        generate needed AI 제안 ({searchLearningOpsCenter.generateNeededEntryIds.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleBulkGenerateSearchLearningSuggestionsForIds(
+                                            searchLearningOpsCenter.retrainNeededEntryIds,
+                                            'ops_center_retrain_needed',
+                                            (count) => `${count}개의 ops center retrain query에 AI 제안을 생성했습니다.`,
+                                            'ops center retrain query AI 제안 생성에 실패했습니다.'
+                                        )}
+                                        disabled={searchLearningOpsCenter.retrainNeededEntryIds.length === 0}
+                                        className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-2 font-bold text-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        retrain AI 제안 ({searchLearningOpsCenter.retrainNeededEntryIds.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectSearchLearningEntries(
+                                            searchLearningOpsCenter.sampleCollectionEntryIds,
+                                            `${searchLearningOpsCenter.sampleCollectionEntryIds.length}개의 표본 수집 query를 선택했습니다.`
+                                        )}
+                                        disabled={searchLearningOpsCenter.sampleCollectionEntryIds.length === 0}
+                                        className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-bold text-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        표본 수집 선택 ({searchLearningOpsCenter.sampleCollectionEntryIds.length})
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+                                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose-200">Urgent Now</p>
+                                    <p className="mt-3 text-3xl font-black text-rose-100">{searchLearningOpsCenter.urgentNow}</p>
+                                    <p className="mt-1 text-xs text-rose-100/70">critical/high ops queue</p>
+                                </div>
+                                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">Review Pending</p>
+                                    <p className="mt-3 text-3xl font-black text-emerald-100">{searchLearningOpsCenter.reviewPending}</p>
+                                    <p className="mt-1 text-xs text-emerald-100/70">즉시 승인 후보</p>
+                                </div>
+                                <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-200">Generate Needed</p>
+                                    <p className="mt-3 text-3xl font-black text-sky-100">{searchLearningOpsCenter.generateNeeded}</p>
+                                    <p className="mt-1 text-xs text-sky-100/70">즉시 AI 생성 후보</p>
+                                </div>
+                                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-200">Sample Collection</p>
+                                    <p className="mt-3 text-3xl font-black text-amber-100">{searchLearningOpsCenter.sampleCollection}</p>
+                                    <p className="mt-1 text-xs text-amber-100/70">추가 관찰 필요</p>
+                                </div>
+                                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose-200">Retrain Needed</p>
+                                    <p className="mt-3 text-3xl font-black text-rose-100">{searchLearningOpsCenter.retrainNeeded}</p>
+                                    <p className="mt-1 text-xs text-rose-100/70">follow-up 재학습 필요</p>
+                                </div>
+                                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">Validated</p>
+                                    <p className="mt-3 text-3xl font-black text-emerald-100">{searchLearningOpsCenter.validated}</p>
+                                    <p className="mt-1 text-xs text-emerald-100/70">개선 확인 activity</p>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                                {[
+                                    {
+                                        title: 'Urgent Now',
+                                        entries: searchLearningOpsCenter.topUrgentNow,
+                                        empty: '아직 즉시 처리할 ops item이 없습니다.',
+                                    },
+                                    {
+                                        title: 'Retrain Needed',
+                                        entries: searchLearningOpsCenter.topRetrainNeeded,
+                                        empty: '아직 재학습 follow-up이 없습니다.',
+                                    },
+                                    {
+                                        title: 'Validated',
+                                        entries: searchLearningOpsCenter.topValidated,
+                                        empty: '아직 개선 확인 activity가 없습니다.',
+                                    },
+                                ].map((group) => (
+                                    <div key={group.title} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <h3 className="text-sm font-semibold text-white">{group.title}</h3>
+                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                top {group.entries.length}
+                                            </span>
+                                        </div>
+                                        <div className="mt-4 space-y-3">
+                                            {group.entries.map((item) => {
+                                                const badgeClass = item.priority === 'critical'
+                                                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                                    : item.priority === 'high'
+                                                        ? 'border-orange-500/30 bg-orange-500/10 text-orange-100'
+                                                        : item.priority === 'medium'
+                                                            ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                            : 'border-slate-700 bg-slate-950/70 text-slate-300';
+
+                                                return (
+                                                    <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div>
+                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${badgeClass}`}>
+                                                                        {item.priority}
+                                                                    </span>
+                                                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                                        {item.metricLabel}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                                                <p className="mt-1 text-xs text-slate-500">
+                                                                    {formatTime(item.lastSeenAt)}
+                                                                    {item.context ? ` · ${item.context}` : ''}
+                                                                </p>
+                                                            </div>
+                                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                                {item.source}
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-3 text-xs leading-6 text-slate-400">{item.description}</p>
+                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                            {item.queries.slice(0, 4).map((query) => (
+                                                                <span key={`${item.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-950/70 px-2 py-1 text-[11px] text-slate-200">
+                                                                    {query}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                        <div className="mt-4 flex flex-wrap gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleSearchLearningOpsCenterAction(item)}
+                                                                className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100"
+                                                            >
+                                                                {item.actionLabel}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => selectSearchLearningEntries(item.entryIds, `${item.title}의 ${item.entryIds.length}개 query를 선택했습니다.`)}
+                                                                className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                            >
+                                                                queue 선택
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {group.entries.length === 0 && (
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3 text-sm text-slate-500">
+                                                    {group.empty}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </section>
 
