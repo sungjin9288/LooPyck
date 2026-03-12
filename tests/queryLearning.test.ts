@@ -54,6 +54,7 @@ import {
 import { buildSearchLearningActivitySummary } from '../lib/search/searchLearningActivitySummary.ts';
 import { buildSearchLearningActivityRecommendations } from '../lib/search/searchLearningActivityRecommendations.ts';
 import { buildSearchLearningActivityOpsQueue } from '../lib/search/searchLearningActivityOpsQueue.ts';
+import { buildSearchLearningActivityFollowups } from '../lib/search/searchLearningActivityFollowups.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -1398,9 +1399,12 @@ test('search learning activity ops queue prioritizes review, generation and samp
                 suggestedQueries: [],
                 approvedQueries: [],
                 aiSuggestion: {
+                    normalizedQuery: '운동용 후드',
                     categoryHint: '후드집업',
-                    reasoning: 'hoodie',
                     suggestedQueries: ['후드집업', '트레이닝 후드집업'],
+                    rationale: 'hoodie',
+                    model: 'heuristic',
+                    generatedAt: '2026-03-11T10:01:00.000Z',
                 },
                 approvalBaseline: null,
                 lastSeenAt: '2026-03-11T10:01:00.000Z',
@@ -1424,9 +1428,12 @@ test('search learning activity ops queue prioritizes review, generation and samp
                 suggestedQueries: ['바람막이'],
                 approvedQueries: ['바람막이'],
                 aiSuggestion: {
+                    normalizedQuery: '러닝 자켓',
                     categoryHint: '바람막이',
-                    reasoning: 'running jacket',
                     suggestedQueries: ['바람막이'],
+                    rationale: 'running jacket',
+                    model: 'heuristic',
+                    generatedAt: '2026-03-11T10:02:00.000Z',
                 },
                 approvalBaseline: {
                     approvedAt: '2026-03-11T09:50:00.000Z',
@@ -1452,6 +1459,157 @@ test('search learning activity ops queue prioritizes review, generation and samp
     assert.equal(queue.topItems[1]?.actionLabel, '즉시 AI 제안');
     assert.equal(queue.topItems[2]?.action, 'awaiting_samples');
     assert.equal(queue.topItems[2]?.actionLabel, '표본 수집 대상 선택');
+});
+
+test('search learning activity followups separate retrain, awaiting and validated approvals', () => {
+    const followups = buildSearchLearningActivityFollowups(
+        [
+            {
+                id: 'review-1',
+                type: 'review_entries',
+                context: 'bulk_approve',
+                reviewedStatus: 'approved',
+                actorUid: 'admin-a',
+                count: 1,
+                entryIds: ['needs-retrain'],
+                queries: ['운동용 후드'],
+                createdAt: '2026-03-11T10:01:00.000Z',
+            },
+            {
+                id: 'review-2',
+                type: 'review_entries',
+                context: 'bulk_approve',
+                reviewedStatus: 'approved',
+                actorUid: 'admin-a',
+                count: 1,
+                entryIds: ['awaiting-entry'],
+                queries: ['러닝 자켓'],
+                createdAt: '2026-03-11T10:02:00.000Z',
+            },
+            {
+                id: 'review-3',
+                type: 'review_entries',
+                context: 'bulk_approve',
+                reviewedStatus: 'approved',
+                actorUid: 'admin-a',
+                count: 1,
+                entryIds: ['validated-entry'],
+                queries: ['트레이닝 팬츠'],
+                createdAt: '2026-03-11T10:03:00.000Z',
+            },
+        ],
+        [
+            {
+                id: 'needs-retrain',
+                query: '운동용 후드',
+                normalizedQuery: '운동용 후드',
+                effectiveQuery: '운동용 후드집업',
+                queryIntent: 'fashion',
+                status: 'approved',
+                occurrenceCount: 5,
+                lowFitCount: 4,
+                zeroResultCount: 3,
+                lastResultQuality: 'weak',
+                lastTotalProducts: 0,
+                suggestedQueries: [],
+                approvedQueries: ['후드집업'],
+                aiSuggestion: {
+                    normalizedQuery: '운동용 후드',
+                    categoryHint: '후드집업',
+                    rationale: 'hoodie',
+                    suggestedQueries: ['후드집업'],
+                    model: 'heuristic',
+                    generatedAt: '2026-03-11T09:50:00.000Z',
+                },
+                approvalBaseline: {
+                    approvedAt: '2026-03-11T09:50:00.000Z',
+                    occurrenceCount: 2,
+                    lowFitCount: 1,
+                    zeroResultCount: 0,
+                },
+                lastSeenAt: '2026-03-11T10:01:00.000Z',
+                reviewedAt: '2026-03-11T09:50:00.000Z',
+                reviewedBy: 'admin-a',
+                createdAt: '2026-03-11T09:40:00.000Z',
+                updatedAt: '2026-03-11T10:01:00.000Z',
+            },
+            {
+                id: 'awaiting-entry',
+                query: '러닝 자켓',
+                normalizedQuery: '러닝 자켓',
+                effectiveQuery: '바람막이',
+                queryIntent: 'fashion',
+                status: 'approved',
+                occurrenceCount: 2,
+                lowFitCount: 1,
+                zeroResultCount: 0,
+                lastResultQuality: 'mixed',
+                lastTotalProducts: 4,
+                suggestedQueries: [],
+                approvedQueries: ['바람막이'],
+                aiSuggestion: {
+                    normalizedQuery: '러닝 자켓',
+                    categoryHint: '바람막이',
+                    rationale: 'running jacket',
+                    suggestedQueries: ['바람막이'],
+                    model: 'heuristic',
+                    generatedAt: '2026-03-11T09:45:00.000Z',
+                },
+                approvalBaseline: {
+                    approvedAt: '2026-03-11T09:45:00.000Z',
+                    occurrenceCount: 2,
+                    lowFitCount: 1,
+                    zeroResultCount: 0,
+                },
+                lastSeenAt: '2026-03-11T10:02:00.000Z',
+                reviewedAt: '2026-03-11T09:45:00.000Z',
+                reviewedBy: 'admin-a',
+                createdAt: '2026-03-11T09:40:00.000Z',
+                updatedAt: '2026-03-11T10:02:00.000Z',
+            },
+            {
+                id: 'validated-entry',
+                query: '트레이닝 팬츠',
+                normalizedQuery: '트레이닝 팬츠',
+                effectiveQuery: '조거 팬츠',
+                queryIntent: 'fashion',
+                status: 'approved',
+                occurrenceCount: 5,
+                lowFitCount: 1,
+                zeroResultCount: 0,
+                lastResultQuality: 'strong',
+                lastTotalProducts: 8,
+                suggestedQueries: [],
+                approvedQueries: ['조거 팬츠'],
+                aiSuggestion: {
+                    normalizedQuery: '트레이닝 팬츠',
+                    categoryHint: '조거 팬츠',
+                    rationale: 'training pants',
+                    suggestedQueries: ['조거 팬츠'],
+                    model: 'heuristic',
+                    generatedAt: '2026-03-11T09:40:00.000Z',
+                },
+                approvalBaseline: {
+                    approvedAt: '2026-03-11T09:40:00.000Z',
+                    occurrenceCount: 2,
+                    lowFitCount: 1,
+                    zeroResultCount: 0,
+                },
+                lastSeenAt: '2026-03-11T10:03:00.000Z',
+                reviewedAt: '2026-03-11T09:40:00.000Z',
+                reviewedBy: 'admin-a',
+                createdAt: '2026-03-11T09:35:00.000Z',
+                updatedAt: '2026-03-11T10:03:00.000Z',
+            },
+        ]
+    );
+
+    assert.equal(followups.retrainNeeded, 1);
+    assert.equal(followups.awaitingSamples, 1);
+    assert.equal(followups.validated, 1);
+    assert.equal(followups.topRetrainNeeded[0]?.queries[0], '운동용 후드');
+    assert.equal(followups.topAwaitingSamples[0]?.queries[0], '러닝 자켓');
+    assert.equal(followups.topValidated[0]?.queries[0], '트레이닝 팬츠');
 });
 
 test('coverage seed adds missing queries directly into search learning queue', async () => {
