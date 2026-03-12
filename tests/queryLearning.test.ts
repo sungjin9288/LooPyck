@@ -65,6 +65,7 @@ import { buildSearchLearningOpsPlaybookRecommendationActivity } from '../lib/sea
 import { buildSearchLearningOpsPlaybookRecommendationOutcomes } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomes.ts';
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendations.ts';
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.ts';
+import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -2752,6 +2753,41 @@ test('search learning ops playbook recommendation outcome recommendation queue p
     assert.equal(queue.urgent, 1);
     assert.equal(queue.topNeedsReview[0]?.action, 'review_now');
     assert.equal(queue.topSampleCollection[0]?.action, 'collect_samples');
+});
+
+test('search learning ops playbook recommendation outcome recommendation activity tracks review and retrain executions', () => {
+    const activity = buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity([
+        {
+            id: 'activity-1',
+            type: 'review_entries',
+            context: 'ops_playbook_recommendation_outcome_recommendation_review_playbook_outcome:ready-review',
+            reviewedStatus: 'approved',
+            count: 2,
+            entryIds: ['entry-1', 'entry-2'],
+            queries: ['운동용 후드', '남자 후드'],
+            actorUid: 'admin-a',
+            createdAt: '2026-03-12T10:00:00.000Z',
+        },
+        {
+            id: 'activity-2',
+            type: 'generate_suggestions',
+            context: 'ops_playbook_recommendation_outcome_recommendation_retrain_playbook_outcome:needs-attention',
+            reviewedStatus: null,
+            count: 1,
+            entryIds: ['entry-3'],
+            queries: ['트레이닝 팬츠', '조거 팬츠'],
+            actorUid: 'admin-b',
+            createdAt: '2026-03-12T10:05:00.000Z',
+        },
+    ]);
+
+    assert.equal(activity.totalRuns, 2);
+    assert.equal(activity.reviewRuns, 1);
+    assert.equal(activity.retrainRuns, 1);
+    assert.equal(activity.uniqueQueries, 4);
+    assert.equal(activity.recentRuns[0]?.action, 'retrain_now');
+    assert.equal(activity.recentRuns[0]?.outcomeId, 'playbook_outcome:needs-attention');
+    assert.equal(activity.recentRuns[1]?.action, 'review_now');
 });
 
 test('coverage seed adds missing queries directly into search learning queue', async () => {
