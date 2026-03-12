@@ -66,6 +66,8 @@ import { buildSearchLearningOpsPlaybookRecommendationOutcomes } from '../lib/sea
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendations.ts';
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.ts';
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity.ts';
+import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes.ts';
+import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -540,7 +542,7 @@ test('source action review queue highlights approved entries with fresh AI sugge
                 approvedAt: '2026-03-11T09:00:00.000Z',
                 occurrenceCount: 2,
                 lowFitCount: 2,
-                zeroResultCount: 1,
+                zeroResultCount: 2,
             },
             lastSeenAt: '2026-03-11T10:00:00.000Z',
             reviewedAt: '2026-03-11T09:00:00.000Z',
@@ -2788,6 +2790,167 @@ test('search learning ops playbook recommendation outcome recommendation activit
     assert.equal(activity.recentRuns[0]?.action, 'retrain_now');
     assert.equal(activity.recentRuns[0]?.outcomeId, 'playbook_outcome:needs-attention');
     assert.equal(activity.recentRuns[1]?.action, 'review_now');
+});
+
+test('search learning ops playbook recommendation outcome recommendation outcomes classify review and retrain runs', () => {
+    const outcomes = buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes(
+        buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity([
+            {
+                id: 'activity-1',
+                type: 'review_entries',
+                context: 'ops_playbook_recommendation_outcome_recommendation_review_playbook_outcome:ready-review',
+                reviewedStatus: 'approved',
+                count: 1,
+                entryIds: ['entry-1'],
+                queries: ['운동용 후드'],
+                actorUid: 'admin-a',
+                createdAt: '2026-03-12T10:00:00.000Z',
+            },
+            {
+                id: 'activity-2',
+                type: 'generate_suggestions',
+                context: 'ops_playbook_recommendation_outcome_recommendation_retrain_playbook_outcome:needs-attention',
+                reviewedStatus: null,
+                count: 1,
+                entryIds: ['entry-2'],
+                queries: ['트레이닝 팬츠'],
+                actorUid: 'admin-b',
+                createdAt: '2026-03-12T10:05:00.000Z',
+            },
+        ]).recentRuns,
+        [
+            {
+                id: 'entry-1',
+                query: '운동용 후드',
+                status: 'pending',
+                aiSuggestion: {
+                    normalizedQuery: '운동용 후드',
+                    categoryHint: '후드집업',
+                    suggestedQueries: ['후드집업'],
+                    rationale: 'hoodie',
+                    model: 'heuristic',
+                    generatedAt: '2026-03-12T10:00:00.000Z',
+                },
+                approvalBaseline: null,
+                occurrenceCount: 2,
+                lowFitCount: 1,
+                zeroResultCount: 1,
+            },
+            {
+                id: 'entry-2',
+                query: '트레이닝 팬츠',
+                status: 'approved',
+                aiSuggestion: null,
+                approvalBaseline: {
+                    approvedAt: '2026-03-12T09:00:00.000Z',
+                    occurrenceCount: 1,
+                    lowFitCount: 1,
+                    zeroResultCount: 1,
+                },
+                occurrenceCount: 2,
+                lowFitCount: 2,
+                zeroResultCount: 2,
+            },
+        ]
+    );
+
+    assert.equal(outcomes.total, 2);
+    assert.equal(outcomes.readyReview, 1);
+    assert.equal(outcomes.needsAttention, 1);
+    assert.equal(outcomes.awaitingSamples, 0);
+    assert.equal(outcomes.validated, 0);
+    assert.equal(outcomes.topReadyReview[0]?.status, 'ready_review');
+    assert.equal(outcomes.topNeedsAttention[0]?.status, 'needs_attention');
+});
+
+test('search learning ops playbook recommendation outcome recommendation outcome recommendations classify next actions', () => {
+    const recommendations = buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations({
+        total: 4,
+        readyReview: 1,
+        needsAttention: 1,
+        awaitingSamples: 1,
+        validated: 1,
+        topReadyReview: [
+            {
+                id: 'outcome-1',
+                outcomeId: 'hoodie-review',
+                title: 'Outcome Review',
+                action: 'review_now',
+                context: 'ctx:review',
+                createdAt: '2026-03-12T10:10:00.000Z',
+                queries: ['운동용 후드'],
+                entryIds: ['entry-1'],
+                status: 'ready_review',
+                description: 'ready',
+                improvedCount: 0,
+                noImprovementCount: 0,
+                awaitingSamplesCount: 0,
+                readyReviewCount: 1,
+            },
+        ],
+        topNeedsAttention: [
+            {
+                id: 'outcome-2',
+                outcomeId: 'pants-retrain',
+                title: 'Outcome Retrain',
+                action: 'retrain_now',
+                context: 'ctx:retrain',
+                createdAt: '2026-03-12T10:09:00.000Z',
+                queries: ['트레이닝 팬츠'],
+                entryIds: ['entry-2'],
+                status: 'needs_attention',
+                description: 'retrain',
+                improvedCount: 0,
+                noImprovementCount: 2,
+                awaitingSamplesCount: 0,
+                readyReviewCount: 0,
+            },
+        ],
+        topAwaitingSamples: [
+            {
+                id: 'outcome-3',
+                outcomeId: 'runner-awaiting',
+                title: 'Outcome Awaiting',
+                action: 'collect_samples',
+                context: 'ctx:awaiting',
+                createdAt: '2026-03-12T10:08:00.000Z',
+                queries: ['러닝 자켓'],
+                entryIds: ['entry-3'],
+                status: 'awaiting_samples',
+                description: 'awaiting',
+                improvedCount: 0,
+                noImprovementCount: 0,
+                awaitingSamplesCount: 1,
+                readyReviewCount: 0,
+            },
+        ],
+        topValidated: [
+            {
+                id: 'outcome-4',
+                outcomeId: 'validated',
+                title: 'Outcome Validated',
+                action: 'observe',
+                context: 'ctx:validated',
+                createdAt: '2026-03-12T10:07:00.000Z',
+                queries: ['와이드 팬츠'],
+                entryIds: ['entry-4'],
+                status: 'validated',
+                description: 'validated',
+                improvedCount: 2,
+                noImprovementCount: 0,
+                awaitingSamplesCount: 0,
+                readyReviewCount: 0,
+            },
+        ],
+    });
+
+    assert.equal(recommendations.total, 4);
+    assert.equal(recommendations.reviewNow, 1);
+    assert.equal(recommendations.retrainNow, 1);
+    assert.equal(recommendations.collectSamples, 1);
+    assert.equal(recommendations.observe, 1);
+    assert.equal(recommendations.topReviewNow[0]?.action, 'review_now');
+    assert.equal(recommendations.topRetrainNow[0]?.action, 'retrain_now');
 });
 
 test('coverage seed adds missing queries directly into search learning queue', async () => {
