@@ -40,6 +40,7 @@ import {
     buildSearchLearningRewriteSourceApprovalActivitySummary,
 } from '@/lib/search/searchLearningRewriteSourceApprovalActivity';
 import { buildSearchLearningActivitySummary } from '@/lib/search/searchLearningActivitySummary';
+import { buildSearchLearningActivityRecommendations } from '@/lib/search/searchLearningActivityRecommendations';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1292,6 +1293,10 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const searchLearningEntries = searchLearning?.entries || [];
     const searchLearningActivity = data?.searchLearningActivity?.events || [];
     const searchLearningActivitySummary = buildSearchLearningActivitySummary(searchLearningActivity);
+    const searchLearningActivityRecommendations = buildSearchLearningActivityRecommendations(
+        searchLearningActivity,
+        searchLearningEntries
+    );
     const searchLearningDraftEntries = searchLearningEntries.filter((entry) =>
         entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
     );
@@ -5637,6 +5642,105 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                             )}
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-white">Activity Recommendations</h3>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            최근 activity를 기준으로 바로 처리할 review, AI 생성, 표본 수집 대상을 추천합니다.
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                        actionable {searchLearningActivityRecommendations.reviewPending + searchLearningActivityRecommendations.generateNeeded + searchLearningActivityRecommendations.awaitingSamples}
+                                    </span>
+                                </div>
+                                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Review Pending</p>
+                                        <p className="mt-3 text-3xl font-black text-emerald-300">{searchLearningActivityRecommendations.reviewPending}</p>
+                                        <p className="mt-1 text-xs text-slate-400">draft review가 남은 activity</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Generate Needed</p>
+                                        <p className="mt-3 text-3xl font-black text-sky-300">{searchLearningActivityRecommendations.generateNeeded}</p>
+                                        <p className="mt-1 text-xs text-slate-400">AI suggestion이 아직 없는 seed activity</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Awaiting Samples</p>
+                                        <p className="mt-3 text-3xl font-black text-amber-300">{searchLearningActivityRecommendations.awaitingSamples}</p>
+                                        <p className="mt-1 text-xs text-slate-400">승인 후 실제 검색 표본이 더 필요한 activity</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                                    {[
+                                        {
+                                            title: 'Review Pending',
+                                            entries: searchLearningActivityRecommendations.topReviewPending,
+                                            empty: '아직 review pending activity가 없습니다.',
+                                            buttonLabel: 'review query 선택',
+                                        },
+                                        {
+                                            title: 'Generate Needed',
+                                            entries: searchLearningActivityRecommendations.topGenerateNeeded,
+                                            empty: '아직 generate needed activity가 없습니다.',
+                                            buttonLabel: 'AI 생성 대상 선택',
+                                        },
+                                        {
+                                            title: 'Awaiting Samples',
+                                            entries: searchLearningActivityRecommendations.topAwaitingSamples,
+                                            empty: '아직 awaiting samples activity가 없습니다.',
+                                            buttonLabel: '표본 수집 대상 선택',
+                                        },
+                                    ].map((group) => (
+                                        <div key={group.title} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <h3 className="text-sm font-semibold text-white">{group.title}</h3>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                    top {group.entries.length}
+                                                </span>
+                                            </div>
+                                            <div className="mt-4 space-y-3">
+                                                {group.entries.map((entry) => (
+                                                    <div key={entry.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div>
+                                                                <p className="text-sm font-semibold text-white">{entry.title}</p>
+                                                                <p className="mt-1 text-xs text-slate-500">
+                                                                    {formatTime(entry.lastSeenAt)}
+                                                                    {entry.context ? ` · ${entry.context}` : ''}
+                                                                </p>
+                                                            </div>
+                                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                                {entry.count}건
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-3 text-xs leading-6 text-slate-400">{entry.description}</p>
+                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                            {entry.queries.slice(0, 4).map((query) => (
+                                                                <span key={`${entry.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-950/70 px-2 py-1 text-[11px] text-slate-200">
+                                                                    {query}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => selectSearchLearningEntries(entry.entryIds, `${entry.title}의 ${entry.entryIds.length}개 query를 선택했습니다.`)}
+                                                            className="mt-4 rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                        >
+                                                            {group.buttonLabel}
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {group.entries.length === 0 && (
+                                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 text-sm text-slate-500">
+                                                        {group.empty}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                             <div className="mt-4 grid gap-4 xl:grid-cols-2">
