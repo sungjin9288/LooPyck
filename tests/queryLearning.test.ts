@@ -59,6 +59,7 @@ import { buildSearchLearningOpsCenter } from '../lib/search/searchLearningOpsCen
 import { buildSearchLearningOpsPlaybooks } from '../lib/search/searchLearningOpsPlaybooks.ts';
 import { buildSearchLearningOpsPlaybookActivity } from '../lib/search/searchLearningOpsPlaybookActivity.ts';
 import { buildSearchLearningOpsPlaybookOutcomes } from '../lib/search/searchLearningOpsPlaybookOutcomes.ts';
+import { buildSearchLearningOpsPlaybookRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendations.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -2084,6 +2085,168 @@ test('search learning ops playbook outcomes classify review, retrain and validat
     assert.equal(outcomes.topReadyReview[0]?.title, 'Generate Needed Batch');
     assert.equal(outcomes.topNeedsAttention[0]?.queries[0], '트레이닝 팬츠');
     assert.equal(outcomes.topValidated[0]?.queries[0], '러닝 자켓');
+});
+
+test('search learning ops playbook recommendations convert outcomes into next-action buckets', () => {
+    const recommendations = buildSearchLearningOpsPlaybookRecommendations(
+        buildSearchLearningOpsPlaybookOutcomes(
+            [
+                {
+                    id: 'run-ready',
+                    playbookId: 'generate',
+                    action: 'generate_batch',
+                    title: 'Generate Needed Batch',
+                    description: 'seed query suggestion batch',
+                    actionLabel: '즉시 AI 제안',
+                    priority: 'high',
+                    context: 'ops_playbook_generate_generate',
+                    count: 3,
+                    entryIds: ['pending-1', 'pending-2', 'pending-3'],
+                    queries: ['운동용 후드', '남자 후드', '후드집업'],
+                    actorUid: 'admin-a',
+                    createdAt: '2026-03-12T09:10:00.000Z',
+                },
+                {
+                    id: 'run-retrain',
+                    playbookId: 'approve',
+                    action: 'approve_batch',
+                    title: 'Review Pending Batch',
+                    description: 'review batch',
+                    actionLabel: '즉시 승인',
+                    priority: 'critical',
+                    context: 'ops_playbook_approve_approve',
+                    count: 2,
+                    entryIds: ['approved-1', 'approved-2'],
+                    queries: ['트레이닝 팬츠', '등산 바지'],
+                    actorUid: 'admin-b',
+                    createdAt: '2026-03-12T09:20:00.000Z',
+                },
+                {
+                    id: 'run-awaiting',
+                    playbookId: 'samples',
+                    action: 'sample_batch',
+                    title: 'Sample Collection Batch',
+                    description: 'sample batch',
+                    actionLabel: '표본 수집 대상 선택',
+                    priority: 'medium',
+                    context: 'ops_playbook_samples',
+                    count: 1,
+                    entryIds: ['approved-3'],
+                    queries: ['러닝 자켓'],
+                    actorUid: 'admin-c',
+                    createdAt: '2026-03-12T09:30:00.000Z',
+                },
+            ],
+            [
+                {
+                    id: 'pending-1',
+                    query: '운동용 후드',
+                    status: 'pending',
+                    aiSuggestion: {
+                        normalizedQuery: '운동용 후드',
+                        categoryHint: '후드집업',
+                        suggestedQueries: ['후드집업'],
+                        rationale: 'hoodie',
+                        model: 'heuristic',
+                        generatedAt: '2026-03-12T09:05:00.000Z',
+                    },
+                    approvalBaseline: null,
+                    occurrenceCount: 1,
+                    lowFitCount: 1,
+                    zeroResultCount: 1,
+                },
+                {
+                    id: 'pending-2',
+                    query: '남자 후드',
+                    status: 'pending',
+                    aiSuggestion: {
+                        normalizedQuery: '남자 후드',
+                        categoryHint: '후드집업',
+                        suggestedQueries: ['남성 후드집업'],
+                        rationale: 'hoodie',
+                        model: 'heuristic',
+                        generatedAt: '2026-03-12T09:05:00.000Z',
+                    },
+                    approvalBaseline: null,
+                    occurrenceCount: 1,
+                    lowFitCount: 1,
+                    zeroResultCount: 1,
+                },
+                {
+                    id: 'pending-3',
+                    query: '후드집업',
+                    status: 'pending',
+                    aiSuggestion: {
+                        normalizedQuery: '후드집업',
+                        categoryHint: '후드집업',
+                        suggestedQueries: ['후드 집업'],
+                        rationale: 'hoodie',
+                        model: 'heuristic',
+                        generatedAt: '2026-03-12T09:05:00.000Z',
+                    },
+                    approvalBaseline: null,
+                    occurrenceCount: 1,
+                    lowFitCount: 0,
+                    zeroResultCount: 0,
+                },
+                {
+                    id: 'approved-1',
+                    query: '트레이닝 팬츠',
+                    status: 'approved',
+                    aiSuggestion: null,
+                    approvalBaseline: {
+                        approvedAt: '2026-03-12T08:00:00.000Z',
+                        occurrenceCount: 2,
+                        lowFitCount: 2,
+                        zeroResultCount: 1,
+                    },
+                    occurrenceCount: 4,
+                    lowFitCount: 4,
+                    zeroResultCount: 2,
+                },
+                {
+                    id: 'approved-2',
+                    query: '등산 바지',
+                    status: 'approved',
+                    aiSuggestion: null,
+                    approvalBaseline: {
+                        approvedAt: '2026-03-12T08:00:00.000Z',
+                        occurrenceCount: 2,
+                        lowFitCount: 2,
+                        zeroResultCount: 1,
+                    },
+                    occurrenceCount: 4,
+                    lowFitCount: 4,
+                    zeroResultCount: 2,
+                },
+                {
+                    id: 'approved-3',
+                    query: '러닝 자켓',
+                    status: 'approved',
+                    aiSuggestion: null,
+                    approvalBaseline: {
+                        approvedAt: '2026-03-12T08:00:00.000Z',
+                        occurrenceCount: 4,
+                        lowFitCount: 2,
+                        zeroResultCount: 1,
+                    },
+                    occurrenceCount: 6,
+                    lowFitCount: 2,
+                    zeroResultCount: 1,
+                },
+            ]
+        )
+    );
+
+    assert.equal(recommendations.total, 3);
+    assert.equal(recommendations.reviewNow, 1);
+    assert.equal(recommendations.retrainNow, 1);
+    assert.equal(recommendations.collectSamples, 0);
+    assert.equal(recommendations.observe, 1);
+    assert.equal(recommendations.critical, 2);
+    assert.equal(recommendations.topReviewNow[0]?.actionLabel, 'review 즉시 승인');
+    assert.equal(recommendations.topRetrainNow[0]?.action, 'retrain_now');
+    assert.equal(recommendations.topObserve[0]?.queries[0], '러닝 자켓');
 });
 
 test('coverage seed adds missing queries directly into search learning queue', async () => {
