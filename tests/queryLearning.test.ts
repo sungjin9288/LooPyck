@@ -80,6 +80,7 @@ import { buildSearchLearningOpsCompletionRecommendations } from '../lib/search/s
 import { buildSearchLearningOpsCompletionRecommendationQueue } from '../lib/search/searchLearningOpsCompletionRecommendationQueue.ts';
 import { buildSearchLearningOpsCompletionRecommendationActivity } from '../lib/search/searchLearningOpsCompletionRecommendationActivity.ts';
 import { buildSearchLearningOpsCompletionRecommendationOutcomes } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomes.ts';
+import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendations } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendations.ts';
 import { buildSearchLearningOpsCompletionQueue } from '../lib/search/searchLearningOpsCompletionQueue.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
@@ -3862,6 +3863,96 @@ test('search learning ops completion recommendation outcomes classify ready revi
     assert.equal(outcomes.validated, 0);
     assert.equal(outcomes.topReadyReview[0]?.status, 'ready_review');
     assert.equal(outcomes.topNeedsAttention[0]?.status, 'needs_attention');
+});
+
+test('search learning ops completion recommendation outcome recommendations classify next actions', () => {
+    const recommendations = buildSearchLearningOpsCompletionRecommendationOutcomeRecommendations({
+        total: 4,
+        readyReview: 1,
+        needsAttention: 1,
+        awaitingSamples: 1,
+        validated: 1,
+        topReadyReview: [
+            {
+                id: 'completion-reco-outcome-ready',
+                activityId: 'activity-ready',
+                title: 'Completion Recommendation Outcome Ready',
+                action: 'review_now',
+                context: 'completion_recommendation_review_ready',
+                createdAt: '2026-03-12T12:00:00.000Z',
+                queries: ['운동용 후드'],
+                entryIds: ['entry-ready'],
+                status: 'ready_review',
+                description: 'ready',
+                improvedCount: 0,
+                noImprovementCount: 0,
+                awaitingSamplesCount: 0,
+                readyReviewCount: 2,
+            },
+        ],
+        topNeedsAttention: [
+            {
+                id: 'completion-reco-outcome-attention',
+                activityId: 'activity-attention',
+                title: 'Completion Recommendation Outcome Attention',
+                action: 'retrain_now',
+                context: 'completion_recommendation_retrain_attention',
+                createdAt: '2026-03-12T12:02:00.000Z',
+                queries: ['트레이닝 팬츠'],
+                entryIds: ['entry-attention'],
+                status: 'needs_attention',
+                description: 'attention',
+                improvedCount: 0,
+                noImprovementCount: 3,
+                awaitingSamplesCount: 0,
+                readyReviewCount: 0,
+            },
+        ],
+        topAwaitingSamples: [
+            {
+                id: 'completion-reco-outcome-awaiting',
+                activityId: 'activity-awaiting',
+                title: 'Completion Recommendation Outcome Awaiting',
+                action: 'retrain_now',
+                context: 'completion_recommendation_retrain_awaiting',
+                createdAt: '2026-03-12T12:03:00.000Z',
+                queries: ['러닝 자켓'],
+                entryIds: ['entry-awaiting'],
+                status: 'awaiting_samples',
+                description: 'awaiting',
+                improvedCount: 0,
+                noImprovementCount: 0,
+                awaitingSamplesCount: 2,
+                readyReviewCount: 0,
+            },
+        ],
+        topValidated: [
+            {
+                id: 'completion-reco-outcome-validated',
+                activityId: 'activity-validated',
+                title: 'Completion Recommendation Outcome Validated',
+                action: 'review_now',
+                context: 'completion_recommendation_review_validated',
+                createdAt: '2026-03-12T12:04:00.000Z',
+                queries: ['와이드 팬츠'],
+                entryIds: ['entry-validated'],
+                status: 'validated',
+                description: 'validated',
+                improvedCount: 3,
+                noImprovementCount: 0,
+                awaitingSamplesCount: 0,
+                readyReviewCount: 0,
+            },
+        ],
+    });
+
+    assert.equal(recommendations.total, 4);
+    assert.equal(recommendations.reviewNow, 1);
+    assert.equal(recommendations.retrainNow, 1);
+    assert.equal(recommendations.collectSamples, 1);
+    assert.equal(recommendations.observe, 1);
+    assert.equal(recommendations.topReviewNow[0]?.action, 'review_now');
+    assert.equal(recommendations.topRetrainNow[0]?.action, 'retrain_now');
 });
 
 test('search learning ops playbook recommendation outcome recommendation outcome recommendation activity tracks review and retrain executions', () => {
