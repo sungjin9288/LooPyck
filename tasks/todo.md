@@ -68,6 +68,7 @@
 - [x] `Search Learning Ops Completion Activity`
 - [x] `Search Learning Ops Completion Outcomes`
 - [x] `Search Learning Ops Completion Recommendations`
+- [x] `Search Learning Ops Completion Recommendation Queue`
 
 **[2] Verify**
 - [x] `npm run typecheck`
