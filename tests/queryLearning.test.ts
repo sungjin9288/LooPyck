@@ -74,6 +74,7 @@ import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcom
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.ts';
 import { buildSearchLearningOpsCompletionSummary } from '../lib/search/searchLearningOpsCompletionSummary.ts';
 import { buildSearchLearningOpsCompletionActions } from '../lib/search/searchLearningOpsCompletionActions.ts';
+import { buildSearchLearningOpsCompletionActivity } from '../lib/search/searchLearningOpsCompletionActivity.ts';
 import { buildSearchLearningOpsCompletionQueue } from '../lib/search/searchLearningOpsCompletionQueue.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
@@ -3421,6 +3422,51 @@ test('search learning ops completion queue prioritizes execute and review action
     assert.equal(queue.topItems[1]?.queueState, 'needs_review');
     assert.equal(queue.topItems[2]?.queueState, 'sample_collection');
     assert.equal(queue.topItems[3]?.queueState, 'observe');
+});
+
+test('search learning ops completion activity tracks execute and review runs', () => {
+    const activity = buildSearchLearningOpsCompletionActivity([
+        {
+            id: 'activity-1',
+            type: 'generate_suggestions',
+            context: 'completion_execute_generate',
+            reviewedStatus: null,
+            actorUid: 'admin-1',
+            count: 2,
+            entryIds: ['entry-1', 'entry-2'],
+            queries: ['운동용 후드', '남자 후드'],
+            createdAt: '2026-03-12T10:40:00.000Z',
+        },
+        {
+            id: 'activity-2',
+            type: 'review_entries',
+            context: 'completion_review_approve',
+            reviewedStatus: 'approved',
+            actorUid: 'admin-2',
+            count: 1,
+            entryIds: ['entry-3'],
+            queries: ['러닝 자켓'],
+            createdAt: '2026-03-12T10:41:00.000Z',
+        },
+        {
+            id: 'activity-3',
+            type: 'generate_suggestions',
+            context: 'other_context',
+            reviewedStatus: null,
+            actorUid: 'admin-3',
+            count: 1,
+            entryIds: ['entry-4'],
+            queries: ['와이드 팬츠'],
+            createdAt: '2026-03-12T10:42:00.000Z',
+        },
+    ]);
+
+    assert.equal(activity.totalRuns, 2);
+    assert.equal(activity.executeRuns, 1);
+    assert.equal(activity.reviewRuns, 1);
+    assert.equal(activity.uniqueQueries, 3);
+    assert.equal(activity.recentRuns[0]?.action, 'review_now');
+    assert.equal(activity.recentRuns[1]?.action, 'execute_now');
 });
 
 test('search learning ops playbook recommendation outcome recommendation outcome recommendation activity tracks review and retrain executions', () => {

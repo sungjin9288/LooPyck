@@ -89,6 +89,7 @@ import {
     buildSearchLearningOpsCompletionActions,
     type SearchLearningOpsCompletionAction,
 } from '@/lib/search/searchLearningOpsCompletionActions';
+import { buildSearchLearningOpsCompletionActivity } from '@/lib/search/searchLearningOpsCompletionActivity';
 import {
     buildSearchLearningOpsCompletionQueue,
     type SearchLearningOpsCompletionQueueItem,
@@ -1420,6 +1421,9 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     );
     const searchLearningOpsCompletionActions = buildSearchLearningOpsCompletionActions(
         searchLearningOpsCompletionSummary
+    );
+    const searchLearningOpsCompletionActivity = buildSearchLearningOpsCompletionActivity(
+        searchLearningActivity
     );
     const searchLearningOpsCompletionQueue = buildSearchLearningOpsCompletionQueue(
         searchLearningOpsCompletionActions
@@ -5929,6 +5933,84 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 {searchLearningOpsCompletionQueue.total === 0 && (
                                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 md:col-span-2 xl:col-span-3">
                                         현재 completion queue가 비어 있습니다. 상단 `Completion Actions`가 모두 소진되면 추가 우선순위 처리가 필요하지 않습니다.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-sky-500/20 bg-sky-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Ops Completion Activity</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        completion queue에서 실제 실행된 `즉시 AI 제안 / 즉시 승인` 이력을 모아봅니다. 같은 액션을 다시 실행하거나 관련 query를 아래 queue로 넘길 수 있습니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        total runs {searchLearningOpsCompletionActivity.totalRuns}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        execute {searchLearningOpsCompletionActivity.executeRuns}
+                                    </span>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-100">
+                                        review {searchLearningOpsCompletionActivity.reviewRuns}
+                                    </span>
+                                    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+                                        queries {searchLearningOpsCompletionActivity.uniqueQueries}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                {searchLearningOpsCompletionActivity.recentRuns.map((run) => {
+                                    const badgeClass = run.action === 'execute_now'
+                                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                        : 'border-sky-500/30 bg-sky-500/10 text-sky-100';
+
+                                    return (
+                                        <div key={run.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${badgeClass}`}>
+                                                            {run.action}
+                                                        </span>
+                                                        <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                            {run.priority}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{run.title}</p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {run.count} items
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{run.description}</p>
+                                            <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+                                                {formatTime(run.createdAt)} · {run.context}
+                                            </p>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {run.queries.map((query) => (
+                                                    <span key={`${run.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                        {query}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(run.entryIds, `${run.title} 실행 query를 선택했습니다.`)}
+                                                    className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100"
+                                                >
+                                                    queue 선택
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {searchLearningOpsCompletionActivity.totalRuns === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 md:col-span-2 xl:col-span-3">
+                                        아직 completion activity가 없습니다. `Completion Queue`에서 액션을 실행하면 여기에 최근 이력이 쌓입니다.
                                     </div>
                                 )}
                             </div>
