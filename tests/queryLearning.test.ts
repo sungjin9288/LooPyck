@@ -74,6 +74,7 @@ import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcom
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.ts';
 import { buildSearchLearningOpsCompletionSummary } from '../lib/search/searchLearningOpsCompletionSummary.ts';
 import { buildSearchLearningOpsCompletionActions } from '../lib/search/searchLearningOpsCompletionActions.ts';
+import { buildSearchLearningOpsCompletionQueue } from '../lib/search/searchLearningOpsCompletionQueue.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -3339,6 +3340,87 @@ test('search learning ops completion actions collapse terminal states into batch
     assert.equal(actions.highPriority, 2);
     assert.equal(actions.topActions[0]?.type, 'execute_now');
     assert.equal(actions.topActions[1]?.type, 'review_now');
+});
+
+test('search learning ops completion queue prioritizes execute and review actions first', () => {
+    const queue = buildSearchLearningOpsCompletionQueue({
+        total: 4,
+        executeNow: 1,
+        reviewNow: 1,
+        collectSamples: 1,
+        observeNow: 1,
+        critical: 1,
+        highPriority: 1,
+        topActions: [
+            {
+                id: 'action-execute',
+                type: 'execute_now',
+                title: 'Execute Hoodie Retrain',
+                description: 'execute',
+                reason: 'hoodie retrain',
+                priority: 'critical',
+                actionLabel: '즉시 AI 제안',
+                state: 'action_required',
+                entryIds: ['entry-1'],
+                queries: ['운동용 후드'],
+                recommendationIds: ['rec-1'],
+                queryCount: 1,
+            },
+            {
+                id: 'action-review',
+                type: 'review_now',
+                title: 'Review Hoodie Approval',
+                description: 'review',
+                reason: 'hoodie review',
+                priority: 'high',
+                actionLabel: '즉시 승인',
+                state: 'review_required',
+                entryIds: ['entry-2'],
+                queries: ['남자 후드'],
+                recommendationIds: ['rec-2'],
+                queryCount: 1,
+            },
+            {
+                id: 'action-sample',
+                type: 'collect_samples',
+                title: 'Sample Runner Jacket',
+                description: 'sample',
+                reason: 'runner jacket sample',
+                priority: 'medium',
+                actionLabel: '표본 수집 대상 선택',
+                state: 'sampling',
+                entryIds: ['entry-3'],
+                queries: ['러닝 자켓'],
+                recommendationIds: ['rec-3'],
+                queryCount: 1,
+            },
+            {
+                id: 'action-observe',
+                type: 'observe_now',
+                title: 'Observe Wide Pants',
+                description: 'observe',
+                reason: 'wide pants stable',
+                priority: 'low',
+                actionLabel: '개선 query 선택',
+                state: 'monitoring',
+                entryIds: ['entry-4'],
+                queries: ['와이드 팬츠'],
+                recommendationIds: ['rec-4'],
+                queryCount: 1,
+            },
+        ],
+        topExecuteNow: [],
+        topReviewNow: [],
+        topCollectSamples: [],
+        topObserveNow: [],
+    });
+
+    assert.equal(queue.total, 4);
+    assert.equal(queue.urgent, 2);
+    assert.equal(queue.topItems[0]?.queueState, 'execute_now');
+    assert.equal(queue.topItems[1]?.queueState, 'needs_review');
+    assert.equal(queue.topItems[2]?.queueState, 'sample_collection');
+    assert.equal(queue.topItems[3]?.queueState, 'observe');
 });
 
 test('search learning ops playbook recommendation outcome recommendation outcome recommendation activity tracks review and retrain executions', () => {

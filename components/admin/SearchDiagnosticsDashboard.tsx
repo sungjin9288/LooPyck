@@ -89,6 +89,10 @@ import {
     buildSearchLearningOpsCompletionActions,
     type SearchLearningOpsCompletionAction,
 } from '@/lib/search/searchLearningOpsCompletionActions';
+import {
+    buildSearchLearningOpsCompletionQueue,
+    type SearchLearningOpsCompletionQueueItem,
+} from '@/lib/search/searchLearningOpsCompletionQueue';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1417,6 +1421,9 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const searchLearningOpsCompletionActions = buildSearchLearningOpsCompletionActions(
         searchLearningOpsCompletionSummary
     );
+    const searchLearningOpsCompletionQueue = buildSearchLearningOpsCompletionQueue(
+        searchLearningOpsCompletionActions
+    );
     const searchLearningDraftEntries = searchLearningEntries.filter((entry) =>
         entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
     );
@@ -2254,6 +2261,16 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             default:
                 selectSearchLearningEntries(action.entryIds, `${action.title}의 ${action.entryIds.length}개 개선 query를 선택했습니다.`);
         }
+    }
+
+    async function handleSearchLearningOpsCompletionQueueItem(item: SearchLearningOpsCompletionQueueItem) {
+        const action = searchLearningOpsCompletionActions.topActions.find((candidate) => candidate.id === item.actionId);
+        if (action) {
+            await handleSearchLearningOpsCompletionAction(action);
+            return;
+        }
+
+        selectSearchLearningEntries(item.entryIds, `${item.title}의 ${item.entryIds.length}개 query를 선택했습니다.`);
     }
 
     async function handleGenerateImpactNoImprovementSuggestions() {
@@ -5817,6 +5834,101 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 {searchLearningOpsCompletionActions.total === 0 && (
                                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 md:col-span-2 xl:col-span-4">
                                         현재 terminal completion action이 없습니다. 상단 `Completion Summary`가 stable이면 추가 조치가 필요하지 않습니다.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Ops Completion Queue</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        completion action을 실제 운영 우선순위 큐로 다시 정렬한 섹션입니다. execute/review를 먼저 처리하고, sample/observe는 후순위로 바로 넘길 수 있습니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        total {searchLearningOpsCompletionQueue.total}
+                                    </span>
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-100">
+                                        urgent {searchLearningOpsCompletionQueue.urgent}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        execute {searchLearningOpsCompletionQueue.executeNow}
+                                    </span>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-100">
+                                        review {searchLearningOpsCompletionQueue.needsReview}
+                                    </span>
+                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-100">
+                                        samples {searchLearningOpsCompletionQueue.sampleCollection}
+                                    </span>
+                                    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+                                        observe {searchLearningOpsCompletionQueue.observe}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                {searchLearningOpsCompletionQueue.topItems.map((item) => {
+                                    const badgeClass = item.queueState === 'execute_now'
+                                        ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                        : item.queueState === 'needs_review'
+                                            ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                            : item.queueState === 'sample_collection'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-100';
+
+                                    return (
+                                        <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${badgeClass}`}>
+                                                            {item.queueState}
+                                                        </span>
+                                                        <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                            {item.priority}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {item.queryCount} queries
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{item.description}</p>
+                                            <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+                                                {item.reason}
+                                            </p>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {item.queries.slice(0, 8).map((query) => (
+                                                    <span key={`${item.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                        {query}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleSearchLearningOpsCompletionQueueItem(item)}
+                                                    className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100"
+                                                >
+                                                    {item.actionLabel}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(item.entryIds, `${item.title}의 ${item.entryIds.length}개 query를 선택했습니다.`)}
+                                                    className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                >
+                                                    queue 선택
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {searchLearningOpsCompletionQueue.total === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 md:col-span-2 xl:col-span-3">
+                                        현재 completion queue가 비어 있습니다. 상단 `Completion Actions`가 모두 소진되면 추가 우선순위 처리가 필요하지 않습니다.
                                     </div>
                                 )}
                             </div>

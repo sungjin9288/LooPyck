@@ -64,6 +64,7 @@
 - [x] `Search Learning Ops Playbook Recommendation Outcome Recommendation Outcome Recommendation Recommendations`
 - [x] `Search Learning Ops Completion Summary`
 - [x] `Search Learning Ops Completion Actions`
+- [x] `Search Learning Ops Completion Queue`
 
 **[2] Verify**
 - [x] `npm run typecheck`
