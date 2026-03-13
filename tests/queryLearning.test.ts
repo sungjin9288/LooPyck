@@ -79,6 +79,7 @@ import { buildSearchLearningOpsCompletionOutcomes } from '../lib/search/searchLe
 import { buildSearchLearningOpsCompletionRecommendations } from '../lib/search/searchLearningOpsCompletionRecommendations.ts';
 import { buildSearchLearningOpsCompletionRecommendationQueue } from '../lib/search/searchLearningOpsCompletionRecommendationQueue.ts';
 import { buildSearchLearningOpsCompletionRecommendationActivity } from '../lib/search/searchLearningOpsCompletionRecommendationActivity.ts';
+import { buildSearchLearningOpsCompletionRecommendationOutcomes } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomes.ts';
 import { buildSearchLearningOpsCompletionQueue } from '../lib/search/searchLearningOpsCompletionQueue.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
@@ -3775,6 +3776,92 @@ test('search learning ops completion recommendation activity tracks review and r
     assert.equal(activity.uniqueQueries, 4);
     assert.equal(activity.recentRuns[0]?.action, 'retrain_now');
     assert.equal(activity.recentRuns[1]?.action, 'review_now');
+});
+
+test('search learning ops completion recommendation outcomes classify ready review and needs attention states', () => {
+    const outcomes = buildSearchLearningOpsCompletionRecommendationOutcomes(
+        [
+            {
+                id: 'activity-review',
+                outcomeId: 'completion_outcome:review',
+                action: 'review_now',
+                title: 'Completion Recommendation Review Run',
+                description: 'review',
+                actionLabel: 'review 즉시 승인',
+                priority: 'critical',
+                context: 'completion_recommendation_review_completion_outcome:review',
+                count: 1,
+                entryIds: ['entry-ready'],
+                queries: ['운동용 후드'],
+                actorUid: 'admin-a',
+                createdAt: '2026-03-12T11:20:00.000Z',
+            },
+            {
+                id: 'activity-retrain',
+                outcomeId: 'completion_outcome:retrain',
+                action: 'retrain_now',
+                title: 'Completion Recommendation Retrain Run',
+                description: 'retrain',
+                actionLabel: '재학습 AI 제안',
+                priority: 'high',
+                context: 'completion_recommendation_retrain_completion_outcome:retrain',
+                count: 1,
+                entryIds: ['entry-attention'],
+                queries: ['트레이닝 팬츠'],
+                actorUid: 'admin-b',
+                createdAt: '2026-03-12T11:25:00.000Z',
+            },
+        ],
+        [
+            {
+                id: 'entry-ready',
+                query: '운동용 후드',
+                status: 'pending',
+                aiSuggestion: {
+                    normalizedQuery: '운동용 후드',
+                    categoryHint: '후드집업',
+                    suggestedQueries: ['후드집업', '트레이닝 후드집업'],
+                    rationale: 'hoodie',
+                    model: 'heuristic',
+                    generatedAt: '2026-03-12T11:19:00.000Z',
+                },
+                approvalBaseline: null,
+                occurrenceCount: 1,
+                lowFitCount: 1,
+                zeroResultCount: 1,
+            },
+            {
+                id: 'entry-attention',
+                query: '트레이닝 팬츠',
+                status: 'approved',
+                aiSuggestion: {
+                    normalizedQuery: '트레이닝 팬츠',
+                    categoryHint: '트랙 팬츠',
+                    suggestedQueries: ['트랙 팬츠'],
+                    rationale: 'track pants',
+                    model: 'heuristic',
+                    generatedAt: '2026-03-12T11:24:00.000Z',
+                },
+                approvalBaseline: {
+                    approvedAt: '2026-03-12T10:00:00.000Z',
+                    occurrenceCount: 5,
+                    lowFitCount: 1,
+                    zeroResultCount: 0,
+                },
+                occurrenceCount: 7,
+                lowFitCount: 3,
+                zeroResultCount: 2,
+            },
+        ]
+    );
+
+    assert.equal(outcomes.total, 2);
+    assert.equal(outcomes.readyReview, 1);
+    assert.equal(outcomes.needsAttention, 1);
+    assert.equal(outcomes.awaitingSamples, 0);
+    assert.equal(outcomes.validated, 0);
+    assert.equal(outcomes.topReadyReview[0]?.status, 'ready_review');
+    assert.equal(outcomes.topNeedsAttention[0]?.status, 'needs_attention');
 });
 
 test('search learning ops playbook recommendation outcome recommendation outcome recommendation activity tracks review and retrain executions', () => {
