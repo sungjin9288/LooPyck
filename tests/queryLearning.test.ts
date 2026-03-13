@@ -73,6 +73,7 @@ import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcom
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes.ts';
 import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.ts';
 import { buildSearchLearningOpsCompletionSummary } from '../lib/search/searchLearningOpsCompletionSummary.ts';
+import { buildSearchLearningOpsCompletionActions } from '../lib/search/searchLearningOpsCompletionActions.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({
@@ -3247,6 +3248,97 @@ test('search learning ops completion summary collapses deepest queue into termin
     assert.equal(summary.topImmediate.length, 2);
     assert.equal(summary.topImmediate[0]?.recommendationId, 'recommendation-2');
     assert.equal(summary.topImmediate[1]?.recommendationId, 'recommendation-1');
+});
+
+test('search learning ops completion actions collapse terminal states into batch actions', () => {
+    const actions = buildSearchLearningOpsCompletionActions({
+        state: 'action_required',
+        total: 4,
+        executeNow: 1,
+        needsReview: 1,
+        sampleCollection: 1,
+        observe: 1,
+        validated: 1,
+        recentRuns: 2,
+        stableSignals: 2,
+        immediateCount: 2,
+        topImmediate: [
+            {
+                id: 'completion-1',
+                recommendationId: 'recommendation-1',
+                title: 'Immediate Execute',
+                description: 'execute',
+                reason: 'execute reason',
+                state: 'action_required',
+                priority: 'critical',
+                actionLabel: '즉시 AI 제안',
+                queueState: 'execute_now',
+                entryIds: ['entry-1'],
+                queries: ['운동용 후드'],
+                createdAt: '2026-03-12T10:10:00.000Z',
+                outcomeStatus: 'needs_attention',
+            },
+            {
+                id: 'completion-2',
+                recommendationId: 'recommendation-2',
+                title: 'Immediate Review',
+                description: 'review',
+                reason: 'review reason',
+                state: 'review_required',
+                priority: 'high',
+                actionLabel: '즉시 승인',
+                queueState: 'needs_review',
+                entryIds: ['entry-2'],
+                queries: ['남자 후드'],
+                createdAt: '2026-03-12T10:09:00.000Z',
+                outcomeStatus: 'ready_review',
+            },
+        ],
+        topSampling: [
+            {
+                id: 'completion-3',
+                recommendationId: 'recommendation-3',
+                title: 'Sampling',
+                description: 'sampling',
+                reason: 'sampling reason',
+                state: 'sampling',
+                priority: 'medium',
+                actionLabel: '표본 수집 대상 선택',
+                queueState: 'sample_collection',
+                entryIds: ['entry-3'],
+                queries: ['러닝 자켓'],
+                createdAt: '2026-03-12T10:08:00.000Z',
+                outcomeStatus: 'awaiting_samples',
+            },
+        ],
+        topObserve: [
+            {
+                id: 'completion-4',
+                recommendationId: 'recommendation-4',
+                title: 'Observe',
+                description: 'observe',
+                reason: 'observe reason',
+                state: 'monitoring',
+                priority: 'low',
+                actionLabel: '개선 query 선택',
+                queueState: 'observe',
+                entryIds: ['entry-4'],
+                queries: ['와이드 팬츠'],
+                createdAt: '2026-03-12T10:07:00.000Z',
+                outcomeStatus: 'validated',
+            },
+        ],
+    });
+
+    assert.equal(actions.total, 4);
+    assert.equal(actions.executeNow, 1);
+    assert.equal(actions.reviewNow, 1);
+    assert.equal(actions.collectSamples, 1);
+    assert.equal(actions.observeNow, 1);
+    assert.equal(actions.critical, 0);
+    assert.equal(actions.highPriority, 2);
+    assert.equal(actions.topActions[0]?.type, 'execute_now');
+    assert.equal(actions.topActions[1]?.type, 'review_now');
 });
 
 test('search learning ops playbook recommendation outcome recommendation outcome recommendation activity tracks review and retrain executions', () => {

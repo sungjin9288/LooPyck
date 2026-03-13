@@ -85,6 +85,10 @@ import {
     type SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation,
 } from '@/lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations';
 import { buildSearchLearningOpsCompletionSummary } from '@/lib/search/searchLearningOpsCompletionSummary';
+import {
+    buildSearchLearningOpsCompletionActions,
+    type SearchLearningOpsCompletionAction,
+} from '@/lib/search/searchLearningOpsCompletionActions';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1410,6 +1414,9 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes,
         searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity
     );
+    const searchLearningOpsCompletionActions = buildSearchLearningOpsCompletionActions(
+        searchLearningOpsCompletionSummary
+    );
     const searchLearningDraftEntries = searchLearningEntries.filter((entry) =>
         entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
     );
@@ -2220,6 +2227,33 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             (count) => `${count}개의 review pending source approval query를 승인했습니다.`,
             'review pending source approval 승인에 실패했습니다.'
         );
+    }
+
+    async function handleSearchLearningOpsCompletionAction(action: SearchLearningOpsCompletionAction) {
+        switch (action.type) {
+            case 'execute_now':
+                await handleBulkGenerateSearchLearningSuggestionsForIds(
+                    action.entryIds,
+                    'completion_execute_generate',
+                    (count) => `${count}개의 completion execute query에 AI 제안을 생성했습니다.`,
+                    'completion execute query AI 제안을 생성하지 못했습니다.'
+                );
+                return;
+            case 'review_now':
+                await handleBulkReviewSearchLearningForIds(
+                    action.entryIds,
+                    'bulk_approve',
+                    'completion_review_approve',
+                    (count) => `${count}개의 completion review query를 승인했습니다.`,
+                    'completion review 승인에 실패했습니다.'
+                );
+                return;
+            case 'collect_samples':
+                selectSearchLearningEntries(action.entryIds, `${action.title}의 ${action.entryIds.length}개 query를 선택했습니다.`);
+                return;
+            default:
+                selectSearchLearningEntries(action.entryIds, `${action.title}의 ${action.entryIds.length}개 개선 query를 선택했습니다.`);
+        }
     }
 
     async function handleGenerateImpactNoImprovementSuggestions() {
@@ -5691,6 +5725,98 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 {searchLearningOpsCompletionSummary.total === 0 && (
                                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-3">
                                         현재 search learning ops 체인은 안정 상태입니다. 새 action item이 생기면 여기에서 바로 노출됩니다.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Ops Completion Actions</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        terminal summary를 실제 batch 실행 단위로 다시 묶은 섹션입니다. 운영자는 여기서 즉시 AI 제안, 즉시 승인, 표본 수집, 관찰 액션을 바로 실행하면 됩니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        total {searchLearningOpsCompletionActions.total}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        execute {searchLearningOpsCompletionActions.executeNow}
+                                    </span>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-100">
+                                        review {searchLearningOpsCompletionActions.reviewNow}
+                                    </span>
+                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-100">
+                                        samples {searchLearningOpsCompletionActions.collectSamples}
+                                    </span>
+                                    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+                                        observe {searchLearningOpsCompletionActions.observeNow}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                {searchLearningOpsCompletionActions.topActions.map((action) => {
+                                    const badgeClass = action.type === 'execute_now'
+                                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                        : action.type === 'review_now'
+                                            ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                            : action.type === 'collect_samples'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-100';
+
+                                    return (
+                                        <div key={action.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${badgeClass}`}>
+                                                            {action.type}
+                                                        </span>
+                                                        <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                            {action.priority}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{action.title}</p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {action.queryCount} queries
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{action.description}</p>
+                                            <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+                                                {action.reason}
+                                            </p>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {action.queries.slice(0, 8).map((query) => (
+                                                    <span key={`${action.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                        {query}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleSearchLearningOpsCompletionAction(action)}
+                                                    className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100"
+                                                >
+                                                    {action.actionLabel}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(action.entryIds, `${action.title}의 ${action.entryIds.length}개 query를 선택했습니다.`)}
+                                                    className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                >
+                                                    queue 선택
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {searchLearningOpsCompletionActions.total === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 md:col-span-2 xl:col-span-4">
+                                        현재 terminal completion action이 없습니다. 상단 `Completion Summary`가 stable이면 추가 조치가 필요하지 않습니다.
                                     </div>
                                 )}
                             </div>
