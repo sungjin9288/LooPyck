@@ -78,6 +78,7 @@ import { buildSearchLearningOpsCompletionActivity } from '../lib/search/searchLe
 import { buildSearchLearningOpsCompletionOutcomes } from '../lib/search/searchLearningOpsCompletionOutcomes.ts';
 import { buildSearchLearningOpsCompletionRecommendations } from '../lib/search/searchLearningOpsCompletionRecommendations.ts';
 import { buildSearchLearningOpsCompletionRecommendationQueue } from '../lib/search/searchLearningOpsCompletionRecommendationQueue.ts';
+import { buildSearchLearningOpsCompletionRecommendationActivity } from '../lib/search/searchLearningOpsCompletionRecommendationActivity.ts';
 import { buildSearchLearningOpsCompletionQueue } from '../lib/search/searchLearningOpsCompletionQueue.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
@@ -3740,6 +3741,40 @@ test('search learning ops completion recommendation queue prioritizes execute an
     assert.equal(queue.urgent, 2);
     assert.equal(queue.topExecuteNow[0]?.action, 'retrain_now');
     assert.equal(queue.topNeedsReview[0]?.action, 'review_now');
+});
+
+test('search learning ops completion recommendation activity tracks review and retrain executions', () => {
+    const activity = buildSearchLearningOpsCompletionRecommendationActivity([
+        {
+            id: 'activity-review',
+            type: 'review_entries',
+            context: 'completion_recommendation_review_completion_outcome:review',
+            reviewedStatus: 'approved',
+            count: 2,
+            entryIds: ['entry-1', 'entry-2'],
+            queries: ['운동용 후드', '남자 후드'],
+            actorUid: 'admin-a',
+            createdAt: '2026-03-12T11:10:00.000Z',
+        },
+        {
+            id: 'activity-retrain',
+            type: 'generate_suggestions',
+            context: 'completion_recommendation_retrain_completion_outcome:retrain',
+            reviewedStatus: null,
+            count: 1,
+            entryIds: ['entry-3'],
+            queries: ['트레이닝 팬츠', '조거 팬츠'],
+            actorUid: 'admin-b',
+            createdAt: '2026-03-12T11:12:00.000Z',
+        },
+    ]);
+
+    assert.equal(activity.totalRuns, 2);
+    assert.equal(activity.reviewRuns, 1);
+    assert.equal(activity.retrainRuns, 1);
+    assert.equal(activity.uniqueQueries, 4);
+    assert.equal(activity.recentRuns[0]?.action, 'retrain_now');
+    assert.equal(activity.recentRuns[1]?.action, 'review_now');
 });
 
 test('search learning ops playbook recommendation outcome recommendation outcome recommendation activity tracks review and retrain executions', () => {
