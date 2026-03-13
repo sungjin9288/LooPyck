@@ -84,6 +84,7 @@ import {
     buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
     type SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation,
 } from '@/lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations';
+import { buildSearchLearningOpsCompletionSummary } from '@/lib/search/searchLearningOpsCompletionSummary';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1404,6 +1405,11 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations(
             searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes
         );
+    const searchLearningOpsCompletionSummary = buildSearchLearningOpsCompletionSummary(
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity
+    );
     const searchLearningDraftEntries = searchLearningEntries.filter((entry) =>
         entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
     );
@@ -5543,6 +5549,148 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 {searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue.total === 0 && (
                                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-2">
                                         아직 실행 가능한 outcome recommendation outcome recommendation queue가 없습니다.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Ops Completion Summary</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        현재 deepest search learning ops 체인을 한 번에 닫는 terminal summary입니다. 운영자는 여기서 즉시 실행, review, 표본 수집, 관찰, 안정화 상태를 바로 판단하면 됩니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+                                        state {searchLearningOpsCompletionSummary.state}
+                                    </span>
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        total {searchLearningOpsCompletionSummary.total}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        immediate {searchLearningOpsCompletionSummary.immediateCount}
+                                    </span>
+                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-100">
+                                        sampling {searchLearningOpsCompletionSummary.sampleCollection}
+                                    </span>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-100">
+                                        stable signals {searchLearningOpsCompletionSummary.stableSignals}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Execute Now</p>
+                                    <p className="mt-3 text-3xl font-black text-emerald-100">
+                                        {searchLearningOpsCompletionSummary.executeNow}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Needs Review</p>
+                                    <p className="mt-3 text-3xl font-black text-sky-100">
+                                        {searchLearningOpsCompletionSummary.needsReview}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Sample Collection</p>
+                                    <p className="mt-3 text-3xl font-black text-amber-100">
+                                        {searchLearningOpsCompletionSummary.sampleCollection}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Observe</p>
+                                    <p className="mt-3 text-3xl font-black text-slate-100">
+                                        {searchLearningOpsCompletionSummary.observe}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Validated</p>
+                                    <p className="mt-3 text-3xl font-black text-cyan-100">
+                                        {searchLearningOpsCompletionSummary.validated}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                                {[
+                                    ...searchLearningOpsCompletionSummary.topImmediate,
+                                    ...searchLearningOpsCompletionSummary.topSampling,
+                                    ...searchLearningOpsCompletionSummary.topObserve,
+                                ]
+                                    .slice(0, 6)
+                                    .map((item) => {
+                                        const badgeClass = item.state === 'action_required'
+                                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                            : item.state === 'review_required'
+                                                ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                : item.state === 'sampling'
+                                                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                    : item.state === 'monitoring'
+                                                        ? 'border-slate-700 bg-slate-950/70 text-slate-300'
+                                                        : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-100';
+
+                                        return (
+                                            <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${badgeClass}`}>
+                                                                {item.state}
+                                                            </span>
+                                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                                {item.priority}
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                                        <p className="mt-1 text-[11px] text-slate-500">
+                                                            {formatTime(item.createdAt)} · {item.outcomeStatus}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <p className="mt-3 text-xs leading-6 text-slate-400">{item.description}</p>
+                                                <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+                                                    {item.reason}
+                                                </p>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {item.queries.map((query) => (
+                                                        <span key={`${item.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className="mt-4 flex flex-wrap gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const recommendation = [
+                                                                ...searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.topReviewNow,
+                                                                ...searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.topRetrainNow,
+                                                                ...searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.topCollectSamples,
+                                                                ...searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.topObserve,
+                                                            ].find((candidate) => candidate.id === item.recommendationId);
+                                                            if (recommendation) {
+                                                                void handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationAction(recommendation);
+                                                            }
+                                                        }}
+                                                        className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100"
+                                                    >
+                                                        {item.actionLabel}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => selectSearchLearningEntries(item.entryIds, `${item.title} terminal summary query를 선택했습니다.`)}
+                                                        className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                    >
+                                                        queue 선택
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                {searchLearningOpsCompletionSummary.total === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-3">
+                                        현재 search learning ops 체인은 안정 상태입니다. 새 action item이 생기면 여기에서 바로 노출됩니다.
                                     </div>
                                 )}
                             </div>
