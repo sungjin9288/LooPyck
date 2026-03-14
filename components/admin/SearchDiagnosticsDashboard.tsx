@@ -1203,6 +1203,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const [processingSearchLearningId, setProcessingSearchLearningId] = useState<string | null>(null);
     const [searchLearningMessage, setSearchLearningMessage] = useState<string | null>(null);
     const [selectedSearchLearningIds, setSelectedSearchLearningIds] = useState<string[]>([]);
+    const [showAdvancedSearchLearningChain, setShowAdvancedSearchLearningChain] = useState(false);
     const seenAuditEventIds = useRef<Set<string>>(new Set());
     const auditFeedHydrated = useRef(false);
 
@@ -6332,6 +6333,26 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                             </div>
                         </section>
 
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Advanced Search Learning Chain</h2>
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        completion workflow의 깊은 중간 단계는 기본 화면에서 숨깁니다. 일반 운영은 `Completion Summary`, `Completion Actions`, `Completion Queue`, terminal recommendations만으로 처리하고, 필요할 때만 아래 상세 chain을 펼치세요.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAdvancedSearchLearningChain((current) => !current)}
+                                    className="rounded-full border border-slate-700 px-4 py-2 text-xs font-bold text-slate-200"
+                                >
+                                    {showAdvancedSearchLearningChain ? 'Advanced Chain 접기' : 'Advanced Chain 펼치기'}
+                                </button>
+                            </div>
+                        </section>
+
+                        {showAdvancedSearchLearningChain && (
+                        <>
                         <section className="mt-8 rounded-3xl border border-sky-500/20 bg-sky-500/5 p-5">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                 <div>
@@ -6789,6 +6810,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 )}
                             </div>
                         </section>
+                        </>
+                        )}
 
                         <section className="mt-8 rounded-3xl border border-sky-500/20 bg-sky-500/5 p-5">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -7675,6 +7698,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                             </div>
                         </section>
 
+                        {showAdvancedSearchLearningChain && (
+                        <>
                         <section className="mt-8 rounded-3xl border border-sky-500/20 bg-sky-500/5 p-5">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                 <div>
@@ -8033,6 +8058,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 )}
                             </div>
                         </section>
+                        </>
+                        )}
 
                         <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

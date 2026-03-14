@@ -84,6 +84,7 @@
 - [x] `Search Learning Ops Completion Recommendation Outcome Recommendation Outcome Recommendation Recommendation Activity`
 - [x] `Search Learning Ops Completion Recommendation Outcome Recommendation Outcome Recommendation Recommendation Outcomes`
 - [x] `Search Learning Ops Completion Recommendation Outcome Recommendation Outcome Recommendation Recommendation Recommendations`
+- [x] `/admin` search-learning advanced chain collapse + terminal workflow consolidation`
 
 **[2] Verify**
 - [x] `npm run typecheck`
@@ -92,8 +93,8 @@
 
 **[3] Next**
 - [ ] production redeploy
-- [ ] `/admin`에서 `Search Learning Ops Playbooks` / `Playbook Activity` / `Playbook Outcomes` 확인
-- [ ] 실제 검색 후 playbook 기반 triage 루프 검증
+- [ ] `/admin`에서 `Advanced Search Learning Chain` 기본 접힘 + terminal workflow 노출 확인
+- [ ] 실제 검색 후 `Completion Summary -> Completion Actions -> Completion Queue -> terminal recommendations` 루프 검증
 
 ---
 
