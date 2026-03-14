@@ -91,6 +91,7 @@ import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutc
 import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.ts';
 import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue.ts';
 import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity.ts';
+import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes.ts';
 import { buildSearchLearningOpsCompletionQueue } from '../lib/search/searchLearningOpsCompletionQueue.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
@@ -4744,6 +4745,105 @@ test('search learning ops completion recommendation outcome recommendation outco
     assert.equal(activity.uniqueQueries, 3);
     assert.equal(activity.recentRuns[0]?.action, 'retrain_now');
     assert.equal(activity.recentRuns[1]?.action, 'review_now');
+});
+
+test('search learning ops completion recommendation outcome recommendation outcome recommendation recommendation outcomes classify review and retrain runs', () => {
+    const outcomes =
+        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes(
+            [
+                {
+                    id: 'run-review',
+                    outcomeId: 'hoodie-review',
+                    action: 'review_now',
+                    title: 'Completion Outcome Recommendation Outcome Recommendation Outcome Recommendation Review Run',
+                    description: 'review run',
+                    actionLabel: 'review 즉시 승인',
+                    priority: 'critical',
+                    context:
+                        'completion_recommendation_outcome_recommendation_outcome_recommendation_recommendation_review_hoodie-review',
+                    count: 2,
+                    entryIds: ['pending-1', 'pending-2'],
+                    queries: ['운동용 후드', '남자 후드'],
+                    actorUid: 'admin-a',
+                    createdAt: '2026-03-12T10:40:00.000Z',
+                },
+                {
+                    id: 'run-retrain',
+                    outcomeId: 'pants-retrain',
+                    action: 'retrain_now',
+                    title: 'Completion Outcome Recommendation Outcome Recommendation Outcome Recommendation Retrain Run',
+                    description: 'retrain run',
+                    actionLabel: '재학습 AI 제안',
+                    priority: 'high',
+                    context:
+                        'completion_recommendation_outcome_recommendation_outcome_recommendation_recommendation_retrain_pants-retrain',
+                    count: 1,
+                    entryIds: ['approved-1'],
+                    queries: ['트레이닝 팬츠'],
+                    actorUid: 'admin-b',
+                    createdAt: '2026-03-12T10:45:00.000Z',
+                },
+            ],
+            [
+                {
+                    id: 'pending-1',
+                    query: '운동용 후드',
+                    status: 'pending',
+                    aiSuggestion: {
+                        normalizedQuery: '운동용 후드',
+                        categoryHint: '후드집업',
+                        suggestedQueries: ['후드집업'],
+                        rationale: 'hoodie',
+                        model: 'heuristic',
+                        generatedAt: '2026-03-12T10:35:00.000Z',
+                    },
+                    approvalBaseline: null,
+                    occurrenceCount: 1,
+                    lowFitCount: 1,
+                    zeroResultCount: 1,
+                },
+                {
+                    id: 'pending-2',
+                    query: '남자 후드',
+                    status: 'pending',
+                    aiSuggestion: {
+                        normalizedQuery: '남자 후드',
+                        categoryHint: '후드집업',
+                        suggestedQueries: ['남성 후드집업'],
+                        rationale: 'hoodie',
+                        model: 'heuristic',
+                        generatedAt: '2026-03-12T10:35:00.000Z',
+                    },
+                    approvalBaseline: null,
+                    occurrenceCount: 1,
+                    lowFitCount: 1,
+                    zeroResultCount: 1,
+                },
+                {
+                    id: 'approved-1',
+                    query: '트레이닝 팬츠',
+                    status: 'approved',
+                    aiSuggestion: null,
+                    approvalBaseline: {
+                        approvedAt: '2026-03-12T10:00:00.000Z',
+                        occurrenceCount: 2,
+                        lowFitCount: 2,
+                        zeroResultCount: 1,
+                    },
+                    occurrenceCount: 4,
+                    lowFitCount: 4,
+                    zeroResultCount: 2,
+                },
+            ]
+        );
+
+    assert.equal(outcomes.total, 2);
+    assert.equal(outcomes.readyReview, 1);
+    assert.equal(outcomes.needsAttention, 1);
+    assert.equal(outcomes.awaitingSamples, 0);
+    assert.equal(outcomes.validated, 0);
+    assert.equal(outcomes.topReadyReview[0]?.queries[0], '운동용 후드');
+    assert.equal(outcomes.topNeedsAttention[0]?.queries[0], '트레이닝 팬츠');
 });
 
 test('search learning ops playbook recommendation outcome recommendation outcome recommendation activity tracks review and retrain executions', () => {
