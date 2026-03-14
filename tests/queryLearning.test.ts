@@ -86,6 +86,7 @@ import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationActi
 import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes.ts';
 import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations.ts';
 import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.ts';
+import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity.ts';
 import { buildSearchLearningOpsCompletionQueue } from '../lib/search/searchLearningOpsCompletionQueue.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
@@ -4363,6 +4364,41 @@ test('search learning ops completion recommendation outcome recommendation outco
     assert.equal(queue.urgent, 2);
     assert.equal(queue.topExecuteNow[0]?.queueState, 'execute_now');
     assert.equal(queue.topNeedsReview[0]?.queueState, 'needs_review');
+});
+
+test('search learning ops completion recommendation outcome recommendation outcome recommendation activity tracks review and retrain executions', () => {
+    const activity = buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity([
+        {
+            id: 'activity-1',
+            type: 'review_entries',
+            context: 'completion_recommendation_outcome_recommendation_outcome_review_outcome:review',
+            reviewedStatus: 'approved',
+            count: 2,
+            entryIds: ['entry-1', 'entry-2'],
+            queries: ['운동용 후드', '남자 후드'],
+            actorUid: 'admin-a',
+            createdAt: '2026-03-12T10:20:00.000Z',
+        },
+        {
+            id: 'activity-2',
+            type: 'generate_suggestions',
+            context: 'completion_recommendation_outcome_recommendation_outcome_retrain_outcome:retrain',
+            reviewedStatus: null,
+            count: 1,
+            entryIds: ['entry-3'],
+            queries: ['트레이닝 팬츠', '조거 팬츠'],
+            actorUid: 'admin-b',
+            createdAt: '2026-03-12T10:25:00.000Z',
+        },
+    ]);
+
+    assert.equal(activity.totalRuns, 2);
+    assert.equal(activity.reviewRuns, 1);
+    assert.equal(activity.retrainRuns, 1);
+    assert.equal(activity.uniqueQueries, 4);
+    assert.equal(activity.recentRuns[0]?.action, 'retrain_now');
+    assert.equal(activity.recentRuns[0]?.outcomeId, 'outcome:retrain');
+    assert.equal(activity.recentRuns[1]?.action, 'review_now');
 });
 
 test('search learning ops playbook recommendation outcome recommendation outcome recommendation activity tracks review and retrain executions', () => {

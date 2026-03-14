@@ -119,6 +119,7 @@ import {
     buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue,
     type SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem,
 } from '@/lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue';
+import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity } from '@/lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity';
 import {
     buildSearchLearningOpsCompletionQueue,
     type SearchLearningOpsCompletionQueueItem,
@@ -1495,6 +1496,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue(
             searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations
         );
+    const searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity =
+        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity(searchLearningActivity);
     const searchLearningOpsCompletionQueue = buildSearchLearningOpsCompletionQueue(
         searchLearningOpsCompletionActions
     );
@@ -6898,6 +6901,84 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.total === 0 && (
                                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 md:col-span-2 xl:col-span-4">
                                         아직 completion recommendation outcome recommendation outcome recommendation queue가 없습니다. `...Outcome Recommendations`가 쌓이면 여기에서 우선순위 큐로 정렬됩니다.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-sky-500/20 bg-sky-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Ops Completion Recommendation Outcome Recommendation Outcome Recommendation Activity</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        completion recommendation outcome recommendation outcome recommendation queue에서 실제 실행된 review/retrain 이력을 모아봅니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        runs {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity.totalRuns}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        review {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity.reviewRuns}
+                                    </span>
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-100">
+                                        retrain {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity.retrainRuns}
+                                    </span>
+                                    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+                                        queries {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity.uniqueQueries}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity.recentRuns.map((run) => {
+                                    const badgeClass = run.action === 'review_now'
+                                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                        : 'border-rose-500/30 bg-rose-500/10 text-rose-100';
+
+                                    return (
+                                        <div key={run.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${badgeClass}`}>
+                                                            {run.action}
+                                                        </span>
+                                                        <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                            {run.priority}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{run.title}</p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {run.count} items
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{run.description}</p>
+                                            <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+                                                {formatTime(run.createdAt)} · {run.context}
+                                            </p>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {run.queries.map((query) => (
+                                                    <span key={`${run.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                        {query}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(run.entryIds, `${run.title} queue query를 선택했습니다.`)}
+                                                    className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs font-bold text-sky-100"
+                                                >
+                                                    queue 선택
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity.totalRuns === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 md:col-span-2 xl:col-span-3">
+                                        아직 completion recommendation outcome recommendation outcome recommendation activity가 없습니다. `...Queue`에서 review/retrain 실행이 발생하면 여기에서 최근 이력을 볼 수 있습니다.
                                     </div>
                                 )}
                             </div>
