@@ -139,6 +139,10 @@ import {
     buildSearchLearningOpsCompletionQueue,
     type SearchLearningOpsCompletionQueueItem,
 } from '@/lib/search/searchLearningOpsCompletionQueue';
+import {
+    buildSearchLearningTerminalWorkflow,
+    type SearchLearningTerminalWorkflowAction,
+} from '@/lib/search/searchLearningTerminalWorkflow';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1204,6 +1208,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const [searchLearningMessage, setSearchLearningMessage] = useState<string | null>(null);
     const [selectedSearchLearningIds, setSelectedSearchLearningIds] = useState<string[]>([]);
     const [showAdvancedSearchLearningChain, setShowAdvancedSearchLearningChain] = useState(false);
+    const [showAdvancedPlaybookChain, setShowAdvancedPlaybookChain] = useState(false);
     const seenAuditEventIds = useRef<Set<string>>(new Set());
     const auditFeedHydrated = useRef(false);
 
@@ -1547,6 +1552,13 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         entry.status === 'pending' && entry.aiSuggestion && entry.aiSuggestion.suggestedQueries.length > 0
     );
     const searchLearningImpactSummary = buildSearchLearningImpactSummary(searchLearningEntries);
+    const searchLearningTerminalWorkflow = buildSearchLearningTerminalWorkflow(
+        searchLearningEntries,
+        searchLearningDraftEntries,
+        searchLearningOpsCenter,
+        searchLearningOpsCompletionSummary,
+        searchLearningImpactSummary
+    );
     const searchLearningImpactClusterRollup = buildSearchLearningImpactClusterRollup(searchLearningEntries);
     const searchLearningImpactClusters = buildSearchLearningImpactClusterSummaries(searchLearningEntries).slice(0, 6);
     const searchLearningRewritePacks = buildSearchLearningRewritePacks(searchLearningEntries).slice(0, 6);
@@ -2262,6 +2274,38 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     function selectDraftSearchLearningEntries() {
         setSelectedSearchLearningIds(searchLearningDraftEntries.map((entry) => entry.id).slice(0, 24));
         setSearchLearningMessage(`${Math.min(searchLearningDraftEntries.length, 24)}개의 AI draft query를 선택했습니다.`);
+    }
+
+    async function handleSearchLearningTerminalAction(action: SearchLearningTerminalWorkflowAction) {
+        switch (action.kind) {
+            case 'draft_review':
+                selectDraftSearchLearningEntries();
+                return;
+            case 'review_now':
+                selectSearchLearningEntries(action.entryIds, `${action.title} ${action.count}개 query를 선택했습니다.`);
+                return;
+            case 'generate_now':
+                await handleBulkGenerateSearchLearningSuggestionsForIds(
+                    action.entryIds,
+                    'terminal_generate_now',
+                    (count) => `${count}개의 terminal generate query에 AI 제안을 생성했습니다.`,
+                    'terminal generate query AI 제안 생성에 실패했습니다.'
+                );
+                return;
+            case 'retrain_now':
+                await handleBulkGenerateSearchLearningSuggestionsForIds(
+                    action.entryIds,
+                    'terminal_retrain_now',
+                    (count) => `${count}개의 terminal retrain query에 AI 제안을 생성했습니다.`,
+                    'terminal retrain query AI 제안 생성에 실패했습니다.'
+                );
+                return;
+            case 'sample_collection':
+                selectSearchLearningEntries(action.entryIds, `${action.title} ${action.count}개 query를 선택했습니다.`);
+                return;
+            default:
+                selectSearchLearningEntries(action.entryIds, `${action.title} ${action.count}개 query를 선택했습니다.`);
+        }
     }
 
     function selectSearchLearningEntries(entryIds: string[], message: string) {
@@ -5554,6 +5598,133 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                             </div>
                         </section>
 
+                        <section className="mt-8 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Command Center</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        `/admin`에서 실제로 먼저 처리할 search-learning 액션만 묶은 terminal 요약입니다. draft review, review pending, AI 생성, 재학습, 표본 수집을 여기서 바로 시작하고, 깊은 chain은 필요할 때만 펼치세요.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+                                        state {searchLearningTerminalWorkflow.state}
+                                    </span>
+                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-slate-200">
+                                        pending {searchLearningTerminalWorkflow.pending}
+                                    </span>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-100">
+                                        drafts {searchLearningTerminalWorkflow.drafts}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        improved {searchLearningTerminalWorkflow.improved}
+                                    </span>
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-100">
+                                        tuning {searchLearningTerminalWorkflow.noImprovement}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                                <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-200">Draft Review</p>
+                                    <p className="mt-3 text-3xl font-black text-sky-100">{searchLearningTerminalWorkflow.drafts}</p>
+                                    <p className="mt-1 text-xs text-sky-100/70">AI draft가 이미 붙은 pending query</p>
+                                </div>
+                                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">Review Now</p>
+                                    <p className="mt-3 text-3xl font-black text-emerald-100">{searchLearningTerminalWorkflow.reviewNow}</p>
+                                    <p className="mt-1 text-xs text-emerald-100/70">즉시 승인 가능한 query</p>
+                                </div>
+                                <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-200">Generate Now</p>
+                                    <p className="mt-3 text-3xl font-black text-sky-100">{searchLearningTerminalWorkflow.generateNow}</p>
+                                    <p className="mt-1 text-xs text-sky-100/70">AI suggestion이 필요한 query</p>
+                                </div>
+                                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose-200">Retrain</p>
+                                    <p className="mt-3 text-3xl font-black text-rose-100">{searchLearningTerminalWorkflow.retrainNow}</p>
+                                    <p className="mt-1 text-xs text-rose-100/70">승인 후에도 개선이 부족한 query</p>
+                                </div>
+                                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-200">Samples</p>
+                                    <p className="mt-3 text-3xl font-black text-amber-100">{searchLearningTerminalWorkflow.sampleCollection}</p>
+                                    <p className="mt-1 text-xs text-amber-100/70">추가 관찰이 필요한 query</p>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                {searchLearningTerminalWorkflow.topActions.map((action) => {
+                                    const toneClass =
+                                        action.tone === 'emerald'
+                                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                            : action.tone === 'sky'
+                                                ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                : action.tone === 'rose'
+                                                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                                    : action.tone === 'amber'
+                                                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                        : 'border-slate-700 bg-slate-950/70 text-slate-200';
+
+                                    return (
+                                        <div key={action.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${toneClass}`}>
+                                                        {action.kind}
+                                                    </span>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{action.title}</p>
+                                                    <p className="mt-1 text-xs text-slate-400">{action.description}</p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {action.count} queries
+                                                </span>
+                                            </div>
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleSearchLearningTerminalAction(action)}
+                                                    className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100"
+                                                >
+                                                    {action.actionLabel}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(action.entryIds, `${action.title} ${action.count}개 query를 선택했습니다.`)}
+                                                    className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                >
+                                                    queue 선택
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {searchLearningTerminalWorkflow.topActions.length === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-2">
+                                        지금은 terminal workflow에서 즉시 처리할 항목이 없습니다. 실제 검색을 더 쌓거나 `Search Learning Queue`에서 새 draft를 생성하면 여기서 다시 triage할 수 있습니다.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Advanced Playbook Chain</h2>
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        playbook recommendation의 깊은 outcome/recommendation 반복 체인은 기본 화면에서 숨깁니다. 일반 운영은 `Playbooks`, `Playbook Activity`, `Playbook Outcomes`, `Playbook Recommendations` 중심으로 처리하고, 상세 추적이 필요할 때만 아래 chain을 펼치세요.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAdvancedPlaybookChain((current) => !current)}
+                                    className="rounded-full border border-slate-700 px-4 py-2 text-xs font-bold text-slate-200"
+                                >
+                                    {showAdvancedPlaybookChain ? 'Advanced Playbook Chain 접기' : 'Advanced Playbook Chain 펼치기'}
+                                </button>
+                            </div>
+                        </section>
+
+                        {showAdvancedPlaybookChain && (
+                        <>
                         <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                 <div>
@@ -6003,6 +6174,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 )}
                             </div>
                         </section>
+                        </>
+                        )}
 
                         <section className="mt-8 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-5">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -8061,6 +8234,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                         </>
                         )}
 
+                        {showAdvancedPlaybookChain && (
+                        <>
                         <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                 <div>
@@ -9679,6 +9854,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 </div>
                             </div>
                         </section>
+                        </>
+                        )}
 
                         <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
