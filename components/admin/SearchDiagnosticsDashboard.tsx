@@ -144,6 +144,7 @@ import {
     type SearchLearningTerminalWorkflowAction,
 } from '@/lib/search/searchLearningTerminalWorkflow';
 import { buildSearchLearningTerminalAlerts } from '@/lib/search/searchLearningTerminalAlerts';
+import { buildSearchLearningTerminalHealth } from '@/lib/search/searchLearningTerminalHealth';
 import { buildSearchLearningTerminalRunbook } from '@/lib/search/searchLearningTerminalRunbook';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
@@ -1562,6 +1563,10 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningImpactSummary
     );
     const searchLearningTerminalAlerts = buildSearchLearningTerminalAlerts(searchLearningTerminalWorkflow);
+    const searchLearningTerminalHealth = buildSearchLearningTerminalHealth(
+        searchLearningTerminalWorkflow,
+        searchLearningTerminalAlerts
+    );
     const searchLearningTerminalRunbook = buildSearchLearningTerminalRunbook(searchLearningTerminalWorkflow);
     const searchLearningImpactClusterRollup = buildSearchLearningImpactClusterRollup(searchLearningEntries);
     const searchLearningImpactClusters = buildSearchLearningImpactClusterSummaries(searchLearningEntries).slice(0, 6);
@@ -5599,6 +5604,60 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                         현재 curated 검색어 평가셋은 모두 커버되고 있습니다.
                                     </div>
                                 )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-slate-700 bg-slate-950/70 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Health</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        terminal workflow의 현재 건강 상태를 score와 blocker 기준으로 요약한 섹션입니다. 긴급도 판단은 여기서, 실제 액션은 아래 alerts/runbook에서 바로 시작하면 됩니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1 text-slate-200">
+                                        score {searchLearningTerminalHealth.score}
+                                    </span>
+                                    <span className={`rounded-full border px-3 py-1 ${
+                                        searchLearningTerminalHealth.label === 'critical'
+                                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                            : searchLearningTerminalHealth.label === 'warning'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : searchLearningTerminalHealth.label === 'monitoring'
+                                                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                    }`}>
+                                        {searchLearningTerminalHealth.label}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-[1.3fr_1fr]">
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-sm font-semibold text-white">{searchLearningTerminalHealth.summary}</p>
+                                    <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-xs text-slate-300">
+                                        {searchLearningTerminalHealth.nextCheck}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Top Blockers</p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {searchLearningTerminalHealth.blockers.length > 0 ? (
+                                            searchLearningTerminalHealth.blockers.map((blocker) => (
+                                                <span
+                                                    key={blocker}
+                                                    className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-200"
+                                                >
+                                                    {blocker}
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-100">
+                                                blocker 없음
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </section>
 
