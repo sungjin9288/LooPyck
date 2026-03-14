@@ -89,6 +89,7 @@
 - [x] `/admin` Search Learning Terminal Runbook
 - [x] `/admin` Search Learning Terminal Alerts
 - [x] `/admin` Search Learning Terminal Health
+- [x] `/admin` Search Learning Terminal Checklist
 
 **[2] Verify**
 - [x] `npm run typecheck`
@@ -97,8 +98,8 @@
 
 **[3] Next**
 - [ ] production redeploy
-- [ ] `/admin`에서 `Advanced Search Learning Chain` / `Advanced Playbook Chain` 기본 접힘 + terminal health / alerts / workflow / runbook 노출 확인
-- [ ] 실제 검색 후 `Terminal Health -> Terminal Alerts -> Terminal Runbook -> Terminal Command Center -> Completion Summary -> Completion Actions -> Completion Queue` 루프 검증
+- [ ] `/admin`에서 `Advanced Search Learning Chain` / `Advanced Playbook Chain` 기본 접힘 + terminal health / checklist / alerts / workflow / runbook 노출 확인
+- [ ] 실제 검색 후 `Terminal Health -> Terminal Checklist -> Terminal Alerts -> Terminal Runbook -> Terminal Command Center -> Completion Summary -> Completion Actions -> Completion Queue` 루프 검증
 
 ---
 

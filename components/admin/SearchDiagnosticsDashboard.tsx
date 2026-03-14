@@ -145,6 +145,7 @@ import {
 } from '@/lib/search/searchLearningTerminalWorkflow';
 import { buildSearchLearningTerminalAlerts } from '@/lib/search/searchLearningTerminalAlerts';
 import { buildSearchLearningTerminalHealth } from '@/lib/search/searchLearningTerminalHealth';
+import { buildSearchLearningTerminalChecklist } from '@/lib/search/searchLearningTerminalChecklist';
 import { buildSearchLearningTerminalRunbook } from '@/lib/search/searchLearningTerminalRunbook';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
@@ -1566,6 +1567,10 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const searchLearningTerminalHealth = buildSearchLearningTerminalHealth(
         searchLearningTerminalWorkflow,
         searchLearningTerminalAlerts
+    );
+    const searchLearningTerminalChecklist = buildSearchLearningTerminalChecklist(
+        searchLearningTerminalWorkflow,
+        searchLearningTerminalHealth
     );
     const searchLearningTerminalRunbook = buildSearchLearningTerminalRunbook(searchLearningTerminalWorkflow);
     const searchLearningImpactClusterRollup = buildSearchLearningImpactClusterRollup(searchLearningEntries);
@@ -5658,6 +5663,55 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                         )}
                                     </div>
                                 </div>
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Checklist</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        terminal workflow에서 지금 남아 있는 운영 항목을 `done / open / active`로 바로 보는 체크리스트입니다. health가 나빠 보일 때 어떤 항목이 실제로 남았는지 여기서 확인하면 됩니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        done {searchLearningTerminalChecklist.completed}
+                                    </span>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-100">
+                                        open {searchLearningTerminalChecklist.open}
+                                    </span>
+                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-100">
+                                        active {searchLearningTerminalChecklist.active}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                {searchLearningTerminalChecklist.items.map((item) => {
+                                    const toneClass =
+                                        item.status === 'done'
+                                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                            : item.status === 'active'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : 'border-sky-500/30 bg-sky-500/10 text-sky-100';
+
+                                    return (
+                                        <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${toneClass}`}>
+                                                        {item.status}
+                                                    </span>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {item.count}
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{item.description}</p>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </section>
 
