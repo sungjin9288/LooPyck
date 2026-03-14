@@ -109,6 +109,7 @@ import {
     buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueue,
     type SearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem,
 } from '@/lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationQueue';
+import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationActivity } from '@/lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity';
 import {
     buildSearchLearningOpsCompletionQueue,
     type SearchLearningOpsCompletionQueueItem,
@@ -1470,6 +1471,8 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueue(
             searchLearningOpsCompletionRecommendationOutcomeRecommendations
         );
+    const searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity =
+        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationActivity(searchLearningActivity);
     const searchLearningOpsCompletionQueue = buildSearchLearningOpsCompletionQueue(
         searchLearningOpsCompletionActions
     );
@@ -6438,6 +6441,110 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 {searchLearningOpsCompletionRecommendationQueue.total === 0 && (
                                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 md:col-span-2 xl:col-span-4">
                                         아직 completion recommendation queue가 없습니다. `Completion Recommendations`가 쌓이면 여기에서 운영 우선순위로 바로 처리할 수 있습니다.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-fuchsia-500/20 bg-fuchsia-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Ops Completion Recommendation Outcome Recommendation Activity</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        completion recommendation outcome recommendation queue에서 실제로 실행된 review/retrain 이력을 모읍니다. 최근 실행 query를 다시 queue로 넘겨 후속 triage로 이어갈 수 있습니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        total {searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.totalRuns}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        review {searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.reviewRuns}
+                                    </span>
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-100">
+                                        retrain {searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.retrainRuns}
+                                    </span>
+                                    <span className="rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        queries {searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.uniqueQueries}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Total Runs</p>
+                                    <p className="mt-3 text-3xl font-black text-white">
+                                        {searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.totalRuns}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Review Runs</p>
+                                    <p className="mt-3 text-3xl font-black text-emerald-100">
+                                        {searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.reviewRuns}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Retrain Runs</p>
+                                    <p className="mt-3 text-3xl font-black text-rose-100">
+                                        {searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.retrainRuns}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Unique Queries</p>
+                                    <p className="mt-3 text-3xl font-black text-slate-100">
+                                        {searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.uniqueQueries}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                                {searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.recentRuns.map((run) => {
+                                    const badgeClass = run.action === 'review_now'
+                                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                        : 'border-rose-500/30 bg-rose-500/10 text-rose-100';
+
+                                    return (
+                                        <div key={run.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${badgeClass}`}>
+                                                            {run.action}
+                                                        </span>
+                                                        <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                            {run.priority}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{run.title}</p>
+                                                    <p className="mt-1 text-[11px] text-slate-500">
+                                                        {run.createdAt.slice(0, 16).replace('T', ' ')}
+                                                    </p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {run.count} actions
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{run.description}</p>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {run.queries.map((query) => (
+                                                    <span key={`${run.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                        {query}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectSearchLearningEntries(run.entryIds, `${run.title} activity query를 선택했습니다.`)}
+                                                    className="rounded-full border border-fuchsia-500/40 bg-fuchsia-500/10 px-3 py-2 text-xs font-bold text-fuchsia-100"
+                                                >
+                                                    queue 선택
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.totalRuns === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 xl:col-span-2">
+                                        아직 completion recommendation outcome recommendation activity가 없습니다. `Completion Recommendation Outcome Recommendation Queue`에서 review/retrain 실행이 발생하면 여기에서 최근 이력을 볼 수 있습니다.
                                     </div>
                                 )}
                             </div>
