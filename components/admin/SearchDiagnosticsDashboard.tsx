@@ -116,6 +116,10 @@ import {
     type SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendation,
 } from '@/lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations';
 import {
+    buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue,
+    type SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem,
+} from '@/lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue';
+import {
     buildSearchLearningOpsCompletionQueue,
     type SearchLearningOpsCompletionQueueItem,
 } from '@/lib/search/searchLearningOpsCompletionQueue';
@@ -1487,6 +1491,10 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations(
             searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes
         );
+    const searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue =
+        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue(
+            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations
+        );
     const searchLearningOpsCompletionQueue = buildSearchLearningOpsCompletionQueue(
         searchLearningOpsCompletionActions
     );
@@ -2460,6 +2468,24 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             recommendation.entryIds,
             `${recommendation.title} completion recommendation outcome recommendation outcome query를 선택했습니다.`
         );
+    }
+
+    async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem(
+        item: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem
+    ) {
+        const recommendation = [
+            ...searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations.topReviewNow,
+            ...searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations.topRetrainNow,
+            ...searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations.topCollectSamples,
+            ...searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations.topObserve,
+        ].find((candidate) => candidate.id === item.recommendationId);
+
+        if (recommendation) {
+            await handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendation(recommendation);
+            return;
+        }
+
+        selectSearchLearningEntries(item.entryIds, `${item.title} queue query를 선택했습니다.`);
     }
 
     async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem(
@@ -6776,6 +6802,102 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                 {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations.total === 0 && (
                                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 md:col-span-2 xl:col-span-4">
                                         아직 completion recommendation outcome recommendation outcome recommendation이 없습니다. `Completion Recommendation Outcome Recommendation Outcomes`가 쌓이면 여기에서 바로 triage 액션으로 이어질 수 있습니다.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-sky-500/20 bg-sky-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Ops Completion Recommendation Outcome Recommendation Outcome Recommendation Queue</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        가장 최근 completion recommendation outcome recommendation outcome recommendation 액션을 `execute / review / sample / observe` 우선순위 큐로 정렬합니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-slate-300">
+                                        total {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.total}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        execute {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.executeNow}
+                                    </span>
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-100">
+                                        review {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.needsReview}
+                                    </span>
+                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-100">
+                                        samples {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.sampleCollection}
+                                    </span>
+                                    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+                                        observe {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.observe}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                {[
+                                    ...searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.topExecuteNow,
+                                    ...searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.topNeedsReview,
+                                    ...searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.topSampleCollection,
+                                    ...searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.topObserve,
+                                ]
+                                    .slice(0, 8)
+                                    .map((item) => {
+                                        const badgeClass = item.queueState === 'execute_now'
+                                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                            : item.queueState === 'needs_review'
+                                                ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                                : item.queueState === 'sample_collection'
+                                                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                    : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-100';
+
+                                        return (
+                                            <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${badgeClass}`}>
+                                                                {item.queueState}
+                                                            </span>
+                                                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-300">
+                                                                {item.priority}
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                                    </div>
+                                                </div>
+                                                <p className="mt-3 text-xs leading-6 text-slate-400">{item.description}</p>
+                                                <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+                                                    {item.reason}
+                                                </p>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {item.queries.map((query) => (
+                                                        <span key={`${item.id}_${query}`} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-200">
+                                                            {query}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className="mt-4 flex flex-wrap gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem(item)}
+                                                        className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs font-bold text-sky-100"
+                                                    >
+                                                        {item.actionLabel}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => selectSearchLearningEntries(item.entryIds, `${item.title} queue query를 선택했습니다.`)}
+                                                        className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                    >
+                                                        queue 선택
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                {searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.total === 0 && (
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-500 md:col-span-2 xl:col-span-4">
+                                        아직 completion recommendation outcome recommendation outcome recommendation queue가 없습니다. `...Outcome Recommendations`가 쌓이면 여기에서 우선순위 큐로 정렬됩니다.
                                     </div>
                                 )}
                             </div>
