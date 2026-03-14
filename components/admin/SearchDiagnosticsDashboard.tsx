@@ -143,6 +143,7 @@ import {
     buildSearchLearningTerminalWorkflow,
     type SearchLearningTerminalWorkflowAction,
 } from '@/lib/search/searchLearningTerminalWorkflow';
+import { buildSearchLearningTerminalAlerts } from '@/lib/search/searchLearningTerminalAlerts';
 import { buildSearchLearningTerminalRunbook } from '@/lib/search/searchLearningTerminalRunbook';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
@@ -1560,6 +1561,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningOpsCompletionSummary,
         searchLearningImpactSummary
     );
+    const searchLearningTerminalAlerts = buildSearchLearningTerminalAlerts(searchLearningTerminalWorkflow);
     const searchLearningTerminalRunbook = buildSearchLearningTerminalRunbook(searchLearningTerminalWorkflow);
     const searchLearningImpactClusterRollup = buildSearchLearningImpactClusterRollup(searchLearningEntries);
     const searchLearningImpactClusters = buildSearchLearningImpactClusterSummaries(searchLearningEntries).slice(0, 6);
@@ -5597,6 +5599,89 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                         현재 curated 검색어 평가셋은 모두 커버되고 있습니다.
                                     </div>
                                 )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-rose-500/20 bg-rose-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Alerts</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        terminal workflow에서 지금 가장 긴급한 병목을 severity 기준으로 압축한 경보 레이어입니다. review backlog, draft backlog, retrain, sample collection을 먼저 봅니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-100">
+                                        critical {searchLearningTerminalAlerts.critical}
+                                    </span>
+                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-100">
+                                        warning {searchLearningTerminalAlerts.warning}
+                                    </span>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-100">
+                                        info {searchLearningTerminalAlerts.info}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        success {searchLearningTerminalAlerts.success}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                {searchLearningTerminalAlerts.topAlerts.map((alert) => {
+                                    const toneClass =
+                                        alert.severity === 'critical'
+                                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                            : alert.severity === 'warning'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : alert.severity === 'info'
+                                                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100';
+
+                                    return (
+                                        <div key={alert.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${toneClass}`}>
+                                                        {alert.severity}
+                                                    </span>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{alert.title}</p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {alert.count}
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{alert.description}</p>
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                {alert.action ? (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void handleSearchLearningTerminalAction(alert.action)}
+                                                            className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-100"
+                                                        >
+                                                            {alert.action.actionLabel}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                selectSearchLearningEntries(
+                                                                    alert.action?.entryIds || [],
+                                                                    `${alert.title} query를 선택했습니다.`
+                                                                )
+                                                            }
+                                                            className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                        >
+                                                            queue 선택
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <span className="rounded-full border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs font-bold text-slate-300">
+                                                        추가 액션 없음
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </section>
 
