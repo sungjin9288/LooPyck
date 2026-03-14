@@ -92,6 +92,7 @@ import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutc
 import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue.ts';
 import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity.ts';
 import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes.ts';
+import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations.ts';
 import { buildSearchLearningOpsCompletionQueue } from '../lib/search/searchLearningOpsCompletionQueue.ts';
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
@@ -4844,6 +4845,101 @@ test('search learning ops completion recommendation outcome recommendation outco
     assert.equal(outcomes.validated, 0);
     assert.equal(outcomes.topReadyReview[0]?.queries[0], '운동용 후드');
     assert.equal(outcomes.topNeedsAttention[0]?.queries[0], '트레이닝 팬츠');
+});
+
+test('search learning ops completion recommendation outcome recommendation outcome recommendation recommendation recommendations classify next actions', () => {
+    const recommendations =
+        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations(
+            {
+                total: 4,
+                readyReview: 1,
+                needsAttention: 1,
+                awaitingSamples: 1,
+                validated: 1,
+                topReadyReview: [
+                    {
+                        id: 'outcome-ready',
+                        outcomeId: 'hoodie-review',
+                        title: 'Completion Outcome Recommendation Outcome Recommendation Outcome Recommendation Recommendation Review',
+                        action: 'review_now',
+                        context: 'ctx:ready',
+                        createdAt: '2026-03-12T10:50:00.000Z',
+                        queries: ['운동용 후드'],
+                        entryIds: ['entry-1'],
+                        status: 'ready_review',
+                        description: 'ready',
+                        improvedCount: 0,
+                        noImprovementCount: 0,
+                        awaitingSamplesCount: 0,
+                        readyReviewCount: 1,
+                    },
+                ],
+                topNeedsAttention: [
+                    {
+                        id: 'outcome-retrain',
+                        outcomeId: 'pants-retrain',
+                        title: 'Completion Outcome Recommendation Outcome Recommendation Outcome Recommendation Recommendation Retrain',
+                        action: 'retrain_now',
+                        context: 'ctx:retrain',
+                        createdAt: '2026-03-12T10:49:00.000Z',
+                        queries: ['트레이닝 팬츠'],
+                        entryIds: ['entry-2'],
+                        status: 'needs_attention',
+                        description: 'needs attention',
+                        improvedCount: 0,
+                        noImprovementCount: 2,
+                        awaitingSamplesCount: 0,
+                        readyReviewCount: 0,
+                    },
+                ],
+                topAwaitingSamples: [
+                    {
+                        id: 'outcome-awaiting',
+                        outcomeId: 'runner-awaiting',
+                        title: 'Completion Outcome Recommendation Outcome Recommendation Outcome Recommendation Recommendation Samples',
+                        action: 'observe',
+                        context: 'ctx:awaiting',
+                        createdAt: '2026-03-12T10:48:00.000Z',
+                        queries: ['러닝 자켓'],
+                        entryIds: ['entry-3'],
+                        status: 'awaiting_samples',
+                        description: 'awaiting',
+                        improvedCount: 0,
+                        noImprovementCount: 0,
+                        awaitingSamplesCount: 1,
+                        readyReviewCount: 0,
+                    },
+                ],
+                topValidated: [
+                    {
+                        id: 'outcome-validated',
+                        outcomeId: 'wide-validated',
+                        title: 'Completion Outcome Recommendation Outcome Recommendation Outcome Recommendation Recommendation Observe',
+                        action: 'observe',
+                        context: 'ctx:validated',
+                        createdAt: '2026-03-12T10:47:00.000Z',
+                        queries: ['와이드 팬츠'],
+                        entryIds: ['entry-4'],
+                        status: 'validated',
+                        description: 'validated',
+                        improvedCount: 2,
+                        noImprovementCount: 0,
+                        awaitingSamplesCount: 0,
+                        readyReviewCount: 0,
+                    },
+                ],
+            }
+        );
+
+    assert.equal(recommendations.total, 4);
+    assert.equal(recommendations.reviewNow, 1);
+    assert.equal(recommendations.retrainNow, 1);
+    assert.equal(recommendations.collectSamples, 1);
+    assert.equal(recommendations.observe, 1);
+    assert.equal(recommendations.topReviewNow[0]?.action, 'review_now');
+    assert.equal(recommendations.topRetrainNow[0]?.action, 'retrain_now');
+    assert.equal(recommendations.topCollectSamples[0]?.action, 'collect_samples');
+    assert.equal(recommendations.topObserve[0]?.action, 'observe');
 });
 
 test('search learning ops playbook recommendation outcome recommendation outcome recommendation activity tracks review and retrain executions', () => {
