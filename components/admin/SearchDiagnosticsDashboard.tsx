@@ -143,6 +143,7 @@ import {
     buildSearchLearningTerminalWorkflow,
     type SearchLearningTerminalWorkflowAction,
 } from '@/lib/search/searchLearningTerminalWorkflow';
+import { buildSearchLearningTerminalRunbook } from '@/lib/search/searchLearningTerminalRunbook';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1559,6 +1560,7 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningOpsCompletionSummary,
         searchLearningImpactSummary
     );
+    const searchLearningTerminalRunbook = buildSearchLearningTerminalRunbook(searchLearningTerminalWorkflow);
     const searchLearningImpactClusterRollup = buildSearchLearningImpactClusterRollup(searchLearningEntries);
     const searchLearningImpactClusters = buildSearchLearningImpactClusterSummaries(searchLearningEntries).slice(0, 6);
     const searchLearningRewritePacks = buildSearchLearningRewritePacks(searchLearningEntries).slice(0, 6);
@@ -5594,6 +5596,88 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-500">
                                         현재 curated 검색어 평가셋은 모두 커버되고 있습니다.
                                     </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Runbook</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        지금 운영자가 가장 먼저 해야 할 action과, 그 다음 확인 순서를 세 단계로 압축한 runbook입니다. 깊은 chain을 다시 따라가기 전에 여기서 바로 시작하면 됩니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        {searchLearningTerminalRunbook.stateLabel}
+                                    </span>
+                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-slate-200">
+                                        pending {searchLearningTerminalWorkflow.pending}
+                                    </span>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-100">
+                                        drafts {searchLearningTerminalWorkflow.drafts}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-5">
+                                <p className="text-lg font-bold text-white">{searchLearningTerminalRunbook.headline}</p>
+                                <p className="mt-2 text-sm leading-7 text-slate-300">{searchLearningTerminalRunbook.summary}</p>
+                                <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-xs text-slate-300">
+                                    {searchLearningTerminalRunbook.followUp}
+                                </p>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-3">
+                                {searchLearningTerminalRunbook.steps.map((step) => {
+                                    const toneClass =
+                                        step.tone === 'emerald'
+                                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                            : step.tone === 'sky'
+                                                ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                : step.tone === 'rose'
+                                                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                                    : step.tone === 'amber'
+                                                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                        : 'border-slate-700 bg-slate-950/70 text-slate-200';
+
+                                    return (
+                                        <div key={step.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${toneClass}`}>
+                                                {step.tone}
+                                            </span>
+                                            <p className="mt-3 text-sm font-semibold text-white">{step.title}</p>
+                                            <p className="mt-2 text-xs leading-6 text-slate-400">{step.description}</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                {searchLearningTerminalRunbook.primaryAction ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleSearchLearningTerminalAction(searchLearningTerminalRunbook.primaryAction)}
+                                            className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-100"
+                                        >
+                                            {searchLearningTerminalRunbook.primaryAction.actionLabel}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                selectSearchLearningEntries(
+                                                    searchLearningTerminalRunbook.primaryAction?.entryIds || [],
+                                                    `${searchLearningTerminalRunbook.primaryAction?.title || 'Terminal Runbook'} query를 선택했습니다.`
+                                                )
+                                            }
+                                            className="rounded-full border border-slate-700 px-4 py-2 text-xs font-bold text-slate-200"
+                                        >
+                                            queue 선택
+                                        </button>
+                                    </>
+                                ) : (
+                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-4 py-2 text-xs font-bold text-slate-300">
+                                        추가 액션 없음
+                                    </span>
                                 )}
                             </div>
                         </section>
