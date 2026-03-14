@@ -147,6 +147,7 @@ import { buildSearchLearningTerminalAlerts } from '@/lib/search/searchLearningTe
 import { buildSearchLearningTerminalHealth } from '@/lib/search/searchLearningTerminalHealth';
 import { buildSearchLearningTerminalChecklist } from '@/lib/search/searchLearningTerminalChecklist';
 import { buildSearchLearningTerminalRunbook } from '@/lib/search/searchLearningTerminalRunbook';
+import { buildSearchLearningTerminalMetrics } from '@/lib/search/searchLearningTerminalMetrics';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1573,6 +1574,16 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningTerminalHealth
     );
     const searchLearningTerminalRunbook = buildSearchLearningTerminalRunbook(searchLearningTerminalWorkflow);
+    const searchLearningTerminalMetrics = buildSearchLearningTerminalMetrics(
+        searchLearningTerminalWorkflow,
+        searchLearningTerminalHealth,
+        searchLearningTerminalAlerts,
+        searchLearningActivity
+    );
+    const searchLearningTerminalMetricsMaxDailyTotal = Math.max(
+        1,
+        ...searchLearningTerminalMetrics.trend.map((point) => point.seeded + point.generated + point.reviewed)
+    );
     const searchLearningImpactClusterRollup = buildSearchLearningImpactClusterRollup(searchLearningEntries);
     const searchLearningImpactClusters = buildSearchLearningImpactClusterSummaries(searchLearningEntries).slice(0, 6);
     const searchLearningRewritePacks = buildSearchLearningRewritePacks(searchLearningEntries).slice(0, 6);
@@ -5661,6 +5672,99 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                                 blocker 없음
                                             </span>
                                         )}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Metrics</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        최근 search-learning 운영량과 terminal backlog를 같이 보는 요약입니다. health 점수만 보지 않고 실제 review/generate/reviewed 추세가 살아 있는지 여기서 먼저 확인합니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+                                        active days {searchLearningTerminalMetrics.activeDays}/7
+                                    </span>
+                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-slate-200">
+                                        backlog {searchLearningTerminalMetrics.backlogPressure}
+                                    </span>
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-100">
+                                        critical {searchLearningTerminalMetrics.criticalAlerts}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1.4fr]">
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Action Load</p>
+                                        <p className="mt-3 text-3xl font-black text-cyan-100">{searchLearningTerminalMetrics.actionLoad}</p>
+                                        <p className="mt-2 text-xs text-slate-400">review/draft/generate/retrain이 몰린 현재 작업량</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Recent Generated</p>
+                                        <p className="mt-3 text-3xl font-black text-sky-100">{searchLearningTerminalMetrics.recentGenerated}</p>
+                                        <p className="mt-2 text-xs text-slate-400">최근 7일간 생성된 AI suggestion 수</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Recent Reviewed</p>
+                                        <p className="mt-3 text-3xl font-black text-emerald-100">{searchLearningTerminalMetrics.recentReviewed}</p>
+                                        <p className="mt-2 text-xs text-slate-400">최근 7일간 review에 들어간 query 수</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Approved / Ignored</p>
+                                        <p className="mt-3 text-3xl font-black text-white">
+                                            {searchLearningTerminalMetrics.recentApproved}
+                                            <span className="mx-2 text-slate-500">/</span>
+                                            <span className="text-slate-300">{searchLearningTerminalMetrics.recentIgnored}</span>
+                                        </p>
+                                        <p className="mt-2 text-xs text-slate-400">최근 7일간 승인과 무시 처리의 비율</p>
+                                    </div>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <div className="flex flex-wrap gap-2 text-[11px]">
+                                        <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-100">
+                                            generated {searchLearningTerminalMetrics.recentGenerated}
+                                        </span>
+                                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                            reviewed {searchLearningTerminalMetrics.recentReviewed}
+                                        </span>
+                                        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+                                            approved {searchLearningTerminalMetrics.recentApproved}
+                                        </span>
+                                        <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-slate-200">
+                                            health score {searchLearningTerminalMetrics.healthScore}
+                                        </span>
+                                    </div>
+                                    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-7">
+                                        {searchLearningTerminalMetrics.trend.map((point) => {
+                                            const total = point.seeded + point.generated + point.reviewed;
+                                            const relativeHeight = total > 0
+                                                ? Math.max(18, Math.round((total / searchLearningTerminalMetricsMaxDailyTotal) * 100))
+                                                : 8;
+                                            return (
+                                                <div key={point.day} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                                                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                                                        {point.day.slice(5)}
+                                                    </p>
+                                                    <div className="mt-3 flex h-24 items-end">
+                                                        <div
+                                                            className="w-full rounded-2xl border border-cyan-500/30 bg-cyan-500/10"
+                                                            style={{ height: `${relativeHeight}%` }}
+                                                        />
+                                                    </div>
+                                                    <p className="mt-3 text-xl font-black text-white">{total}</p>
+                                                    <div className="mt-2 space-y-1 text-[10px] text-slate-400">
+                                                        <p>seed {point.seeded}</p>
+                                                        <p>gen {point.generated}</p>
+                                                        <p>review {point.reviewed}</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
