@@ -150,6 +150,7 @@ import { buildSearchLearningTerminalRunbook } from '@/lib/search/searchLearningT
 import { buildSearchLearningTerminalMetrics } from '@/lib/search/searchLearningTerminalMetrics';
 import { buildSearchLearningTerminalTrends } from '@/lib/search/searchLearningTerminalTrends';
 import { buildSearchLearningTerminalWatchlist } from '@/lib/search/searchLearningTerminalWatchlist';
+import { buildSearchLearningTerminalCoverage } from '@/lib/search/searchLearningTerminalCoverage';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1597,6 +1598,21 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     );
     const searchLearningImpactClusterRollup = buildSearchLearningImpactClusterRollup(searchLearningEntries);
     const searchLearningImpactClusters = buildSearchLearningImpactClusterSummaries(searchLearningEntries).slice(0, 6);
+    const searchLearningTerminalCoverage = buildSearchLearningTerminalCoverage(
+        data?.searchQualityCoverage || {
+            totalQueries: 0,
+            globalTargetQueries: 0,
+            naverCovered: 0,
+            globalCovered: 0,
+            fullyCovered: 0,
+            naverCoverageRate: 0,
+            globalCoverageRate: 0,
+            fullCoverageRate: 0,
+            uncoveredQueries: [],
+            clusters: [],
+        },
+        searchLearningImpactClusterRollup
+    );
     const searchLearningRewritePacks = buildSearchLearningRewritePacks(searchLearningEntries).slice(0, 6);
     const searchLearningRewriteRecommendations = buildSearchLearningRewriteRecommendations(
         buildSearchLearningRewritePacks(searchLearningEntries),
@@ -5778,6 +5794,89 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                         })}
                                     </div>
                                 </div>
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Coverage</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        terminal surface에서 실제 검색 품질 상태를 보는 요약입니다. curated coverage와 semantic cluster impact를 같이 봐서 지금 품질 병목이 데이터 부족인지, coverage gap인지, retrain 이슈인지 바로 판단합니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        score {searchLearningTerminalCoverage.coverageScore}
+                                    </span>
+                                    <span className={`rounded-full border px-3 py-1 ${
+                                        searchLearningTerminalCoverage.qualityLabel === 'strong'
+                                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                            : searchLearningTerminalCoverage.qualityLabel === 'mixed'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                    }`}>
+                                        {searchLearningTerminalCoverage.qualityLabel}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Coverage Score</p>
+                                    <p className="mt-3 text-3xl font-black text-emerald-100">{searchLearningTerminalCoverage.coverageScore}</p>
+                                    <p className="mt-2 text-xs text-slate-400">coverage + impact를 합친 terminal 품질 점수</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Uncovered Queries</p>
+                                    <p className="mt-3 text-3xl font-black text-rose-100">{searchLearningTerminalCoverage.uncoveredQueries}</p>
+                                    <p className="mt-2 text-xs text-slate-400">curated 평가셋에서 아직 비는 query 수</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Uncovered Clusters</p>
+                                    <p className="mt-3 text-3xl font-black text-amber-100">{searchLearningTerminalCoverage.uncoveredClusters}</p>
+                                    <p className="mt-2 text-xs text-slate-400">semantic cluster 단위의 coverage 공백</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Improved Clusters</p>
+                                    <p className="mt-3 text-3xl font-black text-emerald-100">{searchLearningTerminalCoverage.improvedClusters}</p>
+                                    <p className="mt-2 text-xs text-slate-400">impact 기준 개선 확인된 cluster 수</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Needs Tuning</p>
+                                    <p className="mt-3 text-3xl font-black text-rose-100">{searchLearningTerminalCoverage.needsAttentionClusters}</p>
+                                    <p className="mt-2 text-xs text-slate-400">여전히 retrain/조정이 필요한 cluster 수</p>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-3">
+                                {searchLearningTerminalCoverage.focusAreas.map((item) => {
+                                    const toneClass =
+                                        item.tone === 'emerald'
+                                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                            : item.tone === 'sky'
+                                                ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                : item.tone === 'amber'
+                                                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                    : item.tone === 'rose'
+                                                        ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                                        : 'border-slate-700 bg-slate-950/70 text-slate-200';
+
+                                    return (
+                                        <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${toneClass}`}>
+                                                        {item.label}
+                                                    </span>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {item.count}
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{item.summary}</p>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </section>
 
