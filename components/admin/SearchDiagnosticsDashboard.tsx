@@ -153,6 +153,7 @@ import { buildSearchLearningTerminalWatchlist } from '@/lib/search/searchLearnin
 import { buildSearchLearningTerminalCoverage } from '@/lib/search/searchLearningTerminalCoverage';
 import { buildSearchLearningTerminalPriorities } from '@/lib/search/searchLearningTerminalPriorities';
 import { buildSearchLearningTerminalOverview } from '@/lib/search/searchLearningTerminalOverview';
+import { buildSearchLearningTerminalHandoff } from '@/lib/search/searchLearningTerminalHandoff';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1629,6 +1630,11 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningTerminalMetrics,
         searchLearningTerminalCoverage,
         searchLearningTerminalTrends
+    );
+    const searchLearningTerminalHandoff = buildSearchLearningTerminalHandoff(
+        searchLearningTerminalOverview,
+        searchLearningTerminalPriorities,
+        searchLearningTerminalRunbook
     );
     const searchLearningRewritePacks = buildSearchLearningRewritePacks(searchLearningEntries).slice(0, 6);
     const searchLearningRewriteRecommendations = buildSearchLearningRewriteRecommendations(
@@ -5738,6 +5744,81 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                                 {item.label}
                                             </span>
                                             <p className="mt-3 text-xs leading-6 text-slate-400">{item.summary}</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-sky-500/20 bg-sky-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Handoff</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        terminal 상태를 실제 운영 인계 기준으로 `지금 / 다음 / 확인` 세 줄로 압축한 섹션입니다. 이 카드만 보고도 바로 액션을 이어갈 수 있게 정리합니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className={`rounded-full border px-3 py-1 ${
+                                        searchLearningTerminalHandoff.status === 'critical'
+                                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                            : searchLearningTerminalHandoff.status === 'action'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : searchLearningTerminalHandoff.status === 'monitoring'
+                                                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                    }`}>
+                                        {searchLearningTerminalHandoff.status}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <p className="text-sm font-semibold text-white">{searchLearningTerminalHandoff.headline}</p>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-3">
+                                {[searchLearningTerminalHandoff.current, searchLearningTerminalHandoff.next, searchLearningTerminalHandoff.followUp].map((item) => {
+                                    const toneClass =
+                                        item.tone === 'rose'
+                                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                            : item.tone === 'amber'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : item.tone === 'sky'
+                                                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                    : item.tone === 'emerald'
+                                                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                                        : 'border-slate-700 bg-slate-950/70 text-slate-200';
+
+                                    return (
+                                        <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${toneClass}`}>
+                                                {item.label}
+                                            </span>
+                                            <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{item.summary}</p>
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                {item.action ? (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void handleSearchLearningTerminalAction(item.action)}
+                                                            className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs font-bold text-sky-100"
+                                                        >
+                                                            {item.action.actionLabel}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => selectSearchLearningEntries(item.action!.entryIds, `${item.title}의 ${item.action!.entryIds.length}개 query를 선택했습니다.`)}
+                                                            className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                        >
+                                                            queue 선택
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-2 text-xs font-bold text-slate-300">
+                                                        follow-up only
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })}
