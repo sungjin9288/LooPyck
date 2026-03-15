@@ -148,6 +148,7 @@ import { buildSearchLearningTerminalHealth } from '@/lib/search/searchLearningTe
 import { buildSearchLearningTerminalChecklist } from '@/lib/search/searchLearningTerminalChecklist';
 import { buildSearchLearningTerminalRunbook } from '@/lib/search/searchLearningTerminalRunbook';
 import { buildSearchLearningTerminalMetrics } from '@/lib/search/searchLearningTerminalMetrics';
+import { buildSearchLearningTerminalTrends } from '@/lib/search/searchLearningTerminalTrends';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1579,6 +1580,10 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningTerminalHealth,
         searchLearningTerminalAlerts,
         searchLearningActivity
+    );
+    const searchLearningTerminalTrends = buildSearchLearningTerminalTrends(
+        searchLearningTerminalWorkflow,
+        searchLearningTerminalMetrics
     );
     const searchLearningTerminalMetricsMaxDailyTotal = Math.max(
         1,
@@ -5767,6 +5772,59 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                         })}
                                     </div>
                                 </div>
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-violet-500/20 bg-violet-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Trends</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        최근 7일 메트릭을 `pace / backlog / approval quality` 관점으로 다시 압축한 섹션입니다. 오늘 어떤 lane를 먼저 밀어야 하는지 terminal surface에서 바로 판단할 수 있게 합니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-violet-100">
+                                        pace {searchLearningTerminalTrends.paceLabel}
+                                    </span>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-100">
+                                        backlog {searchLearningTerminalTrends.backlogLabel}
+                                    </span>
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                                        approval {searchLearningTerminalTrends.approvalLabel}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-3">
+                                {searchLearningTerminalTrends.focusAreas.map((item) => {
+                                    const toneClass =
+                                        item.tone === 'emerald'
+                                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                            : item.tone === 'sky'
+                                                ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                : item.tone === 'amber'
+                                                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                    : item.tone === 'rose'
+                                                        ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                                        : 'border-slate-700 bg-slate-950/70 text-slate-200';
+
+                                    return (
+                                        <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${toneClass}`}>
+                                                        {item.label}
+                                                    </span>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {item.count}
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{item.summary}</p>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </section>
 
