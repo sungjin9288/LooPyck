@@ -151,6 +151,7 @@ import { buildSearchLearningTerminalMetrics } from '@/lib/search/searchLearningT
 import { buildSearchLearningTerminalTrends } from '@/lib/search/searchLearningTerminalTrends';
 import { buildSearchLearningTerminalWatchlist } from '@/lib/search/searchLearningTerminalWatchlist';
 import { buildSearchLearningTerminalCoverage } from '@/lib/search/searchLearningTerminalCoverage';
+import { buildSearchLearningTerminalPriorities } from '@/lib/search/searchLearningTerminalPriorities';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1612,6 +1613,13 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
             clusters: [],
         },
         searchLearningImpactClusterRollup
+    );
+    const searchLearningTerminalPriorities = buildSearchLearningTerminalPriorities(
+        searchLearningTerminalWorkflow,
+        searchLearningTerminalHealth,
+        searchLearningTerminalAlerts,
+        searchLearningTerminalCoverage,
+        searchLearningTerminalWatchlist
     );
     const searchLearningRewritePacks = buildSearchLearningRewritePacks(searchLearningEntries).slice(0, 6);
     const searchLearningRewriteRecommendations = buildSearchLearningRewriteRecommendations(
@@ -5701,6 +5709,88 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                         )}
                                     </div>
                                 </div>
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-fuchsia-500/20 bg-fuchsia-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Priorities</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        health, coverage, alerts, watchlist를 한 번에 눌러서 지금 먼저 처리할 lane를 압축한 요약입니다. terminal surface에서 가장 먼저 볼 섹션으로 두고 바로 action으로 이어가면 됩니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className={`rounded-full border px-3 py-1 ${
+                                        searchLearningTerminalPriorities.status === 'critical'
+                                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                            : searchLearningTerminalPriorities.status === 'action'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : searchLearningTerminalPriorities.status === 'monitoring'
+                                                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                    }`}>
+                                        {searchLearningTerminalPriorities.status}
+                                    </span>
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-100">
+                                        critical {searchLearningTerminalPriorities.critical}
+                                    </span>
+                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-100">
+                                        high {searchLearningTerminalPriorities.high}
+                                    </span>
+                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-slate-200">
+                                        medium {searchLearningTerminalPriorities.medium}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <p className="text-sm font-semibold text-white">{searchLearningTerminalPriorities.headline}</p>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                {searchLearningTerminalPriorities.priorities.map((item) => {
+                                    const toneClass =
+                                        item.severity === 'critical'
+                                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                            : item.severity === 'high'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : item.severity === 'medium'
+                                                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100';
+
+                                    return (
+                                        <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${toneClass}`}>
+                                                        {item.severity}
+                                                    </span>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {item.count}
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{item.summary}</p>
+                                            <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+                                                <span className="rounded-full border border-slate-700 bg-slate-950/70 px-2 py-1 text-slate-200">
+                                                    {item.source}
+                                                </span>
+                                                <span className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2 py-1 text-fuchsia-100">
+                                                    {item.lane}
+                                                </span>
+                                                {item.action && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => selectSearchLearningEntries(item.action.entryIds, `${item.title}의 ${item.action.entryIds.length}개 query를 선택했습니다.`)}
+                                                        className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-100 transition hover:border-emerald-400 hover:bg-emerald-500/20"
+                                                    >
+                                                        {item.action.actionLabel}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </section>
 
