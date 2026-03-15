@@ -152,6 +152,7 @@ import { buildSearchLearningTerminalTrends } from '@/lib/search/searchLearningTe
 import { buildSearchLearningTerminalWatchlist } from '@/lib/search/searchLearningTerminalWatchlist';
 import { buildSearchLearningTerminalCoverage } from '@/lib/search/searchLearningTerminalCoverage';
 import { buildSearchLearningTerminalPriorities } from '@/lib/search/searchLearningTerminalPriorities';
+import { buildSearchLearningTerminalOverview } from '@/lib/search/searchLearningTerminalOverview';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1620,6 +1621,14 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningTerminalAlerts,
         searchLearningTerminalCoverage,
         searchLearningTerminalWatchlist
+    );
+    const searchLearningTerminalOverview = buildSearchLearningTerminalOverview(
+        searchLearningTerminalWorkflow,
+        searchLearningTerminalHealth,
+        searchLearningTerminalPriorities,
+        searchLearningTerminalMetrics,
+        searchLearningTerminalCoverage,
+        searchLearningTerminalTrends
     );
     const searchLearningRewritePacks = buildSearchLearningRewritePacks(searchLearningEntries).slice(0, 6);
     const searchLearningRewriteRecommendations = buildSearchLearningRewriteRecommendations(
@@ -5655,6 +5664,83 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                         현재 curated 검색어 평가셋은 모두 커버되고 있습니다.
                                     </div>
                                 )}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-slate-700 bg-slate-950/70 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Overview</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        terminal surface 전체를 한 번에 압축한 최종 요약입니다. 상태, coverage, action load, 첫 액션을 보고 바로 다음 lane로 이동하면 됩니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className={`rounded-full border px-3 py-1 ${
+                                        searchLearningTerminalOverview.status === 'critical'
+                                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                            : searchLearningTerminalOverview.status === 'action'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : searchLearningTerminalOverview.status === 'monitoring'
+                                                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                    }`}>
+                                        {searchLearningTerminalOverview.status}
+                                    </span>
+                                    <span className="rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1 text-slate-200">
+                                        lane {searchLearningTerminalOverview.primaryLane}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+                                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                    <p className="text-sm font-semibold text-white">{searchLearningTerminalOverview.headline}</p>
+                                    <p className="mt-3 text-sm leading-6 text-slate-300">{searchLearningTerminalOverview.summary}</p>
+                                    <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-xs text-slate-300">
+                                        {searchLearningTerminalOverview.nextStep}
+                                    </div>
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Health Score</p>
+                                        <p className="mt-3 text-3xl font-black text-white">{searchLearningTerminalOverview.healthScore}</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Coverage Score</p>
+                                        <p className="mt-3 text-3xl font-black text-emerald-100">{searchLearningTerminalOverview.coverageScore}</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Action Load</p>
+                                        <p className="mt-3 text-3xl font-black text-amber-100">{searchLearningTerminalOverview.actionLoad}</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Priority Count</p>
+                                        <p className="mt-3 text-3xl font-black text-fuchsia-100">{searchLearningTerminalOverview.watchCount}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-3">
+                                {searchLearningTerminalOverview.spotlights.map((item) => {
+                                    const toneClass =
+                                        item.tone === 'rose'
+                                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                            : item.tone === 'amber'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : item.tone === 'sky'
+                                                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                    : item.tone === 'emerald'
+                                                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                                        : 'border-slate-700 bg-slate-950/70 text-slate-200';
+
+                                    return (
+                                        <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${toneClass}`}>
+                                                {item.label}
+                                            </span>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{item.summary}</p>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </section>
 
