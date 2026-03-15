@@ -149,6 +149,7 @@ import { buildSearchLearningTerminalChecklist } from '@/lib/search/searchLearnin
 import { buildSearchLearningTerminalRunbook } from '@/lib/search/searchLearningTerminalRunbook';
 import { buildSearchLearningTerminalMetrics } from '@/lib/search/searchLearningTerminalMetrics';
 import { buildSearchLearningTerminalTrends } from '@/lib/search/searchLearningTerminalTrends';
+import { buildSearchLearningTerminalWatchlist } from '@/lib/search/searchLearningTerminalWatchlist';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1584,6 +1585,11 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
     const searchLearningTerminalTrends = buildSearchLearningTerminalTrends(
         searchLearningTerminalWorkflow,
         searchLearningTerminalMetrics
+    );
+    const searchLearningTerminalWatchlist = buildSearchLearningTerminalWatchlist(
+        searchLearningTerminalWorkflow,
+        searchLearningOpsCenter,
+        searchLearningImpactSummary
     );
     const searchLearningTerminalMetricsMaxDailyTotal = Math.max(
         1,
@@ -5826,6 +5832,100 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                     );
                                 })}
                             </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-amber-500/20 bg-amber-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Watchlist</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        지금 바로 처리할 query를 `ops center + impact + workflow`에서 추려서 보여주는 terminal triage 목록입니다. health와 trend를 본 뒤 실제 액션은 여기서 바로 시작하면 됩니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-rose-100">
+                                        critical {searchLearningTerminalWatchlist.critical}
+                                    </span>
+                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-100">
+                                        high {searchLearningTerminalWatchlist.high}
+                                    </span>
+                                    <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sky-100">
+                                        medium {searchLearningTerminalWatchlist.medium}
+                                    </span>
+                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-slate-200">
+                                        total {searchLearningTerminalWatchlist.total}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                {searchLearningTerminalWatchlist.items.map((item) => {
+                                    const toneClass =
+                                        item.priority === 'critical'
+                                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                            : item.priority === 'high'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : item.priority === 'medium'
+                                                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                    : 'border-slate-700 bg-slate-950/70 text-slate-200';
+
+                                    return (
+                                        <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${toneClass}`}>
+                                                        {item.priority}
+                                                    </span>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                                </div>
+                                                <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold text-slate-200">
+                                                    {item.metricLabel}
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{item.description}</p>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {item.queries.length > 0 ? item.queries.map((query) => (
+                                                    <span
+                                                        key={`${item.id}:${query}`}
+                                                        className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-200"
+                                                    >
+                                                        {query}
+                                                    </span>
+                                                )) : (
+                                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-300">
+                                                        query 묶음 {item.count}건
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleSearchLearningTerminalAction(item.action)}
+                                                    className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-100"
+                                                >
+                                                    {item.action.actionLabel}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        selectSearchLearningEntries(
+                                                            item.entryIds,
+                                                            `${item.title} query를 선택했습니다.`
+                                                        )
+                                                    }
+                                                    className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                >
+                                                    queue 선택
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {searchLearningTerminalWatchlist.items.length === 0 && (
+                                <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-400">
+                                    terminal watchlist에 올릴 즉시 처리 query가 없습니다.
+                                </div>
+                            )}
                         </section>
 
                         <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
