@@ -22,6 +22,7 @@ Key files:
   - `npm run ntl:login`
   - `npm run ntl:link`
   - `npm run ntl:sync-env`
+  - `npm run ntl:smoke`
   - `npm run ntl:deploy:preview`
   - `npm run ntl:deploy:prod`
 
@@ -128,6 +129,12 @@ After deploy, verify:
   - `러닝 자켓`
   - `트레이닝 팬츠`
   - `와이드 팬츠`
+
+Reusable smoke check:
+
+```bash
+npm run ntl:smoke
+```
 
 ## 10. Current Hosting Policy
 

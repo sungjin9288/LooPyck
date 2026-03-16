@@ -221,6 +221,9 @@ npm run ntl:deploy:preview
 
 # production deploy
 npm run ntl:deploy:prod
+
+# smoke check
+npm run ntl:smoke
 ```
 
 Detailed guides:

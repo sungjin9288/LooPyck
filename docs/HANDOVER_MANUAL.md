@@ -50,6 +50,9 @@ npm run ntl:deploy:preview
 
 # Production deploy
 npm run ntl:deploy:prod
+
+# Basic production smoke check
+npm run ntl:smoke
 ```
 
 Important:

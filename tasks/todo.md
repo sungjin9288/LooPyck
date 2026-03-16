@@ -53,8 +53,10 @@
 - [x] `npx netlify status`
 - [x] Netlify login
 - [x] site link or init
-- [ ] `npx netlify env:import --replace-existing .netlify.env`
-- [ ] preview or production deploy
+- [x] `npx netlify env:import --replace-existing .netlify.env`
+- [x] preview or production deploy
+- [ ] `/admin` browser smoke on Netlify
+- [x] HTTP smoke (`ntl:smoke`)
 
 **[3] Notes**
 - [ ] Vercel fair-use 제한 해제 시 Vercel 복귀 검토
