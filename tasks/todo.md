@@ -39,6 +39,28 @@
 
 ## 🚧 In Progress (진행 중)
 
+### Phase 36: Netlify Migration ✅ IN PROGRESS
+
+**[1] Execute**
+- [x] `netlify.toml` 추가
+- [x] `ntl:status` / `ntl:login` / `ntl:link` / `ntl:deploy:preview` / `ntl:deploy:prod` 스크립트 추가
+- [x] `.netlify` ignore 추가
+- [x] Netlify 배포 문서 추가 (`docs/NETLIFY_DEPLOY.md`)
+- [x] `README.md` / `docs/HANDOVER_MANUAL.md` Netlify 기준 갱신
+- [x] `ntl:sync-env` 추가 및 Netlify runtime allowlist 정리
+
+**[2] Verify**
+- [x] `npx netlify status`
+- [x] Netlify login
+- [x] site link or init
+- [ ] `npx netlify env:import --replace-existing .netlify.env`
+- [ ] preview or production deploy
+
+**[3] Notes**
+- [ ] Vercel fair-use 제한 해제 시 Vercel 복귀 검토
+- [ ] Cloudflare Workers Free는 `3 MiB` Worker size limit 때문에 현재 비현실적
+- [ ] Netlify Functions는 AWS Lambda env 4 KB limit이 있어 runtime env allowlist 유지 필요
+
 ### Phase 35: Cloudflare Workers Migration ☁️ 🚧 IN PROGRESS
 
 **[1] Execute**

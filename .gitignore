@@ -28,6 +28,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# netlify
+.netlify
+.netlify.env
+
 # cloudflare / opennext
 .open-next
 .wrangler

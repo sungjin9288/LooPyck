@@ -35,15 +35,27 @@ npm run dev
 ### Production Deployment
 
 ```bash
-# Build for Cloudflare Workers
-npm run cf:build
+# Authenticate to Netlify
+npm run ntl:login
 
-# Preview locally with Wrangler
-npm run cf:preview
+# Link existing site/repo
+npm run ntl:link
 
-# Deploy to Cloudflare Workers
-npm run cf:deploy
+# Sync the trimmed runtime env
+npm run ntl:sync-env
+npx netlify env:import --replace-existing .netlify.env
+
+# Preview deploy
+npm run ntl:deploy:preview
+
+# Production deploy
+npm run ntl:deploy:prod
 ```
+
+Important:
+- Do not import `.env.local` directly into Netlify.
+- Netlify Functions inherit runtime env into AWS Lambda, so provider-only vars
+  like `VERCEL_OIDC_TOKEN` can break deploys by exceeding the 4 KB env limit.
 
 ---
 
@@ -59,10 +71,9 @@ npm run cf:deploy
 | `FIREBASE_ADMIN_PRIVATE_KEY` | ✅(운영) | Firebase Admin SDK Private Key |
 | `ADMIN_UIDS` | ✅(`/admin`) | 관리자 UID 목록 (쉼표 구분) |
 | `GEMINI_API_KEY` | 선택 | Gemini 기반 AI 기능용 |
-| `CLOUDFLARE_API_TOKEN` | CD | Wrangler 배포용 API 토큰 |
-| `CLOUDFLARE_ACCOUNT_ID` | CD | Cloudflare 계정 ID |
+| `NETLIFY_AUTH_TOKEN` | CD | Netlify CLI/API 배포 토큰 |
 
-> 최신 전체 목록은 [`.env.local.example`](/Users/sungjin/dev/personal/LooPyck/.env.local.example) 와 [CLOUDFLARE_DEPLOY.md](/Users/sungjin/dev/personal/LooPyck/docs/CLOUDFLARE_DEPLOY.md) 를 기준으로 봅니다.
+> 최신 전체 목록은 [`.env.local.example`](/Users/sungjin/dev/personal/LooPyck/.env.local.example) 와 [NETLIFY_DEPLOY.md](/Users/sungjin/dev/personal/LooPyck/docs/NETLIFY_DEPLOY.md) 를 기준으로 봅니다.
 
 ### Getting API Keys
 
@@ -191,8 +202,8 @@ npm run build
 
 #### Step 1: 장애 확인 (2분)
 ```bash
-# Cloudflare 상태 확인
-https://www.cloudflarestatus.com
+# Netlify 상태 확인
+https://www.netlifystatus.com
 
 # Firebase 상태 확인
 https://status.firebase.google.com
@@ -202,7 +213,7 @@ https://status.firebase.google.com
 ```bash
 # 안정 버전 커밋으로 재배포
 git checkout <stable-commit>
-npm run cf:deploy
+npm run ntl:deploy:prod
 git checkout main
 ```
 

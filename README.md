@@ -78,7 +78,7 @@ Frontend:   Next.js 16, React 19, TypeScript, Tailwind CSS, Framer Motion
 AI:         Gemini 2.5 Flash (Vision + Text)
 Auth:       Firebase Authentication (Anonymous + Google OAuth)
 Database:   Cloud Firestore
-Hosting:    Cloudflare Workers (OpenNext)
+Hosting:    Netlify (Primary Free Tier), Vercel (Fallback)
 CI/CD:      GitHub Actions
 ```
 
@@ -201,22 +201,31 @@ npm run cf:preview
 | `UPSTASH_REDIS_REST_URL` | 선택 | 분산 Rate Limit용 Upstash Redis |
 | `UPSTASH_REDIS_REST_TOKEN` | 선택 | 분산 Rate Limit용 Upstash Redis Token |
 
-### Cloudflare Deploy
+### Netlify Deploy
 
-Cloudflare Workers is the primary free-tier deployment target for testing.
+Netlify is the primary free-tier deployment target while Vercel is blocked.
 
 ```bash
-# local preview
-npm run cf:preview
+# authenticate
+npm run ntl:login
 
-# Cloudflare type generation
-npm run cf:typegen
+# link existing GitHub repo or create a new site
+npm run ntl:link
 
-# deploy
-npm run cf:deploy
+# sync the trimmed runtime env before deploy
+npm run ntl:sync-env
+npx netlify env:import --replace-existing .netlify.env
+
+# preview deploy
+npm run ntl:deploy:preview
+
+# production deploy
+npm run ntl:deploy:prod
 ```
 
-Detailed guide: [docs/CLOUDFLARE_DEPLOY.md](./docs/CLOUDFLARE_DEPLOY.md)
+Detailed guides:
+- [docs/NETLIFY_DEPLOY.md](./docs/NETLIFY_DEPLOY.md)
+- [docs/CLOUDFLARE_DEPLOY.md](./docs/CLOUDFLARE_DEPLOY.md) (kept as blocked alternative)
 
 ---
 
