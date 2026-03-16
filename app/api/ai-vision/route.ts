@@ -3,8 +3,6 @@ import { z } from 'zod';
 import { normalizeKeywordList, parseGeminiJson } from '@/lib/ai/geminiJson';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 
-export const runtime = 'edge';
-
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 12_000;
 

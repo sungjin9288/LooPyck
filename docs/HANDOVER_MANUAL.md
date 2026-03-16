@@ -35,11 +35,14 @@ npm run dev
 ### Production Deployment
 
 ```bash
-# Build
-npm run build
+# Build for Cloudflare Workers
+npm run cf:build
 
-# Deploy to Vercel
-npx vercel --prod
+# Preview locally with Wrangler
+npm run cf:preview
+
+# Deploy to Cloudflare Workers
+npm run cf:deploy
 ```
 
 ---
@@ -48,11 +51,18 @@ npx vercel --prod
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GEMINI_API_KEY` | ✅ | Google AI Studio API Key |
-| `NEXT_PUBLIC_FIREBASE_CONFIG` | ✅ | Firebase 설정 JSON |
-| `VERCEL_TOKEN` | CD | Vercel 배포 토큰 |
-| `VERCEL_ORG_ID` | CD | Vercel 조직 ID |
-| `VERCEL_PROJECT_ID` | CD | Vercel 프로젝트 ID |
+| `NAVER_CLIENT_ID` | ✅ | 네이버 쇼핑 검색 API Client ID |
+| `NAVER_CLIENT_SECRET` | ✅ | 네이버 쇼핑 검색 API Client Secret |
+| `NEXT_PUBLIC_FIREBASE_*` | ✅ | Firebase Web SDK 설정값 일체 |
+| `FIREBASE_ADMIN_PROJECT_ID` | ✅(운영) | Firebase Admin SDK Project ID |
+| `FIREBASE_ADMIN_CLIENT_EMAIL` | ✅(운영) | Firebase Admin SDK Client Email |
+| `FIREBASE_ADMIN_PRIVATE_KEY` | ✅(운영) | Firebase Admin SDK Private Key |
+| `ADMIN_UIDS` | ✅(`/admin`) | 관리자 UID 목록 (쉼표 구분) |
+| `GEMINI_API_KEY` | 선택 | Gemini 기반 AI 기능용 |
+| `CLOUDFLARE_API_TOKEN` | CD | Wrangler 배포용 API 토큰 |
+| `CLOUDFLARE_ACCOUNT_ID` | CD | Cloudflare 계정 ID |
+
+> 최신 전체 목록은 [`.env.local.example`](/Users/sungjin/dev/personal/LooPyck/.env.local.example) 와 [CLOUDFLARE_DEPLOY.md](/Users/sungjin/dev/personal/LooPyck/docs/CLOUDFLARE_DEPLOY.md) 를 기준으로 봅니다.
 
 ### Getting API Keys
 
@@ -181,8 +191,8 @@ npm run build
 
 #### Step 1: 장애 확인 (2분)
 ```bash
-# Vercel 상태 확인
-https://vercel-status.com
+# Cloudflare 상태 확인
+https://www.cloudflarestatus.com
 
 # Firebase 상태 확인
 https://status.firebase.google.com
@@ -190,11 +200,10 @@ https://status.firebase.google.com
 
 #### Step 2: 롤백 (5분)
 ```bash
-# 이전 버전으로 롤백
-vercel rollback
-
-# 또는 특정 배포로 롤백
-vercel alias <deployment-url> <production-url>
+# 안정 버전 커밋으로 재배포
+git checkout <stable-commit>
+npm run cf:deploy
+git checkout main
 ```
 
 #### Step 3: 검증 (8분)

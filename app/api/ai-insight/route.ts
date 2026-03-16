@@ -3,8 +3,6 @@ import { z } from 'zod';
 import { normalizeKeywordList, parseGeminiJson } from '@/lib/ai/geminiJson';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 
-export const runtime = 'edge';
-
 const REQUEST_TIMEOUT_MS = 12_000;
 
 const InsightRequestSchema = z.object({

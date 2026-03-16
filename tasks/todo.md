@@ -39,6 +39,28 @@
 
 ## 🚧 In Progress (진행 중)
 
+### Phase 35: Cloudflare Workers Migration ☁️ 🚧 IN PROGRESS
+
+**[1] Execute**
+- [x] `@opennextjs/cloudflare` + `wrangler` dev dependency 추가
+- [x] `wrangler.jsonc` / `open-next.config.ts` 추가
+- [x] `cf:build` / `cf:preview` / `cf:deploy` / `cf:typegen` / `cf:sync-vars` 스크립트 추가
+- [x] `.dev.vars` sync script + `.gitignore` 정리
+- [x] `public/_headers` 추가
+- [x] `runtime = 'edge'` API route 제거 (`ai-review-summary`, `ai-insight`, `ai-vision`)
+- [x] Cloudflare 배포 문서 추가 (`docs/CLOUDFLARE_DEPLOY.md`)
+- [x] `README.md` / `docs/HANDOVER_MANUAL.md` Cloudflare 기준 갱신
+
+**[2] Verify**
+- [x] `npm run cf:build`
+- [x] `npm run typecheck`
+- [x] `npm run build`
+
+**[3] Blockers**
+- [ ] `wrangler login` 또는 `CLOUDFLARE_API_TOKEN` 필요
+- [ ] 실제 `npm run cf:deploy`는 Cloudflare 인증 후 진행
+- [ ] production `/admin` terminal surface 최종 검증
+
 ### Phase 34: Search Learning Ops Automation 🧠 🚧 IN PROGRESS
 
 **[1] Execute - Search Learning Ops Layer**

@@ -78,7 +78,7 @@ Frontend:   Next.js 16, React 19, TypeScript, Tailwind CSS, Framer Motion
 AI:         Gemini 2.5 Flash (Vision + Text)
 Auth:       Firebase Authentication (Anonymous + Google OAuth)
 Database:   Cloud Firestore
-Hosting:    Vercel (Edge Functions)
+Hosting:    Cloudflare Workers (OpenNext)
 CI/CD:      GitHub Actions
 ```
 
@@ -161,6 +161,9 @@ npm run env:check
 
 # 7. Firebase Rules / Indexes Deploy
 firebase deploy --only firestore:rules,firestore:indexes
+
+# 8. Cloudflare local preview
+npm run cf:preview
 ```
 
 ### 환경 변수
@@ -197,6 +200,23 @@ firebase deploy --only firestore:rules,firestore:indexes
 | `NEXT_PUBLIC_ADMIN_UIDS` | 선택(레거시) | 클라이언트 fallback용 공개 UID 목록 |
 | `UPSTASH_REDIS_REST_URL` | 선택 | 분산 Rate Limit용 Upstash Redis |
 | `UPSTASH_REDIS_REST_TOKEN` | 선택 | 분산 Rate Limit용 Upstash Redis Token |
+
+### Cloudflare Deploy
+
+Cloudflare Workers is the primary free-tier deployment target for testing.
+
+```bash
+# local preview
+npm run cf:preview
+
+# Cloudflare type generation
+npm run cf:typegen
+
+# deploy
+npm run cf:deploy
+```
+
+Detailed guide: [docs/CLOUDFLARE_DEPLOY.md](./docs/CLOUDFLARE_DEPLOY.md)
 
 ---
 
