@@ -116,6 +116,7 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
     // 필터 적용 후 표시할 상품
     const filteredProducts = useMemo(() => applyFilters(sortedProducts, filters), [sortedProducts, filters]);
     const filteredGroupedProducts = useGroupedProducts(filteredProducts);
+    const isInitialLoading = (isLoading || isScanning) && products.length === 0 && !error;
     const comparisonReadyGroups = useMemo(
         () => filteredGroupedProducts.filter((group) => group.mallCount > 1 && group.matchConfidence >= 0.72),
         [filteredGroupedProducts]
@@ -272,8 +273,14 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
                         검색 결과
                     </h2>
                     <p className="text-slate-500 text-sm">
-                        총 <span className="text-slate-900 font-semibold">{filteredProducts.length.toLocaleString()}</span>개 아이템
-                        {filters.priceRange !== 'all' || filters.brand || filters.source ? ` (필터 적용됨)` : ''}
+                        {isInitialLoading ? (
+                            <span className="text-slate-900 font-semibold">검색 결과를 수집 중입니다…</span>
+                        ) : (
+                            <>
+                                총 <span className="text-slate-900 font-semibold">{filteredProducts.length.toLocaleString()}</span>개 아이템
+                                {filters.priceRange !== 'all' || filters.brand || filters.source ? ' (필터 적용됨)' : ''}
+                            </>
+                        )}
                     </p>
                 </div>
 
@@ -416,7 +423,15 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
                 onProductClick={(group) => handleGroupClick(group)}
             />
 
-            {filteredGroupedProducts.length === 0 ? (
+            {isInitialLoading ? (
+                <div className="flex min-h-[320px] flex-col items-center justify-center rounded-[28px] border border-slate-200 bg-white/70 px-6 py-16 text-center shadow-sm">
+                    <div className="mb-4 h-10 w-10 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
+                    <p className="text-base font-semibold text-slate-900">검색 결과를 불러오는 중입니다</p>
+                    <p className="mt-2 max-w-md text-sm text-slate-500">
+                        쇼핑몰별 결과를 순차 수집하고 있습니다. 패션 키워드가 넓을수록 몇 초 더 걸릴 수 있습니다.
+                    </p>
+                </div>
+            ) : filteredGroupedProducts.length === 0 ? (
                 <div className="text-center py-20 text-slate-500">
                     선택한 필터 조건에 맞는 상품이 없습니다.
                 </div>

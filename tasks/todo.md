@@ -880,3 +880,8 @@ PM이 업무를 부여할 때, 즉시 코딩하지 않고 다음 순서로 진�
 ---
 
 _Last updated: 2026-02-05_
+
+## 2026-03-16 Notes
+
+- [x] Netlify production smoke checks passed for `/`, `/admin`, `/api/admin/access`, and representative search queries.
+- [x] Search results UI now hides the empty-state during the initial fetch and shows an explicit loading panel instead.
