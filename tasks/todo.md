@@ -97,6 +97,7 @@
 - [x] `/admin` Search Learning Terminal Priorities
 - [x] `/admin` Search Learning Terminal Overview
 - [x] `/admin` Search Learning Terminal Handoff
+- [x] `/admin` Search Learning Terminal Validation + `docs/SEARCH_LEARNING_TERMINAL_VALIDATION.md`
 
 **[2] Verify**
 - [x] `npm run typecheck`
@@ -105,8 +106,8 @@
 
 **[3] Next**
 - [ ] production redeploy
-- [ ] `/admin`에서 `Advanced Search Learning Chain` / `Advanced Playbook Chain` 기본 접힘 + terminal overview / handoff / health / priorities / metrics / coverage / trends / watchlist / checklist / alerts / workflow / runbook 노출 확인
-- [ ] 실제 검색 후 `Terminal Overview -> Terminal Handoff -> Terminal Health -> Terminal Priorities -> Terminal Metrics -> Terminal Coverage -> Terminal Trends -> Terminal Watchlist -> Terminal Checklist -> Terminal Alerts -> Terminal Runbook -> Terminal Command Center -> Completion Summary -> Completion Actions -> Completion Queue` 루프 검증
+- [ ] `/admin`에서 `Advanced Search Learning Chain` / `Advanced Playbook Chain` 기본 접힘 + terminal overview / validation / handoff / health / priorities / metrics / coverage / trends / watchlist / checklist / alerts / workflow / runbook 노출 확인
+- [ ] 실제 검색 후 `Terminal Overview -> Terminal Validation -> Terminal Handoff -> Terminal Health -> Terminal Priorities -> Terminal Metrics -> Terminal Coverage -> Terminal Trends -> Terminal Watchlist -> Terminal Checklist -> Terminal Alerts -> Terminal Runbook -> Terminal Command Center -> Completion Summary -> Completion Actions -> Completion Queue` 루프 검증
 
 ---
 

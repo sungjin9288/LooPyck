@@ -154,6 +154,7 @@ import { buildSearchLearningTerminalCoverage } from '@/lib/search/searchLearning
 import { buildSearchLearningTerminalPriorities } from '@/lib/search/searchLearningTerminalPriorities';
 import { buildSearchLearningTerminalOverview } from '@/lib/search/searchLearningTerminalOverview';
 import { buildSearchLearningTerminalHandoff } from '@/lib/search/searchLearningTerminalHandoff';
+import { buildSearchLearningTerminalValidation } from '@/lib/search/searchLearningTerminalValidation';
 import { primeAlertTuningSettings } from '@/hooks/useAlertTuningSettings';
 import { pushAppNotification } from '@/lib/core/notifications';
 
@@ -1635,6 +1636,17 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
         searchLearningTerminalOverview,
         searchLearningTerminalPriorities,
         searchLearningTerminalRunbook
+    );
+    const searchLearningTerminalValidation = buildSearchLearningTerminalValidation(
+        searchLearningTerminalOverview,
+        searchLearningTerminalHandoff,
+        searchLearningTerminalWorkflow,
+        searchLearningTerminalCoverage,
+        {
+            trackedSearches: summary?.trackedSearches ?? 0,
+            observedSources: summary?.sources.length ?? 0,
+            productOpens: data?.interactionSummary.productOpens ?? 0,
+        }
     );
     const searchLearningRewritePacks = buildSearchLearningRewritePacks(searchLearningEntries).slice(0, 6);
     const searchLearningRewriteRecommendations = buildSearchLearningRewriteRecommendations(
@@ -5816,6 +5828,104 @@ export default function SearchDiagnosticsDashboard({ scope = 'full' }: SearchDia
                                                 ) : (
                                                     <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-2 text-xs font-bold text-slate-300">
                                                         follow-up only
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </section>
+
+                        <section className="mt-8 rounded-3xl border border-violet-500/20 bg-violet-500/5 p-5">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Search Learning Terminal Validation</h2>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                        production redeploy 이후 terminal surface, 실제 검색 신호, workflow loop, impact 추적이 준비됐는지 한 번에 확인하는 검증 레이어입니다.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className={`rounded-full border px-3 py-1 ${
+                                        searchLearningTerminalValidation.status === 'attention'
+                                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                            : searchLearningTerminalValidation.status === 'pending'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                    }`}>
+                                        {searchLearningTerminalValidation.status}
+                                    </span>
+                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-slate-200">
+                                        ready {searchLearningTerminalValidation.checks.ready}
+                                    </span>
+                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-slate-200">
+                                        attention {searchLearningTerminalValidation.checks.attention}
+                                    </span>
+                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-slate-200">
+                                        pending {searchLearningTerminalValidation.checks.pending}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                <p className="text-sm font-semibold text-white">{searchLearningTerminalValidation.headline}</p>
+                                <p className="mt-3 text-sm leading-6 text-slate-300">{searchLearningTerminalValidation.nextStep}</p>
+                                <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-violet-100">
+                                        validation doc
+                                    </span>
+                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-slate-200">
+                                        {searchLearningTerminalValidation.docPath}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                                {searchLearningTerminalValidation.items.map((item) => {
+                                    const toneClass =
+                                        item.tone === 'rose'
+                                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+                                            : item.tone === 'amber'
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                                                : item.tone === 'sky'
+                                                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                                                    : item.tone === 'emerald'
+                                                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                                        : 'border-slate-700 bg-slate-950/70 text-slate-200';
+
+                                    return (
+                                        <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${toneClass}`}>
+                                                        {item.label}
+                                                    </span>
+                                                    <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                                                </div>
+                                                <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${toneClass}`}>
+                                                    {item.status}
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">{item.summary}</p>
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                {item.action ? (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void handleSearchLearningTerminalAction(item.action)}
+                                                            className="rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-bold text-violet-100"
+                                                        >
+                                                            {item.action.actionLabel}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => selectSearchLearningEntries(item.action!.entryIds, `${item.title} query를 선택했습니다.`)}
+                                                            className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
+                                                        >
+                                                            queue 선택
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-2 text-xs font-bold text-slate-300">
+                                                        manual check
                                                     </span>
                                                 )}
                                             </div>
