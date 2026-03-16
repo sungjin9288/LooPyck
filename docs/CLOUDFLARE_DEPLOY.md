@@ -93,3 +93,6 @@ If Wrangler is not authenticated, deployment will stop and ask for login/token s
 - `runtime = 'edge'` route handlers were removed because the OpenNext Cloudflare adapter does not support Next.js edge runtime in this repo setup.
 - Incremental cache is intentionally left simple for now. R2-backed cache can be added later after the Worker is live.
 - `.open-next`, `.wrangler`, `.dev.vars`, and `cloudflare-env.d.ts` are ignored by git.
+- Real deployment was attempted and failed on Cloudflare Workers Free because the generated Worker script exceeded the free plan `3 MiB` size limit (`error code 10027`). The current OpenNext server handler was reported around `17.8 MiB`, which means this repo will require either:
+  - Cloudflare Workers Paid, or
+  - a major app slimming/splitting effort before free-tier Workers deploy is realistic.

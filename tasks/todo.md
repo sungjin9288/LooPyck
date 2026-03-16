@@ -59,6 +59,7 @@
 **[3] Blockers**
 - [ ] `wrangler login` 또는 `CLOUDFLARE_API_TOKEN` 필요
 - [ ] Cloudflare account email verification 필요 (`wrangler deploy` error code `10034`)
+- [ ] Cloudflare Workers Free `3 MiB` script size limit 초과 (`loo-pyck` deploy error code `10027`, generated handler `~17.8 MiB`)
 - [ ] 실제 `npm run cf:deploy`는 Cloudflare 인증 후 진행
 - [ ] production `/admin` terminal surface 최종 검증
 
