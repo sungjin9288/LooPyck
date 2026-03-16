@@ -95,6 +95,10 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
 
     // 1. Intersection Observer for Infinite Scroll
     useEffect(() => {
+        if (products.length === 0 || isScanning) {
+            return;
+        }
+
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && hasMore && !isLoading) loadMore();
@@ -103,7 +107,7 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
         );
         if (observerTarget.current) observer.observe(observerTarget.current);
         return () => observer.disconnect();
-    }, [hasMore, isLoading, loadMore]);
+    }, [hasMore, isLoading, isScanning, loadMore, products.length]);
 
     // 2. Adaptive Theme Application
     useEffect(() => {

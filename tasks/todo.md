@@ -885,3 +885,4 @@ _Last updated: 2026-02-05_
 
 - [x] Netlify production smoke checks passed for `/`, `/admin`, `/api/admin/access`, and representative search queries.
 - [x] Search results UI now hides the empty-state during the initial fetch and shows an explicit loading panel instead.
+- [x] Initial infinite-scroll observer no longer aborts page 1 search requests before first results render.

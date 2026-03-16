@@ -117,7 +117,7 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
     }, []);
 
     const loadMore = useCallback(() => {
-        if (isLoading || !hasMore || !query) return;
+        if (isLoading || isScanning || !hasMore || !query || products.length === 0) return;
 
         // Phase 42 Hardening: Memory Leak Protection
         // Prevent infinite scroll from crashing the browser if > 500 items
