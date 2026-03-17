@@ -56,6 +56,7 @@
 - [x] `npx netlify env:import --replace-existing .netlify.env`
 - [x] preview or production deploy
 - [x] Netlify browser smoke (`repeat search flow` + unauthenticated `/admin` gate)
+- [x] Netlify authenticated admin API smoke (`/api/admin/access` + `/api/realtime-search/diagnostics`)
 - [x] HTTP smoke (`ntl:smoke`)
 - [x] repeat search hardening (`same query rerun` + `rapid query switch` resets grid run)
 - [x] `/api/realtime-search` CDN cache disabled to prevent previous query reuse on Netlify

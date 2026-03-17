@@ -54,6 +54,9 @@ npm run ntl:deploy:prod
 # Basic production smoke check
 npm run ntl:smoke
 
+# Authenticated admin API smoke check
+npm run ntl:admin-smoke
+
 # Browser smoke check
 npm run ntl:browser-smoke
 ```
@@ -62,6 +65,9 @@ Important:
 - Do not import `.env.local` directly into Netlify.
 - Netlify Functions inherit runtime env into AWS Lambda, so provider-only vars
   like `VERCEL_OIDC_TOKEN` can break deploys by exceeding the 4 KB env limit.
+- `ntl:admin-smoke` uses local Firebase Admin credentials plus the first `ADMIN_UIDS`
+  entry to mint a custom token and verify Netlify `/api/admin/access` and
+  `/api/realtime-search/diagnostics`.
 
 ---
 

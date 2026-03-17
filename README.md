@@ -224,6 +224,7 @@ npm run ntl:deploy:prod
 
 # smoke check
 npm run ntl:smoke
+npm run ntl:admin-smoke
 
 # browser smoke check
 npm run ntl:browser-smoke
