@@ -1,54 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
+import { createNetlifyAdminAuthPayload } from './netlifyAdminAuth.mjs';
 
 const baseUrl = process.argv[2] || process.env.SMOKE_BASE_URL || 'https://loo-pyck.netlify.app';
-const envPath = resolve('.env.local');
-
-function parseEnvFile(path) {
-    if (!existsSync(path)) {
-        throw new Error(`Missing ${path}. Create .env.local before running ntl:admin-smoke.`);
-    }
-
-    const env = new Map();
-    const source = readFileSync(path, 'utf8');
-
-    for (const line of source.split(/\r?\n/)) {
-        if (!line.trim() || line.trim().startsWith('#')) continue;
-        const separatorIndex = line.indexOf('=');
-        if (separatorIndex <= 0) continue;
-
-        const key = line.slice(0, separatorIndex).trim();
-        const value = line.slice(separatorIndex + 1).trim();
-        if (!key) continue;
-        env.set(key, value);
-    }
-
-    return env;
-}
-
-function getEnvValue(env, key) {
-    return process.env[key] || env.get(key) || '';
-}
-
-function stripWrappingQuotes(value) {
-    if (
-        (value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))
-    ) {
-        return value.slice(1, -1);
-    }
-    return value;
-}
-
-function requiredEnv(env, key) {
-    const value = stripWrappingQuotes(getEnvValue(env, key));
-    if (!value) {
-        throw new Error(`Missing required env: ${key}`);
-    }
-    return value;
-}
 
 async function fetchJson(url, init) {
     const response = await fetch(url, init);
@@ -65,33 +17,8 @@ async function fetchJson(url, init) {
 }
 
 async function main() {
-    const env = parseEnvFile(envPath);
-    const apiKey = requiredEnv(env, 'NEXT_PUBLIC_FIREBASE_API_KEY');
-    const adminUids = requiredEnv(env, 'ADMIN_UIDS')
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean);
-    const adminUid = adminUids[0];
-
-    if (!adminUid) {
-        throw new Error('ADMIN_UIDS must contain at least one UID for ntl:admin-smoke.');
-    }
-
-    const projectId = requiredEnv(env, 'FIREBASE_ADMIN_PROJECT_ID');
-    const clientEmail = requiredEnv(env, 'FIREBASE_ADMIN_CLIENT_EMAIL');
-    const privateKey = requiredEnv(env, 'FIREBASE_ADMIN_PRIVATE_KEY').replace(/\\n/g, '\n');
-
-    const app = getApps()[0] || initializeApp({
-        credential: cert({
-            projectId,
-            clientEmail,
-            privateKey,
-        }),
-        projectId,
-    });
-
-    const adminAuth = getAuth(app);
-    const customToken = await adminAuth.createCustomToken(adminUid);
+    const { adminUid, customToken, firebaseConfig } = await createNetlifyAdminAuthPayload();
+    const apiKey = firebaseConfig.apiKey;
     const signInUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${encodeURIComponent(apiKey)}`;
     const signInResult = await fetchJson(signInUrl, {
         method: 'POST',

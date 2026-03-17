@@ -24,6 +24,7 @@ Key files:
   - `npm run ntl:sync-env`
   - `npm run ntl:smoke`
   - `npm run ntl:admin-smoke`
+  - `npm run ntl:admin-browser-smoke`
   - `npm run ntl:deploy:preview`
   - `npm run ntl:deploy:prod`
 
@@ -137,12 +138,13 @@ Reusable smoke check:
 npm run ntl:smoke
 npm run ntl:admin-smoke
 npm run ntl:browser-smoke
+npm run ntl:admin-browser-smoke
 ```
 
 Notes:
 - `ntl:browser-smoke` validates public search repeat-flow and the unauthenticated `/admin` gate.
 - `ntl:admin-smoke` mints a Firebase custom token for the first `ADMIN_UIDS` entry and validates `/api/admin/access` plus `/api/realtime-search/diagnostics`.
-- Authenticated `/admin` terminal surface layout verification still requires a real logged-in browser session.
+- `ntl:admin-browser-smoke` uses the same custom token flow to sign into the browser session and verifies the authenticated `/admin` terminal surface headings.
 
 ## 10. Current Hosting Policy
 

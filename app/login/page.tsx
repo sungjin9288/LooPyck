@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getRedirectResult } from 'firebase/auth';
+import { getRedirectResult, signInWithCustomToken } from 'firebase/auth';
 import { signInWithGoogle } from '@/lib/auth/firebase';
 import { auth } from '@/lib/firebase';
 import { useUser } from '@/contexts/UserContext';
@@ -13,6 +13,15 @@ const POST_LOGIN_NEXT_KEY = 'loopyck:post-login-next';
 function normalizeNext(nextParam: string | null) {
     if (!nextParam || !nextParam.startsWith('/')) return '/';
     return nextParam;
+}
+
+function getCustomTokenFromHash() {
+    if (typeof window === 'undefined') return null;
+    const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+    if (!hash) return null;
+    const params = new URLSearchParams(hash);
+    const token = params.get('customToken');
+    return token && token.trim() ? token.trim() : null;
 }
 
 export default function LoginPage() {
@@ -55,6 +64,24 @@ export default function LoginPage() {
 
         const start = async () => {
             try {
+                const customToken = getCustomTokenFromHash();
+                if (customToken) {
+                    setStatus('redirecting');
+                    setError(null);
+                    const credential = await signInWithCustomToken(auth, customToken);
+
+                    if (cancelled) return;
+
+                    if (typeof window !== 'undefined') {
+                        window.history.replaceState(null, '', `/login?next=${encodeURIComponent(nextPath)}`);
+                    }
+
+                    if (credential.user) {
+                        router.replace(nextPath);
+                        return;
+                    }
+                }
+
                 const hadPendingRedirect = typeof window !== 'undefined'
                     && window.sessionStorage.getItem(REDIRECT_PENDING_KEY) === '1';
                 const result = await getRedirectResult(auth);

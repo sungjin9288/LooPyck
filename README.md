@@ -228,6 +228,7 @@ npm run ntl:admin-smoke
 
 # browser smoke check
 npm run ntl:browser-smoke
+npm run ntl:admin-browser-smoke
 ```
 
 Detailed guides:

@@ -13,6 +13,7 @@
     "ntl:smoke": "node scripts/netlifySmokeCheck.mjs",
     "ntl:admin-smoke": "node scripts/netlifyAdminSmoke.mjs",
     "ntl:browser-smoke": "bash scripts/netlifyBrowserSmoke.sh",
+    "ntl:admin-browser-smoke": "bash scripts/netlifyAdminBrowserSmoke.sh",
     "ntl:deploy:preview": "NEXT_PUBLIC_SITE_URL=https://loo-pyck.netlify.app SITE_URL=https://loo-pyck.netlify.app npx netlify deploy --build",
     "ntl:deploy:prod": "NEXT_PUBLIC_SITE_URL=https://loo-pyck.netlify.app SITE_URL=https://loo-pyck.netlify.app npx netlify deploy --build --prod",
     "cf:sync-vars": "node scripts/syncCloudflareDevVars.mjs",

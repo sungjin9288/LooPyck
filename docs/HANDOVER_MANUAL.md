@@ -59,6 +59,7 @@ npm run ntl:admin-smoke
 
 # Browser smoke check
 npm run ntl:browser-smoke
+npm run ntl:admin-browser-smoke
 ```
 
 Important:
@@ -68,6 +69,8 @@ Important:
 - `ntl:admin-smoke` uses local Firebase Admin credentials plus the first `ADMIN_UIDS`
   entry to mint a custom token and verify Netlify `/api/admin/access` and
   `/api/realtime-search/diagnostics`.
+- `ntl:admin-browser-smoke` uses the same custom token flow inside the browser to
+  verify the authenticated `/admin` terminal surface headings without manual login.
 
 ---
 
