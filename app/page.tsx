@@ -37,6 +37,7 @@ export default function Home() {
   const [currentView, setCurrentView] = useState<CurrentView>('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchSort, setSearchSort] = useState<SearchSort>('sim');
+  const [searchRunId, setSearchRunId] = useState(0);
   const { recentlyViewed, addToRecentlyViewed, clearRecentlyViewed } = useRecentlyViewed();
 
   // URL에서 초기 검색어 복원
@@ -59,6 +60,7 @@ export default function Home() {
     addRecentSearch(trimmed);
     setSearchQuery(trimmed);
     setSearchSort(sort);
+    setSearchRunId((previous) => previous + 1);
     setCurrentView('search');
     router.replace(`/?q=${encodeURIComponent(trimmed)}`, { scroll: false });
   };
@@ -154,7 +156,12 @@ export default function Home() {
                 )}
 
                 {searchQuery ? (
-                  <InfiniteProductGrid query={searchQuery} sort={searchSort} onSearch={onSearch} />
+                  <InfiniteProductGrid
+                    key={`${searchQuery}:${searchSort}:${searchRunId}`}
+                    query={searchQuery}
+                    sort={searchSort}
+                    onSearch={onSearch}
+                  />
                 ) : (
                   <TrendDiscovery onSearch={onSearch} />
                 )}

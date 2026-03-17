@@ -275,14 +275,13 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // Cache Control: Public, s-maxage=60 (CDN cache), stale-while-revalidate=30
         return NextResponse.json(
             debug
                 ? { products: reranked.products, diagnostics: diagnosticsPayload, searchMeta: reranked.meta }
                 : { products: reranked.products, searchMeta: reranked.meta },
             {
                 headers: {
-                    'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30',
+                    'Cache-Control': 'no-store, max-age=0',
                     'X-RateLimit-Remaining': String(rateLimit.remaining),
                     'X-PriceHistory-Enabled': String(historyEnabled),
                     'X-Comparison-Groups-Persisted': String(comparisonGroupsPersisted),

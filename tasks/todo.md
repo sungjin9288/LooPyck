@@ -57,6 +57,8 @@
 - [x] preview or production deploy
 - [ ] `/admin` browser smoke on Netlify
 - [x] HTTP smoke (`ntl:smoke`)
+- [x] repeat search hardening (`same query rerun` + `rapid query switch` resets grid run)
+- [x] `/api/realtime-search` CDN cache disabled to prevent previous query reuse on Netlify
 
 **[3] Notes**
 - [ ] Vercel fair-use 제한 해제 시 Vercel 복귀 검토

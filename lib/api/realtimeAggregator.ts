@@ -60,6 +60,9 @@ type TimedSearchResult = {
     resolvedQuery?: string;
 };
 
+const NAVER_SEARCH_BUDGET_MS = 3_500;
+const DIRECT_SOURCE_SEARCH_BUDGET_MS = 3_500;
+
 export type SearchSourceStrategy =
     | 'api'
     | 'direct'
@@ -385,6 +388,40 @@ async function runNaverSearch(
     };
 }
 
+async function withTimedSearchBudget(
+    source: UnifiedProduct['source'],
+    queries: string[],
+    promise: Promise<TimedSearchResult>,
+    timeoutMs: number,
+    timeoutReason: string
+): Promise<TimedSearchResult> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const requestedQueries = uniqueQueryCandidates(queries);
+    const startedAt = Date.now();
+
+    try {
+        return await Promise.race([
+            promise,
+            new Promise<TimedSearchResult>((resolve) => {
+                timer = setTimeout(() => {
+                    resolve({
+                        source,
+                        products: [],
+                        durationMs: Date.now() - startedAt,
+                        fallbackReason: timeoutReason,
+                        requestedQueries,
+                        resolvedQuery: requestedQueries[0],
+                    });
+                }, timeoutMs);
+            }),
+        ]);
+    } finally {
+        if (timer) {
+            clearTimeout(timer);
+        }
+    }
+}
+
 function buildAggregationDiagnostics(
     query: string,
     page: number,
@@ -696,21 +733,21 @@ export async function aggregateRealtimeSearchDetailed(
         lfMallRun,
         siVillageRun,
     ] = await Promise.all([
-        runNaverSearch(naverQueries, page, sort),
-        runTimedSearchWithCandidates('MUSINSA', musinsaQueries, (candidate) => scrapeMusinsa(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('29CM', twentyNineQueries, (candidate) => scrape29CM(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('W_CONCEPT', wConceptQueries, (candidate) => scrapeWConcept(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('ZIGZAG', zigzagQueries, (candidate) => scrapeZigzag(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('ABLY', ablyQueries, (candidate) => scrapeAbly(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('SSF', ssfQueries, (candidate) => scrapeSSF(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('COUPANG', coupangQueries, (candidate) => scrapeCoupang(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('HANDSOME', handsomeQueries, (candidate) => scrapeHandsome(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('FARFETCH', farfetchQueries, (candidate) => scrapeFarfetch(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('SSENSE', ssenseQueries, (candidate) => scrapeSSense(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('HAGO', hagoQueries, (candidate) => scrapeHago(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('EQL', eqlQueries, (candidate) => scrapeEql(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('LFMALL', lfMallQueries, (candidate) => scrapeLfMall(candidate, page), 'no_direct_results'),
-        runTimedSearchWithCandidates('SIVILLAGE', siVillageQueries, (candidate) => scrapeSiVillage(candidate, page), 'no_direct_results'),
+        withTimedSearchBudget('NAVER', naverQueries, runNaverSearch(naverQueries, page, sort), NAVER_SEARCH_BUDGET_MS, 'naver_timeout'),
+        withTimedSearchBudget('MUSINSA', musinsaQueries, runTimedSearchWithCandidates('MUSINSA', musinsaQueries, (candidate) => scrapeMusinsa(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('29CM', twentyNineQueries, runTimedSearchWithCandidates('29CM', twentyNineQueries, (candidate) => scrape29CM(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('W_CONCEPT', wConceptQueries, runTimedSearchWithCandidates('W_CONCEPT', wConceptQueries, (candidate) => scrapeWConcept(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('ZIGZAG', zigzagQueries, runTimedSearchWithCandidates('ZIGZAG', zigzagQueries, (candidate) => scrapeZigzag(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('ABLY', ablyQueries, runTimedSearchWithCandidates('ABLY', ablyQueries, (candidate) => scrapeAbly(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('SSF', ssfQueries, runTimedSearchWithCandidates('SSF', ssfQueries, (candidate) => scrapeSSF(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('COUPANG', coupangQueries, runTimedSearchWithCandidates('COUPANG', coupangQueries, (candidate) => scrapeCoupang(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('HANDSOME', handsomeQueries, runTimedSearchWithCandidates('HANDSOME', handsomeQueries, (candidate) => scrapeHandsome(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('FARFETCH', farfetchQueries, runTimedSearchWithCandidates('FARFETCH', farfetchQueries, (candidate) => scrapeFarfetch(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('SSENSE', ssenseQueries, runTimedSearchWithCandidates('SSENSE', ssenseQueries, (candidate) => scrapeSSense(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('HAGO', hagoQueries, runTimedSearchWithCandidates('HAGO', hagoQueries, (candidate) => scrapeHago(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('EQL', eqlQueries, runTimedSearchWithCandidates('EQL', eqlQueries, (candidate) => scrapeEql(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('LFMALL', lfMallQueries, runTimedSearchWithCandidates('LFMALL', lfMallQueries, (candidate) => scrapeLfMall(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
+        withTimedSearchBudget('SIVILLAGE', siVillageQueries, runTimedSearchWithCandidates('SIVILLAGE', siVillageQueries, (candidate) => scrapeSiVillage(candidate, page), 'no_direct_results'), DIRECT_SOURCE_SEARCH_BUDGET_MS, 'source_timeout'),
     ]);
 
     const naverProducts = naverRun.products;
@@ -791,7 +828,13 @@ export async function aggregateRealtimeSearchNaverOnly(
     sort: SearchSort = 'sim',
     queries: string[] = [query]
 ): Promise<AggregateRealtimeSearchResult> {
-    const naverRun = await runNaverSearch(queries, page, sort);
+    const naverRun = await withTimedSearchBudget(
+        'NAVER',
+        queries,
+        runNaverSearch(queries, page, sort),
+        NAVER_SEARCH_BUDGET_MS,
+        'naver_timeout'
+    );
     const diagnostics = buildAggregationDiagnostics(query, page, sort, naverRun.products, naverRun, []);
 
     return {

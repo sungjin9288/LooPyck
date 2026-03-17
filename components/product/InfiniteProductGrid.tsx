@@ -120,7 +120,10 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
     // 필터 적용 후 표시할 상품
     const filteredProducts = useMemo(() => applyFilters(sortedProducts, filters), [sortedProducts, filters]);
     const filteredGroupedProducts = useGroupedProducts(filteredProducts);
-    const isInitialLoading = (isLoading || isScanning) && products.length === 0 && !error;
+    const isInitialLoading = products.length === 0
+        && !error
+        && !blockedReason
+        && (isLoading || isScanning || searchMeta === null);
     const comparisonReadyGroups = useMemo(
         () => filteredGroupedProducts.filter((group) => group.mallCount > 1 && group.matchConfidence >= 0.72),
         [filteredGroupedProducts]

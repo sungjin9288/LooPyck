@@ -87,7 +87,7 @@ export default function SearchBar({ query: initialQuery = '', onSearch, isLoadin
             setFeedback(null);
         }
 
-        onSearch(analysis.normalizedQuery, sort);
+        onSearch(trimmed, sort);
     };
 
     const handleSubmit = (e: FormEvent) => {
