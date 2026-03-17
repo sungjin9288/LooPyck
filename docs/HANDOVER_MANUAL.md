@@ -53,6 +53,9 @@ npm run ntl:deploy:prod
 
 # Basic production smoke check
 npm run ntl:smoke
+
+# Browser smoke check
+npm run ntl:browser-smoke
 ```
 
 Important:

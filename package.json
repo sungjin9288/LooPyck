@@ -11,6 +11,7 @@
     "ntl:link": "npx netlify link --git-remote-url https://github.com/sungjin9288/LooPyck.git",
     "ntl:sync-env": "node scripts/syncNetlifyEnv.mjs",
     "ntl:smoke": "node scripts/netlifySmokeCheck.mjs",
+    "ntl:browser-smoke": "bash scripts/netlifyBrowserSmoke.sh",
     "ntl:deploy:preview": "NEXT_PUBLIC_SITE_URL=https://loo-pyck.netlify.app SITE_URL=https://loo-pyck.netlify.app npx netlify deploy --build",
     "ntl:deploy:prod": "NEXT_PUBLIC_SITE_URL=https://loo-pyck.netlify.app SITE_URL=https://loo-pyck.netlify.app npx netlify deploy --build --prod",
     "cf:sync-vars": "node scripts/syncCloudflareDevVars.mjs",

@@ -55,7 +55,7 @@
 - [x] site link or init
 - [x] `npx netlify env:import --replace-existing .netlify.env`
 - [x] preview or production deploy
-- [ ] `/admin` browser smoke on Netlify
+- [x] Netlify browser smoke (`repeat search flow` + unauthenticated `/admin` gate)
 - [x] HTTP smoke (`ntl:smoke`)
 - [x] repeat search hardening (`same query rerun` + `rapid query switch` resets grid run)
 - [x] `/api/realtime-search` CDN cache disabled to prevent previous query reuse on Netlify
@@ -64,6 +64,7 @@
 - [ ] Vercel fair-use 제한 해제 시 Vercel 복귀 검토
 - [ ] Cloudflare Workers Free는 `3 MiB` Worker size limit 때문에 현재 비현실적
 - [ ] Netlify Functions는 AWS Lambda env 4 KB limit이 있어 runtime env allowlist 유지 필요
+- [ ] authenticated `/admin` terminal surface browser smoke는 실제 로그인 세션에서 수동 확인 필요
 
 ### Phase 35: Cloudflare Workers Migration ☁️ 🚧 IN PROGRESS
 

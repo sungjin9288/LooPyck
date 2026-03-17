@@ -134,7 +134,12 @@ Reusable smoke check:
 
 ```bash
 npm run ntl:smoke
+npm run ntl:browser-smoke
 ```
+
+Notes:
+- `ntl:browser-smoke` validates public search repeat-flow and the unauthenticated `/admin` gate.
+- Authenticated `/admin` terminal surface verification still requires a real logged-in browser session.
 
 ## 10. Current Hosting Policy
 
