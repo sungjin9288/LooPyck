@@ -54,7 +54,6 @@ export async function getCachedProduct(url: string): Promise<ConsensusResult | n
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
-            console.log('[CacheLayer] Cache MISS:', url);
             return null;
         }
 
@@ -67,14 +66,12 @@ export async function getCachedProduct(url: string): Promise<ConsensusResult | n
             : new Date(cached.expiresAt);
 
         if (now > expiresAt) {
-            console.log('[CacheLayer] Cache EXPIRED:', url);
             return null;
         }
 
         // 히트 카운트 증가 (비동기)
         updateDoc(docRef, { hitCount: increment(1) }).catch(console.error);
 
-        console.log('[CacheLayer] Cache HIT:', url, `(hits: ${cached.hitCount + 1})`);
         return cached.extractedData;
 
     } catch (error) {
@@ -112,7 +109,6 @@ export async function setCachedProduct(
             expiresAt: Timestamp.fromDate(expiresAt),
         });
 
-        console.log('[CacheLayer] Cache SET:', url, `(expires: ${expiresAt.toISOString()})`);
         return true;
 
     } catch (error) {

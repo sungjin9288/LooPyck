@@ -143,7 +143,6 @@ class CostTracker {
 
         this.saveToStorage();
 
-        console.log(`[CostTracker] ${model}: ${tokensUsed} tokens = $${costUsd.toFixed(4)}`);
         return record;
     }
 

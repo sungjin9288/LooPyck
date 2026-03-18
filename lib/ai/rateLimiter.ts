@@ -142,8 +142,6 @@ class RateLimiter {
         this.state.rpd += 1;
         this.state.tpm += tokensUsed;
         this.saveState();
-
-        console.log(`[RateLimiter] Request recorded: RPM=${this.state.rpm}/${this.limits.RPM}, RPD=${this.state.rpd}/${this.limits.RPD}`);
     }
 
     /**

@@ -137,7 +137,6 @@ export async function parseProductImage(
             parsed.confidence = Math.min(parsed.confidence || 0, 0.5);
         }
 
-        console.log('[VisionParser] Successfully extracted:', parsed.productName, parsed.price);
         return parsed;
 
     } catch (error) {

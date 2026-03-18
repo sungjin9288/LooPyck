@@ -71,7 +71,6 @@ export async function initAnalytics(): Promise<void> {
         if (getApps().length > 0) {
             analytics = getAnalytics();
             logEventFn = logEvent;
-            console.log('[Analytics] Initialized');
         }
     } catch (error) {
         console.warn('[Analytics] Init failed:', error);

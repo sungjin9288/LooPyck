@@ -206,9 +206,6 @@ export async function smartCall(
 ): Promise<{ success: boolean; data?: unknown; error?: string; modelUsed: ModelTier }> {
     const routing = routeToModel(factors);
 
-    console.log(`[GeminiProvider] ${routing.reason}`);
-    console.log(`[GeminiProvider] Selected: ${routing.model}, Est. tokens: ${routing.estimatedTokens}`);
-
     if (!routing.canProceed) {
         return {
             success: false,

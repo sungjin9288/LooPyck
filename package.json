@@ -34,7 +34,8 @@
     "cap:android": "npx cap open android",
     "cap:android:prod": "CAPACITOR_SERVER_URL=https://loo-pyck.netlify.app NEXT_PUBLIC_SITE_URL=https://loo-pyck.netlify.app SITE_URL=https://loo-pyck.netlify.app npx cap open android",
     "cap:build": "npm run build && npx cap sync",
-    "cap:build:prod": "NEXT_PUBLIC_SITE_URL=https://loo-pyck.netlify.app SITE_URL=https://loo-pyck.netlify.app CAPACITOR_SERVER_URL=https://loo-pyck.netlify.app npm run build && npm run cap:sync:prod"
+    "cap:build:prod": "NEXT_PUBLIC_SITE_URL=https://loo-pyck.netlify.app SITE_URL=https://loo-pyck.netlify.app CAPACITOR_SERVER_URL=https://loo-pyck.netlify.app npm run build && npm run cap:sync:prod",
+    "cap:assets": "npx @capacitor/assets generate --iconBackgroundColor '#000000' --splashBackgroundColor '#000000'"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
@@ -62,6 +63,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@opennextjs/cloudflare": "^1.17.1",
     "@types/node": "^20",
     "@types/react": "^18",

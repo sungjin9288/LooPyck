@@ -218,8 +218,6 @@ export async function extractProductData(
         attempt++;
         factors.previousFailures = attempt - 1;
 
-        console.log(`[DataExtractor] Attempt ${attempt}/${maxRetries}`);
-
         const apiResult = await smartCall(
             factors,
             currentPrompt,
@@ -242,7 +240,6 @@ export async function extractProductData(
         lastResult = parseResult;
 
         if (parseResult.success && !parseResult.needsSelfCorrection) {
-            console.log('[DataExtractor] Extraction successful');
             return { ...parseResult, attempts: attempt };
         }
 

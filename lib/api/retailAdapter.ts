@@ -14,30 +14,30 @@ export interface RetailProduct {
     url: string;
     category?: string;
     tags?: string[];
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
 }
 
 export interface PlatformAdapter {
-    normalize(data: any): RetailProduct;
-    normalizeBatch(dataList: any[]): RetailProduct[];
+    normalize(data: Record<string, unknown>): RetailProduct;
+    normalizeBatch(dataList: Record<string, unknown>[]): RetailProduct[];
 }
 
 // Example: Generic Adapter for Standard JSON
 export const GenericAdapter: PlatformAdapter = {
-    normalize: (data: any): RetailProduct => {
+    normalize: (data: Record<string, unknown>): RetailProduct => {
         return {
-            id: String(data.id || data.productId),
-            title: data.title || data.name,
-            price: Number(data.price || data.sale_price || 0),
-            currency: data.currency || 'KRW',
-            images: Array.isArray(data.images) ? data.images : [data.image || ''],
-            url: data.url || data.link || '',
-            category: data.category || '',
-            tags: data.tags || [],
-            metadata: data.metadata || {}
+            id: String(data.id ?? data.productId ?? ''),
+            title: String(data.title ?? data.name ?? ''),
+            price: Number(data.price ?? data.sale_price ?? 0),
+            currency: String(data.currency ?? 'KRW'),
+            images: Array.isArray(data.images) ? (data.images as string[]) : [String(data.image ?? '')],
+            url: String(data.url ?? data.link ?? ''),
+            category: String(data.category ?? ''),
+            tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
+            metadata: (data.metadata as Record<string, unknown>) ?? {},
         };
     },
-    normalizeBatch: (dataList: any[]): RetailProduct[] => {
+    normalizeBatch: (dataList: Record<string, unknown>[]): RetailProduct[] => {
         return dataList.map(GenericAdapter.normalize);
-    }
+    },
 };

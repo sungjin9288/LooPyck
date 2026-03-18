@@ -3,6 +3,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pushAppNotification } from '@/lib/core/notifications';
+import { useUser } from '@/contexts/UserContext';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 type ChatLocale = 'ko' | 'en';
 
@@ -66,7 +69,10 @@ function readFileAsDataUrl(file: File): Promise<string> {
     });
 }
 
+const CHAT_HISTORY_MAX = 50;
+
 export default function StyleChat({ onSearch }: StyleChatProps) {
+    const { user } = useUser();
     const [isOpen, setIsOpen] = useState(false);
     const [locale, setLocale] = useState<ChatLocale>('ko');
     const [messages, setMessages] = useState<ChatMessage[]>([
@@ -81,6 +87,33 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
     const sendLockRef = useRef(false);
     const composingRef = useRef(false);
     const lastSentRef = useRef<{ text: string; at: number } | null>(null);
+    const historyLoadedRef = useRef(false);
+
+    // 로그인 사용자의 대화 히스토리 로드
+    useEffect(() => {
+        if (!user || !db || historyLoadedRef.current) return;
+        historyLoadedRef.current = true;
+        const ref = doc(db, 'users', user.uid, 'preferences', 'chatHistory');
+        getDoc(ref).then((snap) => {
+            if (!snap.exists()) return;
+            const data = snap.data();
+            const saved = data?.messages as ChatMessage[] | undefined;
+            if (Array.isArray(saved) && saved.length > 0) {
+                setMessages(saved);
+            }
+        }).catch(() => {/* 히스토리 로드 실패는 무시 */});
+    }, [user]);
+
+    // 메시지 변경 시 Firestore에 저장 (로그인 사용자만)
+    useEffect(() => {
+        if (!user || !db || !historyLoadedRef.current) return;
+        if (messages.length <= 1) return; // 웰컴 메시지만 있을 때는 저장 안 함
+        const ref = doc(db, 'users', user.uid, 'preferences', 'chatHistory');
+        setDoc(ref, {
+            messages: messages.slice(-CHAT_HISTORY_MAX),
+            updatedAt: new Date().toISOString(),
+        }, { merge: true }).catch(() => {/* 저장 실패는 무시 */});
+    }, [messages, user]);
 
     useEffect(() => {
         if (scrollRef.current) {
