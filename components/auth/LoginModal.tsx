@@ -7,6 +7,8 @@ import StyleDashboard from '@/components/auth/StyleDashboard';
 import MyAsset from '@/components/profile/MyAsset'; // Portfolio Component
 import { useUser } from '@/contexts/UserContext';
 import { pushAppNotification } from '@/lib/core/notifications';
+import { BottomSheet } from '@toss/tds-mobile';
+import { isTossWebView } from '@/lib/native/tossWebView';
 
 interface LoginModalProps {
     isOpen: boolean;
@@ -49,6 +51,39 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             setIsSubmitting(false);
         }
     }, [isOpen]);
+
+    const inToss = isTossWebView();
+
+    // 토스 WebView: TDS BottomSheet
+    if (inToss) {
+        return (
+            <BottomSheet open={isOpen} onDimmerClick={onClose}>
+                <LoginModalContent
+                    isSubmitting={isSubmitting}
+                    loginError={loginError}
+                    onClose={onClose}
+                    onLogin={async () => {
+                        try {
+                            setIsSubmitting(true);
+                            setLoginError(null);
+                            if (user?.isAnonymous) {
+                                await linkAccount();
+                            } else {
+                                await signInWithGoogle();
+                            }
+                            onClose();
+                        } catch (e: unknown) {
+                            const message = getReadableAuthMessage(e);
+                            setLoginError(message);
+                            pushAppNotification({ title: '로그인 실패', message, type: 'alert' });
+                        } finally {
+                            setIsSubmitting(false);
+                        }
+                    }}
+                />
+            </BottomSheet>
+        );
+    }
 
     if (!isOpen) return null;
 
@@ -126,6 +161,49 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                     By continuing, you agree to our Terms & Privacy.
                 </p>
             </div>
+        </div>
+    );
+}
+
+// 토스 BottomSheet / 일반 모달 공통 내부 컴포넌트
+function LoginModalContent({ isSubmitting, loginError, onClose, onLogin }: {
+    isSubmitting: boolean;
+    loginError: string | null;
+    onClose: () => void;
+    onLogin: () => void;
+}) {
+    return (
+        <div className="p-8">
+            <div className="text-center mb-8">
+                <h2 className="text-2xl font-black text-black mb-2 tracking-tight">LooPyck</h2>
+                <p className="text-gray-600 text-sm">
+                    Unlock your personal <br />
+                    <span className="font-bold text-black">Fashion Intelligence</span>
+                </p>
+            </div>
+
+            <button
+                onClick={onLogin}
+                disabled={isSubmitting}
+                className="w-full flex items-center justify-center gap-3 bg-black hover:bg-gray-800 text-white font-bold py-4 px-6 rounded-2xl transition-all shadow-lg"
+            >
+                <img
+                    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                    alt="Google"
+                    className="w-5 h-5"
+                />
+                <span>{isSubmitting ? 'Signing in...' : 'Continue with Google'}</span>
+            </button>
+
+            {loginError && (
+                <p className="mt-4 text-center text-sm text-rose-600">
+                    {loginError}
+                </p>
+            )}
+
+            <p className="text-center text-gray-400 text-xs mt-6">
+                By continuing, you agree to our Terms & Privacy.
+            </p>
         </div>
     );
 }

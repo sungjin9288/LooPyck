@@ -7,6 +7,7 @@ import { useLanguage } from '@/lib/i18n/LanguageContext';
 import BrandTicker from '@/components/layout/BrandTicker'; // Phase 39 Ticker
 import { useUser } from '@/contexts/UserContext';
 import { pushAppNotification } from '@/lib/core/notifications';
+import { isTossWebView } from '@/lib/native/tossWebView';
 
 interface NavbarProps {
     currentView: 'search' | 'favorites' | 'recommend';
@@ -21,6 +22,9 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
     const [loginError, setLoginError] = useState<string | null>(null);
     const { t, locale, setLocale } = useLanguage();
     const { user, linkAccount } = useUser();
+
+    // 토스 WebView 안에서는 네이티브 네비게이션 바 사용 → 숨김
+    if (isTossWebView()) return null;
 
     const toggleLanguage = () => {
         setLocale(locale === 'ko' ? 'en' : 'ko');

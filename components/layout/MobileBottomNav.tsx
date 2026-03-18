@@ -3,54 +3,75 @@
 import React from 'react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { triggerHaptic } from '@/lib/native/bridge';
+import { isTossWebView } from '@/lib/native/tossWebView';
+import { Tab } from '@toss/tds-mobile';
 
 interface MobileBottomNavProps {
     currentView: 'search' | 'favorites' | 'recommend';
     setCurrentView: (view: 'search' | 'favorites' | 'recommend') => void;
 }
 
+const VIEWS = ['search', 'favorites', 'recommend'] as const;
+
 export default function MobileBottomNav({ currentView, setCurrentView }: MobileBottomNavProps) {
     const { t } = useLanguage();
+    const inToss = isTossWebView();
 
+    const labels = {
+        search: t('nav.search') || '검색',
+        recommend: t('nav.recommend') || '추천',
+        favorites: t('nav.favorites') || '찜',
+    };
+
+    const handleSelect = (view: typeof VIEWS[number]) => {
+        triggerHaptic('light');
+        setCurrentView(view);
+    };
+
+    // 토스 WebView: TDS 플로팅 탭바
+    if (inToss) {
+        const tabIndex = VIEWS.indexOf(currentView);
+        return (
+            <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden pb-[var(--sab,0px)]">
+                <Tab fluid onChange={(index) => handleSelect(VIEWS[index])}>
+                    <Tab.Item selected={tabIndex === 0}>{labels.search}</Tab.Item>
+                    <Tab.Item selected={tabIndex === 1}>{labels.recommend}</Tab.Item>
+                    <Tab.Item selected={tabIndex === 2}>{labels.favorites}</Tab.Item>
+                </Tab>
+            </div>
+        );
+    }
+
+    // 일반 브라우저 / PWA: 기존 커스텀 탭바
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden">
-            {/* Safe area padding for mobile devices & Backdrop blur */}
             <div className="glass-panel border-t border-white/20 pb-[var(--sab)]">
                 <nav className="flex items-center justify-around h-16 px-4">
                     <button
-                        onClick={() => {
-                            triggerHaptic('light');
-                            setCurrentView('search');
-                        }}
+                        onClick={() => handleSelect('search')}
                         className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'search' ? 'text-accent-dark' : 'text-slate-400 hover:text-slate-600'
                             }`}
                     >
                         <SearchIcon active={currentView === 'search'} />
-                        <span className="text-[10px] font-medium">{t('nav.search') || '검색'}</span>
+                        <span className="text-[10px] font-medium">{labels.search}</span>
                     </button>
 
                     <button
-                        onClick={() => {
-                            triggerHaptic('light');
-                            setCurrentView('recommend');
-                        }}
+                        onClick={() => handleSelect('recommend')}
                         className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'recommend' ? 'text-violet-600' : 'text-slate-400 hover:text-slate-600'
                             }`}
                     >
                         <SparklesIcon active={currentView === 'recommend'} />
-                        <span className="text-[10px] font-medium">{t('nav.recommend') || '추천'}</span>
+                        <span className="text-[10px] font-medium">{labels.recommend}</span>
                     </button>
 
                     <button
-                        onClick={() => {
-                            triggerHaptic('light');
-                            setCurrentView('favorites');
-                        }}
+                        onClick={() => handleSelect('favorites')}
                         className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'favorites' ? 'text-rose-500' : 'text-slate-400 hover:text-slate-600'
                             }`}
                     >
                         <HeartIcon active={currentView === 'favorites'} />
-                        <span className="text-[10px] font-medium">{t('nav.favorites') || '찜'}</span>
+                        <span className="text-[10px] font-medium">{labels.favorites}</span>
                     </button>
                 </nav>
             </div>
