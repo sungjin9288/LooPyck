@@ -231,6 +231,9 @@ npm run ntl:browser-smoke
 npm run ntl:admin-browser-smoke
 ```
 
+`ntl:admin-browser-smoke` verifies the authenticated Netlify `/admin` terminal headings,
+visible queue/draft action buttons, and both advanced chain toggles.
+
 Detailed guides:
 - [docs/NETLIFY_DEPLOY.md](./docs/NETLIFY_DEPLOY.md)
 - [docs/CLOUDFLARE_DEPLOY.md](./docs/CLOUDFLARE_DEPLOY.md) (kept as blocked alternative)

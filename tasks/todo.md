@@ -66,7 +66,7 @@
 - [ ] Vercel fair-use 제한 해제 시 Vercel 복귀 검토
 - [ ] Cloudflare Workers Free는 `3 MiB` Worker size limit 때문에 현재 비현실적
 - [ ] Netlify Functions는 AWS Lambda env 4 KB limit이 있어 runtime env allowlist 유지 필요
-- [ ] 실제 운영 계정으로 terminal surface 레이아웃/액션 UX 수동 확인
+- [ ] 실제 운영 계정으로 최종 시각적 폴리싱만 수동 확인
 
 ### Phase 35: Cloudflare Workers Migration ☁️ 🚧 IN PROGRESS
 

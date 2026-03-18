@@ -144,7 +144,7 @@ npm run ntl:admin-browser-smoke
 Notes:
 - `ntl:browser-smoke` validates public search repeat-flow and the unauthenticated `/admin` gate.
 - `ntl:admin-smoke` mints a Firebase custom token for the first `ADMIN_UIDS` entry and validates `/api/admin/access` plus `/api/realtime-search/diagnostics`.
-- `ntl:admin-browser-smoke` uses the same custom token flow to sign into the browser session and verifies the authenticated `/admin` terminal surface headings.
+- `ntl:admin-browser-smoke` uses the same custom token flow to sign into the browser session and verifies the authenticated `/admin` terminal surface headings, visible batch action buttons, and both advanced chain toggles.
 
 ## 10. Current Hosting Policy
 
