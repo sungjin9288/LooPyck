@@ -26,10 +26,15 @@
     "lint": "npm run typecheck",
     "test:trends": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/monthlyTrendAnalyzer.test.mjs",
     "test:adapters": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --experimental-specifier-resolution=node --test tests/marketplaceScrapers.test.ts tests/searchDiagnostics.test.ts tests/queryLearning.test.ts tests/pdpDiagnostics.test.ts tests/optionHistory.test.ts tests/variantHistory.test.ts tests/variantSelection.test.ts tests/favoriteProduct.test.ts tests/favoriteGrouping.test.ts tests/alertLinks.test.ts tests/alertDetail.test.ts tests/alertInbox.test.ts tests/alertState.test.ts tests/alertDiagnostics.test.ts tests/alertRecommendations.test.ts tests/alertPersonalization.test.ts tests/alertTuningStore.test.ts tests/productMatching.test.ts tests/purchasePricing.test.ts tests/sourceCommerceParsing.test.ts tests/variantAlignment.test.ts tests/pdpDetailEnrichment.test.ts tests/fashionQueryAssistant.test.ts tests/searchQualityRegression.test.ts tests/preferenceRerank.test.ts",
+    "cap:doctor": "node scripts/capacitorDoctor.mjs",
     "cap:sync": "npx cap sync",
+    "cap:sync:prod": "CAPACITOR_SERVER_URL=https://loo-pyck.netlify.app NEXT_PUBLIC_SITE_URL=https://loo-pyck.netlify.app SITE_URL=https://loo-pyck.netlify.app npx cap sync",
     "cap:ios": "npx cap open ios",
+    "cap:ios:prod": "CAPACITOR_SERVER_URL=https://loo-pyck.netlify.app NEXT_PUBLIC_SITE_URL=https://loo-pyck.netlify.app SITE_URL=https://loo-pyck.netlify.app npx cap open ios",
     "cap:android": "npx cap open android",
-    "cap:build": "npm run build && npx cap sync"
+    "cap:android:prod": "CAPACITOR_SERVER_URL=https://loo-pyck.netlify.app NEXT_PUBLIC_SITE_URL=https://loo-pyck.netlify.app SITE_URL=https://loo-pyck.netlify.app npx cap open android",
+    "cap:build": "npm run build && npx cap sync",
+    "cap:build:prod": "NEXT_PUBLIC_SITE_URL=https://loo-pyck.netlify.app SITE_URL=https://loo-pyck.netlify.app CAPACITOR_SERVER_URL=https://loo-pyck.netlify.app npm run build && npm run cap:sync:prod"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",

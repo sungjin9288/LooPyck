@@ -146,7 +146,22 @@ Notes:
 - `ntl:admin-smoke` mints a Firebase custom token for the first `ADMIN_UIDS` entry and validates `/api/admin/access` plus `/api/realtime-search/diagnostics`.
 - `ntl:admin-browser-smoke` uses the same custom token flow to sign into the browser session and verifies the authenticated `/admin` terminal surface headings, visible batch action buttons, and both advanced chain toggles.
 
-## 10. Current Hosting Policy
+## 10. Mobile Real-Device Testing
+
+Capacitor loads the Netlify production app inside a native WebView. For device QA, use the production scripts:
+
+```bash
+npm run cap:doctor
+npm run cap:build:prod
+npm run cap:ios:prod
+# or
+npm run cap:android:prod
+```
+
+Detailed guide:
+- [MOBILE_DEVICE_TESTING.md](/Users/sungjin/dev/personal/LooPyck/docs/MOBILE_DEVICE_TESTING.md)
+
+## 11. Current Hosting Policy
 
 - `Netlify`: primary free-tier deployment path
 - `Vercel`: fallback once fair-use restriction clears

@@ -68,6 +68,22 @@
 - [ ] Netlify Functions는 AWS Lambda env 4 KB limit이 있어 runtime env allowlist 유지 필요
 - [ ] 실제 운영 계정으로 최종 시각적 폴리싱만 수동 확인
 
+### Phase 37: Mobile Real-Device Testing ✅ IN PROGRESS
+
+**[1] Execute**
+- [x] Capacitor production doctor script 추가
+- [x] `cap:sync:prod` / `cap:build:prod` / `cap:ios:prod` / `cap:android:prod` 추가
+- [x] 모바일 실기기 테스트 문서 추가 (`docs/MOBILE_DEVICE_TESTING.md`)
+- [x] `README.md` / `docs/HANDOVER_MANUAL.md` / `docs/NETLIFY_DEPLOY.md` mobile QA 경로 갱신
+
+**[2] Verify**
+- [x] `npm run cap:doctor`
+- [x] `npm run cap:build:prod`
+- [x] native `capacitor.config.json`이 Netlify URL을 가리키는지 확인
+
+**[3] Notes**
+- [ ] Xcode / Android Studio에서 실제 기기 실행은 수동 확인 필요
+
 ### Phase 35: Cloudflare Workers Migration ☁️ 🚧 IN PROGRESS
 
 **[1] Execute**

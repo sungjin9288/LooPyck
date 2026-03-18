@@ -60,6 +60,13 @@ npm run ntl:admin-smoke
 # Browser smoke check
 npm run ntl:browser-smoke
 npm run ntl:admin-browser-smoke
+
+# Real-device smoke prep
+npm run cap:doctor
+npm run cap:build:prod
+npm run cap:ios:prod
+# or
+npm run cap:android:prod
 ```
 
 Important:
@@ -72,6 +79,11 @@ Important:
 - `ntl:admin-browser-smoke` uses the same custom token flow inside the browser to
   verify the authenticated `/admin` terminal surface headings, visible queue/draft action buttons,
   and both advanced chain toggles without manual login.
+- `cap:build:prod` rewrites Capacitor native config to `https://loo-pyck.netlify.app`
+  so real-device tests hit the same production deployment.
+
+Detailed mobile guide:
+- [MOBILE_DEVICE_TESTING.md](/Users/sungjin/dev/personal/LooPyck/docs/MOBILE_DEVICE_TESTING.md)
 
 ---
 

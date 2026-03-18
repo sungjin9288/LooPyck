@@ -237,6 +237,25 @@ visible queue/draft action buttons, and both advanced chain toggles.
 Detailed guides:
 - [docs/NETLIFY_DEPLOY.md](./docs/NETLIFY_DEPLOY.md)
 - [docs/CLOUDFLARE_DEPLOY.md](./docs/CLOUDFLARE_DEPLOY.md) (kept as blocked alternative)
+- [docs/MOBILE_DEVICE_TESTING.md](./docs/MOBILE_DEVICE_TESTING.md)
+
+### Mobile Real-Device Testing
+
+Capacitor is already wired in remote URL mode. For device QA, use the production scripts so the native shell always loads Netlify production.
+
+```bash
+npm run cap:doctor
+npm run cap:build:prod
+npm run cap:ios:prod
+# or
+npm run cap:android:prod
+```
+
+These scripts pin the native WebView to:
+
+```text
+https://loo-pyck.netlify.app
+```
 
 ---
 
