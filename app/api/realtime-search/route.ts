@@ -256,8 +256,7 @@ export async function GET(request: NextRequest) {
             optionHistoriesPersisted = historyResult.optionHistoriesPersisted;
             variantHistoriesPersisted = historyResult.variantHistoriesPersisted;
         }
-        void searchDiagnosticsPersistPromise;
-        void learningPersistPromise;
+        Promise.allSettled([searchDiagnosticsPersistPromise, learningPersistPromise]).catch(() => {});
 
         const fallbackSources = diagnosticsPayload.sources.filter(
             (entry) => entry.strategy === 'naver_classified_fallback' || entry.strategy === 'classified_naver'

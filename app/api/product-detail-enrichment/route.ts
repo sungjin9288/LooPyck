@@ -14,7 +14,7 @@ export async function POST(request: Request) {
         const parsed = EnrichmentRequestSchema.safeParse(await request.json());
         if (!parsed.success) {
             return NextResponse.json(
-                { error: 'invalid_request', details: parsed.error.flatten() },
+                { error: parsed.error.issues[0]?.message || '요청 형식이 올바르지 않습니다.' },
                 { status: 400 }
             );
         }

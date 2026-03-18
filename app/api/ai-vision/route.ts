@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
     const prompt = `
 당신은 한국 최고의 패션 플랫폼의 AI 스타일리스트입니다.
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     try {
         const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
             body: JSON.stringify(requestBody),
             signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });

@@ -120,9 +120,9 @@ export async function POST(request: NextRequest) {
     ];
 
     try {
-        const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+        const res = await fetch(GEMINI_API_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
             body: JSON.stringify({
                 contents: geminiContents,
                 generationConfig: {

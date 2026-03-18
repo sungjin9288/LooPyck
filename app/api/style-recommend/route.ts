@@ -111,9 +111,9 @@ keyItems는 반드시 무신사, 29cm 같은 쇼핑몰에서 실제 검색 가�
 예: "슬림핏 테일러드 자켓", "하이웨이스트 와이드 팬츠", "오버핏 스트라이프 셔츠"`;
 
     try {
-        const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+        const res = await fetch(GEMINI_API_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
             body: JSON.stringify({
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
                 generationConfig: {

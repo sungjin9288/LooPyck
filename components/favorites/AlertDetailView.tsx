@@ -501,7 +501,9 @@ export default function AlertDetailView({ alertId }: AlertDetailViewProps) {
                                 )}
 
                                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:flex-wrap">
+                                    <label htmlFor="alert-target-price" className="sr-only">새 목표가</label>
                                     <input
+                                        id="alert-target-price"
                                         value={targetDraft}
                                         onChange={(event) => setTargetDraft(event.target.value)}
                                         inputMode="numeric"

@@ -140,6 +140,7 @@ export default function NotificationSystem() {
                         </div>
                         <button
                             onClick={() => removeNotification(n.id)}
+                            aria-label="알림 닫기"
                             className="text-gray-400 hover:text-black transition-colors"
                         >
                             ✕

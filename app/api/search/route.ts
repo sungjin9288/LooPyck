@@ -60,8 +60,8 @@ export async function GET(request: NextRequest) {
 
     if (!clientId || !clientSecret) {
       return NextResponse.json(
-        { error: 'API 키가 설정되지 않았습니다. .env.local 파일을 확인해주세요' },
-        { status: 500 }
+        { error: '검색 서비스 연동에 실패했습니다.' },
+        { status: 503 }
       );
     }
 
