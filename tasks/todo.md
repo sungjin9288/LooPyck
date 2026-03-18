@@ -80,9 +80,10 @@
 - [x] `npm run cap:doctor`
 - [x] `npm run cap:build:prod`
 - [x] native `capacitor.config.json`이 Netlify URL을 가리키는지 확인
+- [x] iPhone real-device build/install/launch 확인 (`app.loopyck.fashion`)
 
 **[3] Notes**
-- [ ] Xcode / Android Studio에서 실제 기기 실행은 수동 확인 필요
+- [ ] Android real-device flow는 `adb` / Android Studio 환경 준비 후 별도 확인 필요
 
 ### Phase 35: Cloudflare Workers Migration ☁️ 🚧 IN PROGRESS
 
