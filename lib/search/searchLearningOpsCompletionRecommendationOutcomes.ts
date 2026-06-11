@@ -4,7 +4,7 @@ import type {
     SearchLearningSuggestion,
 } from './queryLearningTypes.ts';
 import { buildSearchLearningImpact } from './searchLearningImpact.ts';
-import type { SearchLearningOpsCompletionRecommendationRun } from './searchLearningOpsCompletionRecommendationActivity.ts';
+import type { OpsChainRun } from './searchLearningOpsChain.ts';
 
 export type SearchLearningOpsCompletionRecommendationOutcomeStatus =
     | 'ready_review'
@@ -27,7 +27,7 @@ export type SearchLearningOpsCompletionRecommendationOutcome = {
     id: string;
     activityId: string;
     title: string;
-    action: SearchLearningOpsCompletionRecommendationRun['action'];
+    action: OpsChainRun['action'];
     context: string;
     createdAt: string;
     queries: string[];
@@ -81,7 +81,7 @@ function sortOutcomes(
 }
 
 export function buildSearchLearningOpsCompletionRecommendationOutcomes(
-    runs: SearchLearningOpsCompletionRecommendationRun[],
+    runs: OpsChainRun[],
     entries: SearchLearningOpsCompletionRecommendationOutcomeEntryLike[]
 ): SearchLearningOpsCompletionRecommendationOutcomeSummary {
     const entryMap = new Map(entries.map((entry) => [entry.id, entry]));

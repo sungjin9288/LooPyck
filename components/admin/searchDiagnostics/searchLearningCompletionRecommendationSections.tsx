@@ -1,8 +1,8 @@
 import { formatTime } from './helpers';
 import {
     buildSearchLearningWorkbench,
-    type SearchLearningOpsCompletionRecommendationOutcomeRecommendation,
-    type SearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem,
+    type OpsChainRecommendation,
+    type OpsChainQueueItem,
 } from './searchLearningWorkbench';
 
 type SearchLearningWorkbench = ReturnType<typeof buildSearchLearningWorkbench>;
@@ -16,10 +16,10 @@ type SearchLearningCompletionRecommendationSectionsProps = Pick<
 > & {
     onSelectEntries: (entryIds: string[], message: string) => void;
     onRunOutcomeRecommendation: (
-        recommendation: SearchLearningOpsCompletionRecommendationOutcomeRecommendation
+        recommendation: OpsChainRecommendation
     ) => Promise<void> | void;
     onRunOutcomeRecommendationQueueItem: (
-        item: SearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem
+        item: OpsChainQueueItem
     ) => Promise<void> | void;
 };
 

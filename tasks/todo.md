@@ -123,6 +123,9 @@
 - [x] `lib/search/queryLearningTypes.ts`로 shared type 분리 및 `searchLearning{Activity,Rewrite,Ops,Terminal}.ts` 배럴 entrypoint 추가
 - [x] `lib/search/searchLearning{Store,Seeding,Suggestions,Review}.ts`로 `queryLearning.ts` 런타임을 facade 뒤로 분해
 - [x] `tests/searchQualityCoverage.test.ts`로 검색 품질 회귀 테스트를 coverage contract 중심으로 축약하고 naming 정리
+- [x] `lib/search/searchLearningOpsChain.ts` 제네릭 엔진 + `searchLearningOpsChainLevels.ts` 레벨 설정으로 재귀 체인 파일 28개(playbook 12 + completion 16) 통합 — 합성 픽스처 기반 신구 스냅샷 byte-identical 동등성 검증 후 삭제, Firestore 컨텍스트/id prefix 전부 보존
+- [x] `searchLearningOpsSnapshot.ts`를 buildOpsChainStep 루프 기반으로 재작성(39개 키 유지), `searchLearningOps.ts` 배럴 정리, 컴포넌트/테스트 타입 임포트를 OpsChain* 제네릭 타입으로 전환
+- [x] README의 Compare Entry Review Gate 운영 매뉴얼(108줄)을 `docs/COMPARE_ENTRY_REVIEW_GATE.md`로 이동
 
 **[4] Fashion Comparison Core Upgrade**
 - [x] 상품 canonicalization 정확도 개선: 브랜드/모델명/옵션/성별 신호 기반 그룹핑 품질 재튜닝

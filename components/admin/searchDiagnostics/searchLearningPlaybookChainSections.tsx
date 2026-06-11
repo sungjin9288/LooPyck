@@ -2,10 +2,8 @@ import type { ReactNode } from 'react';
 import {
     buildSearchLearningWorkbench,
     type SearchLearningOpsPlaybookRecommendation,
-    type SearchLearningOpsPlaybookRecommendationOutcome,
-    type SearchLearningOpsPlaybookRecommendationOutcomeRecommendation,
-    type SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendation,
-    type SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation,
+    type OpsChainOutcome,
+    type OpsChainRecommendation,
 } from './searchLearningWorkbench';
 import { SearchLearningImpactSections } from './searchLearningImpactSections';
 import { SearchLearningPlaybookAdvancedSections } from './searchLearningPlaybookAdvancedSections';
@@ -42,22 +40,22 @@ type SearchLearningPlaybookChainSectionsProps = Pick<
     onToggleAdvancedChain: () => void;
     onSelectEntries: (entryIds: string[], message: string) => void;
     onRunOutcomeRecommendationAction: (
-        recommendation: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendation
+        recommendation: OpsChainRecommendation
     ) => Promise<void> | void;
     onRunAdvancedRecommendationAction: (
-        recommendation: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation
+        recommendation: OpsChainRecommendation
     ) => Promise<void> | void;
     onRunPlaybookRecommendationAction: (
         recommendation: SearchLearningOpsPlaybookRecommendation
     ) => Promise<void> | void;
     onRunPlaybookRecommendationOutcomeAction: (
-        outcome: SearchLearningOpsPlaybookRecommendationOutcome
+        outcome: OpsChainOutcome
     ) => Promise<void> | void;
     onRunOutcomeOutcomeRecommendationAction: (
-        recommendation: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendation
+        recommendation: OpsChainRecommendation
     ) => Promise<void> | void;
     onRunOutcomeRecommendationRecommendationAction: (
-        recommendation: SearchLearningOpsPlaybookRecommendationOutcomeRecommendation
+        recommendation: OpsChainRecommendation
     ) => Promise<void> | void;
     onGenerateImpactAwaitingClusterSuggestions: () => Promise<void> | void;
     onGenerateImpactAwaitingSuggestions: () => Promise<void> | void;

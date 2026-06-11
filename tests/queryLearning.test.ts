@@ -64,40 +64,84 @@ import { buildSearchLearningOpsPlaybooks } from '../lib/search/searchLearningOps
 import { buildSearchLearningOpsPlaybookActivity } from '../lib/search/searchLearningOpsPlaybookActivity.ts';
 import { buildSearchLearningOpsPlaybookOutcomes } from '../lib/search/searchLearningOpsPlaybookOutcomes.ts';
 import { buildSearchLearningOpsPlaybookRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendations.ts';
-import { buildSearchLearningOpsPlaybookRecommendationQueue } from '../lib/search/searchLearningOpsPlaybookRecommendationQueue.ts';
-import { buildSearchLearningOpsPlaybookRecommendationActivity } from '../lib/search/searchLearningOpsPlaybookRecommendationActivity.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomes } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomes.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendations.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.ts';
 import { buildSearchLearningOpsCompletionSummary } from '../lib/search/searchLearningOpsCompletionSummary.ts';
 import { buildSearchLearningOpsCompletionActions } from '../lib/search/searchLearningOpsCompletionActions.ts';
 import { buildSearchLearningOpsCompletionActivity } from '../lib/search/searchLearningOpsCompletionActivity.ts';
 import { buildSearchLearningOpsCompletionOutcomes } from '../lib/search/searchLearningOpsCompletionOutcomes.ts';
-import { buildSearchLearningOpsCompletionRecommendations } from '../lib/search/searchLearningOpsCompletionRecommendations.ts';
-import { buildSearchLearningOpsCompletionRecommendationQueue } from '../lib/search/searchLearningOpsCompletionRecommendationQueue.ts';
-import { buildSearchLearningOpsCompletionRecommendationActivity } from '../lib/search/searchLearningOpsCompletionRecommendationActivity.ts';
 import { buildSearchLearningOpsCompletionRecommendationOutcomes } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomes.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendations } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendations.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueue } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationQueue.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationActivity } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations.ts';
 import { buildSearchLearningOpsCompletionQueue } from '../lib/search/searchLearningOpsCompletionQueue.ts';
+import {
+    buildOpsChainActivity,
+    buildOpsChainOutcomes,
+    buildOpsChainQueue,
+    buildOpsChainRecommendations,
+} from '../lib/search/searchLearningOpsChain.ts';
+import {
+    completionChainLevels,
+    completionRecommendationsConfig,
+    playbookChainLevels,
+} from '../lib/search/searchLearningOpsChainLevels.ts';
+
+// The recursive chain levels were collapsed into the generic ops-chain engine.
+// These wrappers keep the original per-level builder names used by the tests.
+const [playbookLevel1, playbookLevel2, playbookLevel3] = playbookChainLevels;
+const [completionLevel1, completionLevel2, completionLevel3, completionLevel4] = completionChainLevels;
+
+const buildSearchLearningOpsPlaybookRecommendationQueue = (summary) => buildOpsChainQueue(summary, playbookLevel1.queue);
+const buildSearchLearningOpsPlaybookRecommendationActivity = (events) => buildOpsChainActivity(events, playbookLevel1.activity);
+const buildSearchLearningOpsPlaybookRecommendationOutcomes = (runs, entries) =>
+    buildOpsChainOutcomes(runs, entries, playbookLevel1.outcomes);
+const buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendations = (outcomes) =>
+    buildOpsChainRecommendations(outcomes, playbookLevel1.recommendations);
+const buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue = (summary) =>
+    buildOpsChainQueue(summary, playbookLevel2.queue);
+const buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity = (events) =>
+    buildOpsChainActivity(events, playbookLevel2.activity);
+const buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes = (runs, entries) =>
+    buildOpsChainOutcomes(runs, entries, playbookLevel2.outcomes);
+const buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations = (outcomes) =>
+    buildOpsChainRecommendations(outcomes, playbookLevel2.recommendations);
+const buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue = (summary) =>
+    buildOpsChainQueue(summary, playbookLevel3.queue);
+const buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity = (events) =>
+    buildOpsChainActivity(events, playbookLevel3.activity);
+const buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes = (runs, entries) =>
+    buildOpsChainOutcomes(runs, entries, playbookLevel3.outcomes);
+const buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations = (outcomes) =>
+    buildOpsChainRecommendations(outcomes, playbookLevel3.recommendations);
+
+const buildSearchLearningOpsCompletionRecommendations = (outcomes) =>
+    buildOpsChainRecommendations(outcomes, completionRecommendationsConfig);
+const buildSearchLearningOpsCompletionRecommendationQueue = (summary) =>
+    buildOpsChainQueue(summary, completionLevel1.queue);
+const buildSearchLearningOpsCompletionRecommendationActivity = (events) =>
+    buildOpsChainActivity(events, completionLevel1.activity);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendations = (outcomes) =>
+    buildOpsChainRecommendations(outcomes, completionLevel1.recommendations);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueue = (summary) =>
+    buildOpsChainQueue(summary, completionLevel2.queue);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationActivity = (events) =>
+    buildOpsChainActivity(events, completionLevel2.activity);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes = (runs, entries) =>
+    buildOpsChainOutcomes(runs, entries, completionLevel2.outcomes);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations = (outcomes) =>
+    buildOpsChainRecommendations(outcomes, completionLevel2.recommendations);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue = (summary) =>
+    buildOpsChainQueue(summary, completionLevel3.queue);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity = (events) =>
+    buildOpsChainActivity(events, completionLevel3.activity);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes = (runs, entries) =>
+    buildOpsChainOutcomes(runs, entries, completionLevel3.outcomes);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations = (outcomes) =>
+    buildOpsChainRecommendations(outcomes, completionLevel3.recommendations);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue = (summary) =>
+    buildOpsChainQueue(summary, completionLevel4.queue);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity = (events) =>
+    buildOpsChainActivity(events, completionLevel4.activity);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes = (runs, entries) =>
+    buildOpsChainOutcomes(runs, entries, completionLevel4.outcomes);
+const buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations = (outcomes) =>
+    buildOpsChainRecommendations(outcomes, completionLevel4.recommendations);
 
 test('fallback search learning suggestion broadens sports hoodie query into fashion keywords', () => {
     const suggestion = buildFallbackSearchLearningSuggestion({

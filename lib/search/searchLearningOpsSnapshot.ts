@@ -2,45 +2,67 @@ import type { SearchLearningActivityEvent, SearchLearningEntry } from './queryLe
 import type { SearchLearningActivityFollowupSummary } from './searchLearningActivityFollowups.ts';
 import type { SearchLearningActivityOpsQueueSummary } from './searchLearningActivityOpsQueue.ts';
 import type { SearchLearningActivityRecommendationSummary } from './searchLearningActivityRecommendations.ts';
+import {
+    buildOpsChainActivity,
+    buildOpsChainOutcomes,
+    buildOpsChainQueue,
+    buildOpsChainRecommendations,
+} from './searchLearningOpsChain.ts';
+import type {
+    OpsChainActivitySummary,
+    OpsChainLevelConfig,
+    OpsChainOutcomeSummary,
+    OpsChainQueueSource,
+    OpsChainQueueSummary,
+    OpsChainRecommendationSource,
+    OpsChainRecommendationSummary,
+    OpsChainRun,
+} from './searchLearningOpsChain.ts';
+import {
+    completionChainLevels,
+    completionRecommendationsConfig,
+    playbookChainLevels,
+} from './searchLearningOpsChainLevels.ts';
 import { buildSearchLearningOpsCenter } from './searchLearningOpsCenter.ts';
 import { buildSearchLearningOpsCompletionActions } from './searchLearningOpsCompletionActions.ts';
 import { buildSearchLearningOpsCompletionActivity } from './searchLearningOpsCompletionActivity.ts';
 import { buildSearchLearningOpsCompletionOutcomes } from './searchLearningOpsCompletionOutcomes.ts';
 import { buildSearchLearningOpsCompletionQueue } from './searchLearningOpsCompletionQueue.ts';
-import { buildSearchLearningOpsCompletionRecommendationActivity } from './searchLearningOpsCompletionRecommendationActivity.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationActivity } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueue } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationQueue.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomeRecommendations } from './searchLearningOpsCompletionRecommendationOutcomeRecommendations.ts';
 import { buildSearchLearningOpsCompletionRecommendationOutcomes } from './searchLearningOpsCompletionRecommendationOutcomes.ts';
-import { buildSearchLearningOpsCompletionRecommendationQueue } from './searchLearningOpsCompletionRecommendationQueue.ts';
-import { buildSearchLearningOpsCompletionRecommendations } from './searchLearningOpsCompletionRecommendations.ts';
 import { buildSearchLearningOpsCompletionSummary } from './searchLearningOpsCompletionSummary.ts';
 import { buildSearchLearningOpsPlaybookActivity } from './searchLearningOpsPlaybookActivity.ts';
 import { buildSearchLearningOpsPlaybookOutcomes } from './searchLearningOpsPlaybookOutcomes.ts';
-import { buildSearchLearningOpsPlaybookRecommendationActivity } from './searchLearningOpsPlaybookRecommendationActivity.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity } from './searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes } from './searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity } from './searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes } from './searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue } from './searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations } from './searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations } from './searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue } from './searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendations } from './searchLearningOpsPlaybookRecommendationOutcomeRecommendations.ts';
-import { buildSearchLearningOpsPlaybookRecommendationOutcomes } from './searchLearningOpsPlaybookRecommendationOutcomes.ts';
-import { buildSearchLearningOpsPlaybookRecommendationQueue } from './searchLearningOpsPlaybookRecommendationQueue.ts';
 import { buildSearchLearningOpsPlaybookRecommendations } from './searchLearningOpsPlaybookRecommendations.ts';
 import { buildSearchLearningOpsPlaybooks } from './searchLearningOpsPlaybooks.ts';
+
+// One recursive chain step: queue the previous recommendations, parse the
+// runs executed against them, measure outcomes, and derive the next
+// recommendations. Levels with a bespoke outcomes stage pass it in explicitly.
+type OpsChainStep<TOutcomes extends OpsChainRecommendationSource = OpsChainOutcomeSummary> = {
+    queue: OpsChainQueueSummary;
+    activity: OpsChainActivitySummary;
+    outcomes: TOutcomes;
+    recommendations: OpsChainRecommendationSummary;
+};
+
+function buildOpsChainStep<TOutcomes extends OpsChainRecommendationSource = OpsChainOutcomeSummary>(
+    previousRecommendations: OpsChainQueueSource,
+    activity: SearchLearningActivityEvent[],
+    entries: SearchLearningEntry[],
+    level: OpsChainLevelConfig,
+    bespokeOutcomes?: (runs: OpsChainRun[]) => TOutcomes
+): OpsChainStep<TOutcomes> {
+    const queue = buildOpsChainQueue(previousRecommendations, level.queue);
+    const chainActivity = buildOpsChainActivity(activity, level.activity);
+    const outcomes = (
+        level.outcomes
+            ? buildOpsChainOutcomes(chainActivity.recentRuns, entries, level.outcomes)
+            : bespokeOutcomes!(chainActivity.recentRuns)
+    ) as TOutcomes;
+    const recommendations = buildOpsChainRecommendations(outcomes, level.recommendations);
+
+    return { queue, activity: chainActivity, outcomes, recommendations };
+}
 
 export type SearchLearningOpsSnapshot = {
     searchLearningOpsCenter: ReturnType<typeof buildSearchLearningOpsCenter>;
@@ -48,39 +70,39 @@ export type SearchLearningOpsSnapshot = {
     searchLearningOpsPlaybookActivity: ReturnType<typeof buildSearchLearningOpsPlaybookActivity>;
     searchLearningOpsPlaybookOutcomes: ReturnType<typeof buildSearchLearningOpsPlaybookOutcomes>;
     searchLearningOpsPlaybookRecommendations: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendations>;
-    searchLearningOpsPlaybookRecommendationQueue: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendationQueue>;
-    searchLearningOpsPlaybookRecommendationActivity: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendationActivity>;
-    searchLearningOpsPlaybookRecommendationOutcomes: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendationOutcomes>;
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendations: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendations>;
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue>;
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity>;
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes>;
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations>;
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue>;
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity>;
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes>;
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations: ReturnType<typeof buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations>;
+    searchLearningOpsPlaybookRecommendationQueue: OpsChainQueueSummary;
+    searchLearningOpsPlaybookRecommendationActivity: OpsChainActivitySummary;
+    searchLearningOpsPlaybookRecommendationOutcomes: OpsChainOutcomeSummary;
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendations: OpsChainRecommendationSummary;
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue: OpsChainQueueSummary;
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity: OpsChainActivitySummary;
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes: OpsChainOutcomeSummary;
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations: OpsChainRecommendationSummary;
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue: OpsChainQueueSummary;
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity: OpsChainActivitySummary;
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes: OpsChainOutcomeSummary;
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations: OpsChainRecommendationSummary;
     searchLearningOpsCompletionSummary: ReturnType<typeof buildSearchLearningOpsCompletionSummary>;
     searchLearningOpsCompletionActions: ReturnType<typeof buildSearchLearningOpsCompletionActions>;
     searchLearningOpsCompletionActivity: ReturnType<typeof buildSearchLearningOpsCompletionActivity>;
     searchLearningOpsCompletionOutcomes: ReturnType<typeof buildSearchLearningOpsCompletionOutcomes>;
-    searchLearningOpsCompletionRecommendations: ReturnType<typeof buildSearchLearningOpsCompletionRecommendations>;
-    searchLearningOpsCompletionRecommendationQueue: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationQueue>;
-    searchLearningOpsCompletionRecommendationActivity: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationActivity>;
+    searchLearningOpsCompletionRecommendations: OpsChainRecommendationSummary;
+    searchLearningOpsCompletionRecommendationQueue: OpsChainQueueSummary;
+    searchLearningOpsCompletionRecommendationActivity: OpsChainActivitySummary;
     searchLearningOpsCompletionRecommendationOutcomes: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomes>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendations: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendations>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationQueue: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueue>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationActivity>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes>;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations: ReturnType<typeof buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations>;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendations: OpsChainRecommendationSummary;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendationQueue: OpsChainQueueSummary;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity: OpsChainActivitySummary;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes: OpsChainOutcomeSummary;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations: OpsChainRecommendationSummary;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue: OpsChainQueueSummary;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity: OpsChainActivitySummary;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes: OpsChainOutcomeSummary;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations: OpsChainRecommendationSummary;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue: OpsChainQueueSummary;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity: OpsChainActivitySummary;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes: OpsChainOutcomeSummary;
+    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations: OpsChainRecommendationSummary;
     searchLearningOpsCompletionQueue: ReturnType<typeof buildSearchLearningOpsCompletionQueue>;
 };
 
@@ -97,182 +119,88 @@ export function buildSearchLearningOpsSnapshot({
     opsQueue: SearchLearningActivityOpsQueueSummary;
     followups: SearchLearningActivityFollowupSummary;
 }): SearchLearningOpsSnapshot {
-    const searchLearningOpsCenter = buildSearchLearningOpsCenter(
-        recommendations,
-        opsQueue,
-        followups
+    const opsCenter = buildSearchLearningOpsCenter(recommendations, opsQueue, followups);
+    const playbooks = buildSearchLearningOpsPlaybooks(opsCenter);
+
+    // Playbook lane: bespoke root, then 3 recursive chain steps.
+    const playbookActivity = buildSearchLearningOpsPlaybookActivity(activity);
+    const playbookOutcomes = buildSearchLearningOpsPlaybookOutcomes(playbookActivity.recentRuns, entries);
+    const playbookRecommendations = buildSearchLearningOpsPlaybookRecommendations(playbookOutcomes);
+    const playbookStep1 = buildOpsChainStep(playbookRecommendations, activity, entries, playbookChainLevels[0]);
+    const playbookStep2 = buildOpsChainStep(playbookStep1.recommendations, activity, entries, playbookChainLevels[1]);
+    const playbookStep3 = buildOpsChainStep(playbookStep2.recommendations, activity, entries, playbookChainLevels[2]);
+
+    // Completion lane: summary/actions derive from the deepest playbook step,
+    // then a bespoke root and 4 recursive chain steps.
+    const completionSummary = buildSearchLearningOpsCompletionSummary(
+        playbookStep3.queue,
+        playbookStep3.outcomes,
+        playbookStep3.activity
     );
-    const searchLearningOpsPlaybooks = buildSearchLearningOpsPlaybooks(searchLearningOpsCenter);
-    const searchLearningOpsPlaybookActivity = buildSearchLearningOpsPlaybookActivity(activity);
-    const searchLearningOpsPlaybookOutcomes = buildSearchLearningOpsPlaybookOutcomes(
-        searchLearningOpsPlaybookActivity.recentRuns,
-        entries
+    const completionActions = buildSearchLearningOpsCompletionActions(completionSummary);
+    const completionActivity = buildSearchLearningOpsCompletionActivity(activity);
+    const completionOutcomes = buildSearchLearningOpsCompletionOutcomes(completionActivity.recentRuns, entries);
+    const completionRecommendations = buildOpsChainRecommendations(completionOutcomes, completionRecommendationsConfig);
+    const completionStep1 = buildOpsChainStep(
+        completionRecommendations,
+        activity,
+        entries,
+        completionChainLevels[0],
+        (runs) => buildSearchLearningOpsCompletionRecommendationOutcomes(runs, entries)
     );
-    const searchLearningOpsPlaybookRecommendations = buildSearchLearningOpsPlaybookRecommendations(
-        searchLearningOpsPlaybookOutcomes
-    );
-    const searchLearningOpsPlaybookRecommendationQueue = buildSearchLearningOpsPlaybookRecommendationQueue(
-        searchLearningOpsPlaybookRecommendations
-    );
-    const searchLearningOpsPlaybookRecommendationActivity = buildSearchLearningOpsPlaybookRecommendationActivity(activity);
-    const searchLearningOpsPlaybookRecommendationOutcomes = buildSearchLearningOpsPlaybookRecommendationOutcomes(
-        searchLearningOpsPlaybookRecommendationActivity.recentRuns,
-        entries
-    );
-    const searchLearningOpsPlaybookRecommendationOutcomeRecommendations =
-        buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendations(
-            searchLearningOpsPlaybookRecommendationOutcomes
-        );
-    const searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue =
-        buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue(
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendations
-        );
-    const searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity =
-        buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity(activity);
-    const searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes =
-        buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes(
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity.recentRuns,
-            entries
-        );
-    const searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations =
-        buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations(
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes
-        );
-    const searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue =
-        buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue(
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations
-        );
-    const searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity =
-        buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity(activity);
-    const searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes =
-        buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes(
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity.recentRuns,
-            entries
-        );
-    const searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations =
-        buildSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations(
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes
-        );
-    const searchLearningOpsCompletionSummary = buildSearchLearningOpsCompletionSummary(
-        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue,
-        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes,
-        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity
-    );
-    const searchLearningOpsCompletionActions = buildSearchLearningOpsCompletionActions(
-        searchLearningOpsCompletionSummary
-    );
-    const searchLearningOpsCompletionActivity = buildSearchLearningOpsCompletionActivity(activity);
-    const searchLearningOpsCompletionOutcomes = buildSearchLearningOpsCompletionOutcomes(
-        searchLearningOpsCompletionActivity.recentRuns,
-        entries
-    );
-    const searchLearningOpsCompletionRecommendations = buildSearchLearningOpsCompletionRecommendations(
-        searchLearningOpsCompletionOutcomes
-    );
-    const searchLearningOpsCompletionRecommendationQueue = buildSearchLearningOpsCompletionRecommendationQueue(
-        searchLearningOpsCompletionRecommendations
-    );
-    const searchLearningOpsCompletionRecommendationActivity =
-        buildSearchLearningOpsCompletionRecommendationActivity(activity);
-    const searchLearningOpsCompletionRecommendationOutcomes =
-        buildSearchLearningOpsCompletionRecommendationOutcomes(
-            searchLearningOpsCompletionRecommendationActivity.recentRuns,
-            entries
-        );
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendations =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendations(
-            searchLearningOpsCompletionRecommendationOutcomes
-        );
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendationQueue =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueue(
-            searchLearningOpsCompletionRecommendationOutcomeRecommendations
-        );
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationActivity(activity);
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes(
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity.recentRuns,
-            entries
-        );
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations(
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes
-        );
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue(
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations
-        );
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity(activity);
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes(
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity.recentRuns,
-            entries
-        );
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations(
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes
-        );
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue(
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations
-        );
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity(
-            activity
-        );
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes(
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity.recentRuns,
-            entries
-        );
-    const searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations =
-        buildSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations(
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes
-        );
-    const searchLearningOpsCompletionQueue = buildSearchLearningOpsCompletionQueue(
-        searchLearningOpsCompletionActions
-    );
+    const completionStep2 = buildOpsChainStep(completionStep1.recommendations, activity, entries, completionChainLevels[1]);
+    const completionStep3 = buildOpsChainStep(completionStep2.recommendations, activity, entries, completionChainLevels[2]);
+    const completionStep4 = buildOpsChainStep(completionStep3.recommendations, activity, entries, completionChainLevels[3]);
+    const completionQueue = buildSearchLearningOpsCompletionQueue(completionActions);
 
     return {
-        searchLearningOpsCenter,
-        searchLearningOpsPlaybooks,
-        searchLearningOpsPlaybookActivity,
-        searchLearningOpsPlaybookOutcomes,
-        searchLearningOpsPlaybookRecommendations,
-        searchLearningOpsPlaybookRecommendationQueue,
-        searchLearningOpsPlaybookRecommendationActivity,
-        searchLearningOpsPlaybookRecommendationOutcomes,
-        searchLearningOpsPlaybookRecommendationOutcomeRecommendations,
-        searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue,
-        searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity,
-        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes,
-        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations,
-        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue,
-        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity,
-        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes,
-        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
-        searchLearningOpsCompletionSummary,
-        searchLearningOpsCompletionActions,
-        searchLearningOpsCompletionActivity,
-        searchLearningOpsCompletionOutcomes,
-        searchLearningOpsCompletionRecommendations,
-        searchLearningOpsCompletionRecommendationQueue,
-        searchLearningOpsCompletionRecommendationActivity,
-        searchLearningOpsCompletionRecommendationOutcomes,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendations,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationQueue,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations,
-        searchLearningOpsCompletionQueue,
+        searchLearningOpsCenter: opsCenter,
+        searchLearningOpsPlaybooks: playbooks,
+        searchLearningOpsPlaybookActivity: playbookActivity,
+        searchLearningOpsPlaybookOutcomes: playbookOutcomes,
+        searchLearningOpsPlaybookRecommendations: playbookRecommendations,
+        searchLearningOpsPlaybookRecommendationQueue: playbookStep1.queue,
+        searchLearningOpsPlaybookRecommendationActivity: playbookStep1.activity,
+        searchLearningOpsPlaybookRecommendationOutcomes: playbookStep1.outcomes,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendations: playbookStep1.recommendations,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue: playbookStep2.queue,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity: playbookStep2.activity,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes: playbookStep2.outcomes,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations: playbookStep2.recommendations,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue: playbookStep3.queue,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity: playbookStep3.activity,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes: playbookStep3.outcomes,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations:
+            playbookStep3.recommendations,
+        searchLearningOpsCompletionSummary: completionSummary,
+        searchLearningOpsCompletionActions: completionActions,
+        searchLearningOpsCompletionActivity: completionActivity,
+        searchLearningOpsCompletionOutcomes: completionOutcomes,
+        searchLearningOpsCompletionRecommendations: completionRecommendations,
+        searchLearningOpsCompletionRecommendationQueue: completionStep1.queue,
+        searchLearningOpsCompletionRecommendationActivity: completionStep1.activity,
+        searchLearningOpsCompletionRecommendationOutcomes: completionStep1.outcomes,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendations: completionStep1.recommendations,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationQueue: completionStep2.queue,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity: completionStep2.activity,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes: completionStep2.outcomes,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations:
+            completionStep2.recommendations,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue: completionStep3.queue,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity:
+            completionStep3.activity,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes:
+            completionStep3.outcomes,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations:
+            completionStep3.recommendations,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue:
+            completionStep4.queue,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity:
+            completionStep4.activity,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes:
+            completionStep4.outcomes,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations:
+            completionStep4.recommendations,
+        searchLearningOpsCompletionQueue: completionQueue,
     };
 }

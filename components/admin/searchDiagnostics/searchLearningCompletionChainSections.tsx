@@ -3,16 +3,8 @@ import {
     buildSearchLearningWorkbench,
     type SearchLearningOpsCompletionAction,
     type SearchLearningOpsCompletionQueueItem,
-    type SearchLearningOpsCompletionRecommendation,
-    type SearchLearningOpsCompletionRecommendationOutcomeRecommendation,
-    type SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendation,
-    type SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem,
-    type SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation,
-    type SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueueItem,
-    type SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendation,
-    type SearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem,
-    type SearchLearningOpsCompletionRecommendationQueueItem,
-    type SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation,
+    type OpsChainRecommendation,
+    type OpsChainQueueItem,
 } from './searchLearningWorkbench';
 import { SearchLearningCompletionAdvancedSections } from './searchLearningCompletionAdvancedSections';
 import { SearchLearningCompletionOutcomeRecommendationSections } from './searchLearningCompletionOutcomeRecommendationSections';
@@ -54,34 +46,34 @@ type SearchLearningCompletionChainSectionsProps = Pick<
     onRunCompletionAction: (action: SearchLearningOpsCompletionAction) => Promise<void> | void;
     onRunCompletionQueueItem: (item: SearchLearningOpsCompletionQueueItem) => Promise<void> | void;
     onRunSummaryRecommendation: (
-        recommendation: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation
+        recommendation: OpsChainRecommendation
     ) => Promise<void> | void;
     onRunCompletionRecommendation: (
-        recommendation: SearchLearningOpsCompletionRecommendation
+        recommendation: OpsChainRecommendation
     ) => Promise<void> | void;
     onRunCompletionRecommendationQueueItem: (
-        item: SearchLearningOpsCompletionRecommendationQueueItem
+        item: OpsChainQueueItem
     ) => Promise<void> | void;
     onRunOutcomeRecommendation: (
-        recommendation: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendation
+        recommendation: OpsChainRecommendation
     ) => Promise<void> | void;
     onRunDeepQueueItem: (
-        item: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem
+        item: OpsChainQueueItem
     ) => Promise<void> | void;
     onRunDeepRecommendation: (
-        recommendation: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation
+        recommendation: OpsChainRecommendation
     ) => Promise<void> | void;
     onRunTerminalQueueItem: (
-        item: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueueItem
+        item: OpsChainQueueItem
     ) => Promise<void> | void;
     onRunTerminalRecommendation: (
-        recommendation: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendation
+        recommendation: OpsChainRecommendation
     ) => Promise<void> | void;
     onRunRecommendationOutcomeRecommendation: (
-        recommendation: SearchLearningOpsCompletionRecommendationOutcomeRecommendation
+        recommendation: OpsChainRecommendation
     ) => Promise<void> | void;
     onRunRecommendationQueueItem: (
-        item: SearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem
+        item: OpsChainQueueItem
     ) => Promise<void> | void;
 };
 

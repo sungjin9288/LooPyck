@@ -1,13 +1,9 @@
 import type {
-    SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivitySummary,
-} from './searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity.ts';
-import type {
-    SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomeSummary,
-} from './searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes.ts';
-import type {
-    SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem,
-    SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueueSummary,
-} from './searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue.ts';
+    OpsChainActivitySummary,
+    OpsChainOutcomeSummary,
+    OpsChainQueueItem,
+    OpsChainQueueSummary,
+} from './searchLearningOpsChain.ts';
 
 export type SearchLearningOpsCompletionState =
     | 'action_required'
@@ -23,13 +19,13 @@ export type SearchLearningOpsCompletionItem = {
     description: string;
     reason: string;
     state: SearchLearningOpsCompletionState;
-    priority: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem['priority'];
+    priority: OpsChainQueueItem['priority'];
     actionLabel: string;
-    queueState: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem['queueState'];
+    queueState: OpsChainQueueItem['queueState'];
     entryIds: string[];
     queries: string[];
     createdAt: string;
-    outcomeStatus: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem['outcomeStatus'];
+    outcomeStatus: OpsChainQueueItem['outcomeStatus'];
 };
 
 export type SearchLearningOpsCompletionSummary = {
@@ -49,8 +45,8 @@ export type SearchLearningOpsCompletionSummary = {
 };
 
 function resolveState(
-    queue: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueueSummary,
-    outcomes: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomeSummary
+    queue: OpsChainQueueSummary,
+    outcomes: OpsChainOutcomeSummary
 ): SearchLearningOpsCompletionState {
     if (queue.executeNow > 0) {
         return 'action_required';
@@ -72,7 +68,7 @@ function resolveState(
 }
 
 function toCompletionItem(
-    item: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem
+    item: OpsChainQueueItem
 ): SearchLearningOpsCompletionItem {
     const state: SearchLearningOpsCompletionState =
         item.queueState === 'execute_now'
@@ -101,9 +97,9 @@ function toCompletionItem(
 }
 
 export function buildSearchLearningOpsCompletionSummary(
-    queue: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueueSummary,
-    outcomes: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomeSummary,
-    activity: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivitySummary
+    queue: OpsChainQueueSummary,
+    outcomes: OpsChainOutcomeSummary,
+    activity: OpsChainActivitySummary
 ): SearchLearningOpsCompletionSummary {
     return {
         state: resolveState(queue, outcomes),

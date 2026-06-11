@@ -3,10 +3,8 @@
 import type {
     SearchLearningOpsPlaybookOutcome,
     SearchLearningOpsPlaybookRecommendation,
-    SearchLearningOpsPlaybookRecommendationOutcome,
-    SearchLearningOpsPlaybookRecommendationOutcomeRecommendation,
-    SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendation,
-    SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation,
+    OpsChainOutcome,
+    OpsChainRecommendation,
 } from './searchLearningWorkbench';
 import {
     runSearchLearningOutcomeAction,
@@ -42,7 +40,7 @@ export function useSearchLearningPlaybookActions({
     }
 
     async function handleSearchLearningOpsPlaybookRecommendationOutcomeAction(
-        outcome: SearchLearningOpsPlaybookRecommendationOutcome
+        outcome: OpsChainOutcome
     ) {
         await runSearchLearningOutcomeAction({
             outcome,
@@ -53,7 +51,7 @@ export function useSearchLearningPlaybookActions({
     }
 
     async function handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationAction(
-        recommendation: SearchLearningOpsPlaybookRecommendationOutcomeRecommendation
+        recommendation: OpsChainRecommendation
     ) {
         await runSearchLearningRecommendationAction({
             recommendation,
@@ -64,7 +62,7 @@ export function useSearchLearningPlaybookActions({
     }
 
     async function handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationAction(
-        recommendation: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendation
+        recommendation: OpsChainRecommendation
     ) {
         await runSearchLearningRecommendationAction({
             recommendation,
@@ -75,7 +73,7 @@ export function useSearchLearningPlaybookActions({
     }
 
     async function handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationAction(
-        recommendation: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation
+        recommendation: OpsChainRecommendation
     ) {
         await runSearchLearningRecommendationAction({
             recommendation,

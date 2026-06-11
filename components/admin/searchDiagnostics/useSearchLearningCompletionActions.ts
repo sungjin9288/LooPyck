@@ -3,15 +3,8 @@
 import type {
     SearchLearningOpsCompletionAction,
     SearchLearningOpsCompletionQueueItem,
-    SearchLearningOpsCompletionRecommendation,
-    SearchLearningOpsCompletionRecommendationOutcomeRecommendation,
-    SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendation,
-    SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem,
-    SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation,
-    SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueueItem,
-    SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendation,
-    SearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem,
-    SearchLearningOpsCompletionRecommendationQueueItem,
+    OpsChainRecommendation,
+    OpsChainQueueItem,
 } from './searchLearningWorkbench';
 import {
     runSearchLearningRecommendationAction,
@@ -107,7 +100,7 @@ export function useSearchLearningCompletionActions({
     }
 
     async function handleSearchLearningOpsCompletionRecommendation(
-        recommendation: SearchLearningOpsCompletionRecommendation
+        recommendation: OpsChainRecommendation
     ) {
         await runSearchLearningRecommendationAction({
             recommendation,
@@ -118,7 +111,7 @@ export function useSearchLearningCompletionActions({
     }
 
     async function handleSearchLearningOpsCompletionRecommendationQueueItem(
-        item: SearchLearningOpsCompletionRecommendationQueueItem
+        item: OpsChainQueueItem
     ) {
         await runSearchLearningRecommendationQueueItem({
             summary: searchLearningOpsCompletionRecommendations,
@@ -132,7 +125,7 @@ export function useSearchLearningCompletionActions({
     }
 
     async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendation(
-        recommendation: SearchLearningOpsCompletionRecommendationOutcomeRecommendation
+        recommendation: OpsChainRecommendation
     ) {
         await runSearchLearningRecommendationAction({
             recommendation,
@@ -143,7 +136,7 @@ export function useSearchLearningCompletionActions({
     }
 
     async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendation(
-        recommendation: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendation
+        recommendation: OpsChainRecommendation
     ) {
         await runSearchLearningRecommendationAction({
             recommendation,
@@ -154,7 +147,7 @@ export function useSearchLearningCompletionActions({
     }
 
     async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation(
-        recommendation: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation
+        recommendation: OpsChainRecommendation
     ) {
         await runSearchLearningRecommendationAction({
             recommendation,
@@ -165,7 +158,7 @@ export function useSearchLearningCompletionActions({
     }
 
     async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendation(
-        recommendation: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendation
+        recommendation: OpsChainRecommendation
     ) {
         await runSearchLearningRecommendationAction({
             recommendation,
@@ -176,7 +169,7 @@ export function useSearchLearningCompletionActions({
     }
 
     async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueueItem(
-        item: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueueItem
+        item: OpsChainQueueItem
     ) {
         await runSearchLearningRecommendationQueueItem({
             summary: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
@@ -190,7 +183,7 @@ export function useSearchLearningCompletionActions({
     }
 
     async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem(
-        item: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem
+        item: OpsChainQueueItem
     ) {
         await runSearchLearningRecommendationQueueItem({
             summary: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations,
@@ -204,7 +197,7 @@ export function useSearchLearningCompletionActions({
     }
 
     async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem(
-        item: SearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem
+        item: OpsChainQueueItem
     ) {
         await runSearchLearningRecommendationQueueItem({
             summary: searchLearningOpsCompletionRecommendationOutcomeRecommendations,
