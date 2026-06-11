@@ -1,18 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { analyzeFashionQuery } from '../lib/search/fashionQueryAssistant.ts';
+import { loadSearchLearningActivity } from '../lib/search/searchLearningActivityStore.ts';
+import { loadSearchLearningQueue } from '../lib/search/searchLearningEntryQueryStore.ts';
+import { resetSearchLearningEntries } from '../lib/search/searchLearningEntryMutationStore.ts';
+import {
+    loadApprovedSearchLearningRewritePlan,
+    mergeLearnedQueriesIntoPlan,
+    reviewSearchLearningEntries,
+} from '../lib/search/searchLearningReview.ts';
 import {
     buildFallbackSearchLearningSuggestion,
     generateSearchLearningSuggestions,
-    loadSearchLearningActivity,
-    loadApprovedSearchLearningRewritePlan,
-    mergeLearnedQueriesIntoPlan,
+} from '../lib/search/searchLearningSuggestions.ts';
+import {
     recordSearchLearningCandidate,
-    reviewSearchLearningEntries,
-    resetSearchLearningEntries,
     seedSearchLearningEntries,
-    loadSearchLearningQueue,
-} from '../lib/search/queryLearning.ts';
-import { analyzeFashionQuery } from '../lib/search/fashionQueryAssistant.ts';
+} from '../lib/search/searchLearningSeeding.ts';
 import {
     buildSearchLearningRewritePacks,
     buildSearchLearningRewritePlanForAnalysis,

@@ -3,7 +3,7 @@ import type {
     SearchLearningApprovalBaseline,
     SearchLearningStatus,
     SearchLearningSuggestion,
-} from './queryLearning.ts';
+} from './queryLearningTypes.ts';
 import {
     buildSearchLearningActivityRecommendations,
     type SearchLearningActivityRecommendationAction,

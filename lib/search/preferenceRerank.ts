@@ -11,6 +11,13 @@ type RankedPreferenceResult = {
     profile: PreferenceProfile;
 };
 
+const INVALID_PROFILE_VALUES = new Set([
+    'unknown brand',
+    'unknown',
+    '브랜드 없음',
+    '알 수 없음',
+]);
+
 function normalize(value: string | undefined): string {
     return (value || '').trim().toLowerCase();
 }
@@ -19,7 +26,7 @@ function buildCountMap(values: string[]): Map<string, number> {
     const counts = new Map<string, number>();
     values.forEach((value) => {
         const normalized = normalize(value);
-        if (!normalized) {
+        if (!normalized || INVALID_PROFILE_VALUES.has(normalized)) {
             return;
         }
 

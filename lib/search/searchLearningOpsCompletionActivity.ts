@@ -1,4 +1,4 @@
-import type { SearchLearningActivityEvent } from './queryLearning.ts';
+import type { SearchLearningActivityEvent } from './queryLearningTypes.ts';
 
 export type SearchLearningOpsCompletionActivityAction =
     | 'execute_now'

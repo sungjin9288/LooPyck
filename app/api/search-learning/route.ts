@@ -12,7 +12,7 @@ import {
     reviewSearchLearningEntries,
     saveSearchLearningSuggestion,
     seedSearchLearningEntries,
-} from '@/lib/search/queryLearning';
+} from '@/lib/search/searchLearningAdmin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

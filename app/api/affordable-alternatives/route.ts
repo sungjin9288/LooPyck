@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { aggregateRealtimeSearch } from '@/lib/api/realtimeAggregator';
+import { analyzeFashionQuery, rerankProductsByFashionRelevance } from '@/lib/search/fashionQueryAssistant';
 import { checkRateLimit, getRateLimitKey, normalizeQuery } from '@/lib/security/requestGuards';
 import { isFashionRelated } from '@/lib/core/domainGuard';
 
@@ -29,12 +30,30 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ alternatives: [] });
     }
 
+    const queryAnalysis = analyzeFashionQuery(q);
+    if (
+        !queryAnalysis.allowed
+        || (queryAnalysis.brandSignals.length === 0 && queryAnalysis.categorySignals.length === 0)
+    ) {
+        return NextResponse.json({ alternatives: [] });
+    }
+
     try {
-        // 가격 오름차순 검색 → 현재 상품보다 20% 이상 저렴한 것만 필터
+        // 가격 오름차순 검색 후, 패션 relevance가 약한 결과는 대체 상품 후보에서 제외
         const results = await aggregateRealtimeSearch(q, 1, 'asc');
+        const reranked = rerankProductsByFashionRelevance(results, queryAnalysis, 'sim');
+        if (reranked.meta.resultQuality === 'weak') {
+            return NextResponse.json({ alternatives: [] });
+        }
+
         const maxPrice = currentPrice * 0.8;
-        const alternatives = results
-            .filter(p => p.id !== currentId && p.price > 0 && p.price <= maxPrice && p.image)
+        const alternatives = reranked.products
+            .filter((product) =>
+                product.id !== currentId
+                && product.price > 0
+                && product.price <= maxPrice
+                && product.image
+            )
             .slice(0, 3);
 
         return NextResponse.json(

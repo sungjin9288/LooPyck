@@ -9,13 +9,23 @@ interface SocialCounterProps {
     productId: string;
 }
 
+function isPermissionDeniedError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const code = (error as { code?: unknown }).code;
+    return code === 'permission-denied' || code === 'firebase/permission-denied';
+}
+
 export default function SocialCounter({ productId }: SocialCounterProps) {
     const { appId } = useUser();
     const [count, setCount] = useState<number>(0);
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {
-        if (!db || !appId) return;
+        if (!db || !appId) {
+            setCount(0);
+            setVisible(false);
+            return;
+        }
 
         const path = `artifacts/${appId}/products/${productId}`;
         const docRef = doc(db, path);
@@ -28,6 +38,12 @@ export default function SocialCounter({ productId }: SocialCounterProps) {
                 if (newCount > 0) setVisible(true);
             } else {
                 setCount(0);
+            }
+        }, (error) => {
+            setCount(0);
+            setVisible(false);
+            if (!isPermissionDeniedError(error)) {
+                console.error('[SocialCounter] watch count feed unavailable:', error);
             }
         });
 

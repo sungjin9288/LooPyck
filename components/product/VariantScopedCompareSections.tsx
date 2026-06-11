@@ -9,6 +9,8 @@ import { applyVariantSelectionToProducts, findSelectedVariantOption, getDefaultV
 import { buildVariantHistoryIdentity } from '@/lib/product/variantHistory';
 import { buildFavoriteProductFromUnified } from '@/lib/favorites/favoriteProduct';
 import PriceHistoryChart from './PriceHistoryChart';
+import CompareShortlistButton from './CompareShortlistButton';
+import PurchaseDecisionBlock from './PurchaseDecisionBlock';
 import PurchaseComparisonTable from './PurchaseComparisonTable';
 import VariantPicker from './VariantPicker';
 import ComparePriceAlertButton from './ComparePriceAlertButton';
@@ -122,6 +124,7 @@ export default function VariantScopedCompareSections({
                 </div>
                 <div className="mb-5 flex flex-wrap items-center gap-3">
                     {favoriteProduct && <ComparePriceAlertButton product={favoriteProduct} />}
+                    {favoriteProduct && <CompareShortlistButton product={favoriteProduct} />}
                     {selectedVariant && (
                         <span className="rounded-full bg-fuchsia-50 px-3 py-2 text-xs font-bold text-fuchsia-700">
                             현재 선택 {selectedVariant.label}
@@ -145,6 +148,15 @@ export default function VariantScopedCompareSections({
                         />
                     </div>
                 )}
+
+                <div className="mb-5">
+                    <PurchaseDecisionBlock
+                        offers={offers}
+                        productName={scopedPrimaryProduct.title}
+                        category={scopedPrimaryProduct.category2 || scopedPrimaryProduct.category1}
+                        selectedVariantLabel={selectedVariant?.label}
+                    />
+                </div>
 
                 <PurchaseComparisonTable
                     offers={offers}

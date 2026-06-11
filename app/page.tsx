@@ -8,10 +8,11 @@ import RecentSearches from '@/components/search/RecentSearches';
 import InfiniteProductGrid from '@/components/product/InfiniteProductGrid';
 import Navbar from '@/components/layout/Navbar';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
+import CompareShortlistSection from '@/components/product/CompareShortlistSection';
 import RecentlyViewedSection from '@/components/product/RecentlyViewedSection';
 import StyleRecommender from '@/components/recommend/StyleRecommender';
 import TrendDiscovery from '@/components/home/TrendDiscovery';
-import { SearchSort } from '@/types/searchSort';
+import { normalizeSearchSort, SearchSort } from '@/types/searchSort';
 import { addRecentSearch } from '@/utils/recentSearches';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
@@ -45,12 +46,18 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search);
     const q = params.get('q');
     const view = params.get('view');
+    const sort = normalizeSearchSort(params.get('sort'));
 
     if (view === 'recommend') {
       setCurrentView('recommend');
     }
 
-    if (q) onSearch(q);
+    if (q) {
+      onSearch(q, sort);
+      return;
+    }
+
+    setSearchSort(sort);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -62,7 +69,11 @@ export default function Home() {
     setSearchSort(sort);
     setSearchRunId((previous) => previous + 1);
     setCurrentView('search');
-    router.replace(`/?q=${encodeURIComponent(trimmed)}`, { scroll: false });
+    const params = new URLSearchParams({ q: trimmed });
+    if (sort !== 'sim') {
+      params.set('sort', sort);
+    }
+    router.replace(`/?${params.toString()}`, { scroll: false });
   };
 
   const handleViewChange = (view: CurrentView) => {
@@ -85,6 +96,7 @@ export default function Home() {
 
   const handleLogoClick = () => {
     setSearchQuery('');
+    setSearchSort('sim');
     setCurrentView('search');
     router.push('/');
   };
@@ -116,7 +128,7 @@ export default function Home() {
             {/* 🔍 검색 뷰 */}
             {currentView === 'search' && (
               <div className="space-y-8 md:space-y-12">
-                <SearchBar query={searchQuery} onSearch={onSearch} />
+                <SearchBar query={searchQuery} sort={searchSort} onSearch={onSearch} />
 
                 {/* 트렌드 키워드 칩 */}
                 {!searchQuery && (
@@ -154,6 +166,8 @@ export default function Home() {
                     onClear={clearRecentlyViewed}
                   />
                 )}
+
+                <CompareShortlistSection />
 
                 {searchQuery ? (
                   <InfiniteProductGrid

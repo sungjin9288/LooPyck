@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { comparePurchaseOffers, estimatePurchasePrice, inferStockStatus } from '../lib/product/purchasePricing.ts';
-import type { UnifiedProduct } from '../lib/api/types.ts';
+import { comparePurchaseOffers, estimatePurchasePrice, getGroupPurchaseMetrics, inferStockStatus, summarizePurchaseEvidence } from '../lib/product/purchasePricing.ts';
+import type { GroupedProduct, UnifiedProduct } from '../lib/api/types.ts';
 
 function product(overrides: Partial<UnifiedProduct>): UnifiedProduct {
     return {
@@ -62,6 +62,37 @@ test('actual shipping and benefit data override estimated source rules', () => {
     assert.equal(estimate.potentialCouponDiscount, 9000);
     assert.equal(estimate.bestCasePrice, 97000);
     assert.equal(estimate.shippingEstimated, false);
+    assert.equal(estimate.benefitEstimated, false);
+});
+
+test('purchase evidence summary explains actual shipping and member benefit basis', () => {
+    const estimate = estimatePurchasePrice(product({
+        source: 'MUSINSA',
+        price: 100000,
+        shippingFee: 6000,
+        shippingFreeThreshold: 150000,
+        shippingText: '배송비 6,000원 / 150,000원 이상 무료',
+        benefitPrice: 91000,
+        benefitText: '회원가 91,000원',
+    }));
+
+    const summary = summarizePurchaseEvidence(estimate);
+
+    assert.equal(summary.checkoutBasisLabel, '표시가 + 실배송비 기준');
+    assert.ok(summary.detailLabels.includes('실배송비 6,000원'));
+    assert.ok(summary.bestCaseBasisLabel?.includes('회원가 91,000원'));
+});
+
+test('purchase evidence summary marks coupon savings as estimated benefit', () => {
+    const estimate = estimatePurchasePrice(product({
+        source: 'W_CONCEPT',
+        price: 300000,
+    }));
+
+    const summary = summarizePurchaseEvidence(estimate);
+
+    assert.equal(estimate.benefitEstimated, true);
+    assert.ok(summary.bestCaseBasisLabel?.includes('추정 혜택 반영'));
 });
 
 test('explicit stock status beats title inference', () => {
@@ -101,4 +132,44 @@ test('purchase offers sort sold-out items behind available options', () => {
 
     assert.equal(offers[0].product.id, 'available');
     assert.equal(offers[1].product.id, 'sold-out');
+});
+
+test('group purchase metrics tracks checkout-lowest and benefit-lowest offers separately', () => {
+    const group: GroupedProduct = {
+        groupKey: 'nike_hoodie',
+        representative: product({
+            id: 'checkout-lowest',
+            source: 'MUSINSA',
+            mallName: '무신사',
+            price: 100000,
+        }),
+        variants: [
+            product({
+                id: 'checkout-lowest',
+                source: 'MUSINSA',
+                mallName: '무신사',
+                price: 100000,
+            }),
+            product({
+                id: 'benefit-lowest',
+                source: 'W_CONCEPT',
+                mallName: 'W컨셉',
+                price: 108000,
+                benefitPrice: 76000,
+                benefitText: '회원가 76,000원',
+            }),
+        ],
+        lowestPrice: 100000,
+        highestPrice: 108000,
+        mallCount: 2,
+        matchConfidence: 0.91,
+        matchStrategy: 'model',
+    };
+
+    const metrics = getGroupPurchaseMetrics(group);
+
+    assert.equal(metrics.lowestCheckoutOffer?.product.id, 'checkout-lowest');
+    assert.equal(metrics.lowestCheckoutPrice, 100000);
+    assert.equal(metrics.lowestBestCaseOffer?.product.id, 'benefit-lowest');
+    assert.equal(metrics.lowestBestCasePrice, 76000);
 });

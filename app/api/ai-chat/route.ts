@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { extractGeminiText, normalizeKeywordList, parseGeminiJson } from '@/lib/ai/geminiJson';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 const SYSTEM_PROMPT_KO = `당신은 LooPyck의 전문 AI 패션 스타일리스트입니다.
 사용자의 패션 질문에 친근하고 전문적으로 답변하세요.

@@ -1,4 +1,6 @@
 import CouponBadge from './CouponBadge';
+import { classifyRetailerTrust, getRetailerTrustLabel } from '@/lib/api/sourceCatalog';
+import { getFreshnessBadgeClassName, summarizeDetailFreshness } from '@/lib/product/dataFreshness';
 import type { PurchasePriceEstimate } from '@/lib/product/purchasePricing';
 import { analyzeVariantAlignment, getProductOptionKey } from '@/lib/product/variantAlignment';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
@@ -39,6 +41,18 @@ function hasPdpDetailData(offer: PurchasePriceEstimate): boolean {
     );
 }
 
+function getRetailerTrustBadgeClassName(trust: ReturnType<typeof classifyRetailerTrust>): string {
+    if (trust === 'official_mall') {
+        return 'bg-emerald-50 text-emerald-700';
+    }
+
+    if (trust === 'reseller') {
+        return 'bg-amber-50 text-amber-700';
+    }
+
+    return 'bg-sky-50 text-sky-700';
+}
+
 export default function PurchaseComparisonTable({
     offers,
     selectedProductId,
@@ -51,6 +65,12 @@ export default function PurchaseComparisonTable({
 
     const lowestCheckoutOffer = offers[0];
     const alignment = analyzeVariantAlignment(offers.map((offer) => offer.product));
+    const availableOfferCount = offers.filter((offer) => offer.isAvailable).length;
+    const freeShippingCount = offers.filter((offer) => offer.shippingFee === 0).length;
+    const actualSignalCount = offers.filter((offer) =>
+        hasActualShippingData(offer) || hasActualBenefitData(offer) || hasActualStockData(offer)
+    ).length;
+    const verifiedDetailCount = offers.filter((offer) => summarizeDetailFreshness(offer.product.detailCollectedAt).status !== 'unknown').length;
 
     function renderOptionPills(offer: PurchasePriceEstimate) {
         const signal = alignment.signalsByKey[getProductOptionKey(offer.product)];
@@ -168,6 +188,30 @@ export default function PurchaseComparisonTable({
                     </p>
                 </div>
             )}
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">재고 있음</p>
+                    <p className="mt-2 text-xl font-black text-slate-950">{availableOfferCount}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">지금 구매 가능한 쇼핑몰</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">무료배송</p>
+                    <p className="mt-2 text-xl font-black text-slate-950">{freeShippingCount}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">선택 variant 기준 결제가 반영</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">실데이터</p>
+                    <p className="mt-2 text-xl font-black text-slate-950">{actualSignalCount}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">배송·혜택·재고 확인 쇼핑몰</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">옵션/수집</p>
+                    <p className="mt-2 text-xl font-black text-slate-950">
+                        {alignment.verifiedOptionCount} / {verifiedDetailCount}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-500">검증 옵션 / PDP 확인 쇼핑몰</p>
+                </div>
+            </div>
 
             {offers.map((offer) => {
                 const product = offer.product;
@@ -178,6 +222,8 @@ export default function PurchaseComparisonTable({
                 const benefitActual = hasActualBenefitData(offer);
                 const stockActual = hasActualStockData(offer);
                 const hasDetailData = hasPdpDetailData(offer);
+                const retailerTrust = classifyRetailerTrust(product);
+                const detailFreshness = summarizeDetailFreshness(product.detailCollectedAt);
 
                 return (
                     <div
@@ -253,6 +299,12 @@ export default function PurchaseComparisonTable({
 
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                                 <span className="text-sm font-semibold text-slate-800">{product.mallName}</span>
+                                <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${getRetailerTrustBadgeClassName(retailerTrust)}`}>
+                                    {getRetailerTrustLabel(retailerTrust)}
+                                </span>
+                                <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${getFreshnessBadgeClassName(detailFreshness.status)}`}>
+                                    {detailFreshness.shortLabel}
+                                </span>
                                 <CouponBadge mallName={product.mallName} source={product.source} />
                             </div>
                             {product.optionSummary && (
@@ -297,6 +349,7 @@ export default function PurchaseComparisonTable({
                                 {offer.shippingLabel}
                                 {offer.potentialCouponLabel ? ` · ${offer.potentialCouponLabel}` : ''}
                                 {product.stockText ? ` · ${product.stockText}` : ''}
+                                {detailFreshness.status !== 'unknown' ? ` · ${detailFreshness.detailLabel}` : ''}
                             </p>
                         </div>
 

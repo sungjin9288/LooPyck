@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analyzeFashionQuery, buildSourceAwareSearchPlan, rerankProductsByFashionRelevance } from '../lib/search/fashionQueryAssistant.ts';
+import { classifyRetailerTrust } from '../lib/api/sourceCatalog.ts';
 import type { UnifiedProduct } from '../lib/api/types.ts';
 
 function product(overrides: Partial<UnifiedProduct>): UnifiedProduct {
@@ -145,4 +146,38 @@ test('weak-result search meta exposes refinement suggestions', () => {
 
     assert.equal(result.meta.resultQuality, 'weak');
     assert.ok(result.meta.suggestedQueries.some((suggestion) => suggestion.includes('코트')));
+});
+
+test('official fashion malls outrank marketplace sellers for equivalent matches', () => {
+    const analysis = analyzeFashionQuery('아디다스 스니커즈');
+    const result = rerankProductsByFashionRelevance([
+        product({
+            id: 'marketplace-samba',
+            title: '아디다스 삼바 스니커즈 화이트',
+            brand: '아디다스',
+            mallName: '구름스니커즈',
+            source: 'NAVER',
+        }),
+        product({
+            id: 'official-samba',
+            title: '아디다스 삼바 스니커즈 화이트',
+            brand: '아디다스',
+            mallName: '29CM',
+            source: '29CM',
+        }),
+    ], analysis, 'sim');
+
+    assert.equal(result.products[0].id, 'official-samba');
+});
+
+test('retailer trust classifies direct fashion mall and marketplace seller separately', () => {
+    assert.equal(classifyRetailerTrust(product({
+        mallName: '무신사',
+        source: 'MUSINSA',
+    })), 'official_mall');
+
+    assert.equal(classifyRetailerTrust(product({
+        mallName: '구름스니커즈',
+        source: 'NAVER',
+    })), 'marketplace_seller');
 });

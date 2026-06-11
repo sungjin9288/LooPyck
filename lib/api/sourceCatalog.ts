@@ -1,4 +1,4 @@
-import { isProductSource, type ProductSource } from '@/lib/api/types';
+import { isProductSource, type ProductSource, type UnifiedProduct } from './types.ts';
 
 type SourceMetadata = {
     label: string;
@@ -10,6 +10,8 @@ type SourceMetadata = {
     aliases: readonly string[];
     domains: readonly string[];
 };
+
+export type RetailerTrust = 'official_mall' | 'marketplace_seller' | 'reseller';
 
 const SOURCE_CATALOG: Record<ProductSource, SourceMetadata> = {
     NAVER: {
@@ -181,8 +183,47 @@ const DETECTION_ORDER: ProductSource[] = [
     'SIVILLAGE',
 ];
 
+const OFFICIAL_RETAIL_SOURCES = new Set<ProductSource>([
+    'MUSINSA',
+    '29CM',
+    'W_CONCEPT',
+    'ZIGZAG',
+    'ABLY',
+    'SSF',
+    'HANDSOME',
+    'SSENSE',
+    'HAGO',
+    'EQL',
+    'LFMALL',
+    'SIVILLAGE',
+]);
+
+const OFFICIAL_HINTS = [
+    'official',
+    '공식',
+    '브랜드관',
+    '본사',
+    '직영',
+    '본점',
+];
+
+const RESELLER_HINTS = [
+    'resale',
+    'reseller',
+    '리셀',
+    '중고',
+    '빈티지',
+    '편집샵',
+    '셀렉트샵',
+    'boutique',
+];
+
 function normalizeText(value: string): string {
     return value.trim().toLowerCase();
+}
+
+function normalizeRetailerText(value: string): string {
+    return value.normalize('NFKC').trim().toLowerCase();
 }
 
 function getHostname(link: string): string {
@@ -228,6 +269,36 @@ export function getSourceDisplayName(source: ProductSource, fallbackMallName?: s
 
 export function getSourceIdPrefix(source: ProductSource): string {
     return SOURCE_CATALOG[source].idPrefix;
+}
+
+export function classifyRetailerTrust(
+    product: Pick<UnifiedProduct, 'source' | 'mallName' | 'brand' | 'link'>
+): RetailerTrust {
+    const combined = normalizeRetailerText(`${product.mallName || ''} ${product.brand || ''} ${product.link || ''}`);
+
+    if (RESELLER_HINTS.some((keyword) => combined.includes(keyword))) {
+        return 'reseller';
+    }
+
+    if (OFFICIAL_HINTS.some((keyword) => combined.includes(keyword))) {
+        return 'official_mall';
+    }
+
+    if (product.source === 'FARFETCH') {
+        return 'reseller';
+    }
+
+    if (OFFICIAL_RETAIL_SOURCES.has(product.source)) {
+        return 'official_mall';
+    }
+
+    return 'marketplace_seller';
+}
+
+export function getRetailerTrustLabel(trust: RetailerTrust): string {
+    if (trust === 'official_mall') return '공식몰';
+    if (trust === 'reseller') return '리셀/편집숍';
+    return '마켓 셀러';
 }
 
 export function stripSourceIdPrefix(value: string): string {

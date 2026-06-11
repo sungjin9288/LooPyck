@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import type { GroupedProduct } from '@/lib/api/types';
 import { InteractionNarrative } from '@/lib/ux/interactionNarrative';
 import { useMultiSourceSearch } from '@/hooks/useMultiSourceSearch';
 import { ScanningEffect } from '@/components/agent/ScanningEffect';
@@ -8,6 +9,7 @@ import { analyzeMood, applyTheme } from '@/lib/ux/themeAdapter';
 import { SourceBadge } from '@/components/search/SourceBadges';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import ComparisonHighlights from '@/components/product/ComparisonHighlights';
+import { SearchResultCard, SearchSummaryMetricsSection } from '@/components/product/searchResultSections';
 import FilterPanel, { FilterState, applyFilters } from '@/components/search/FilterPanel';
 import { hasPdpDetailData, isPdpDetailEnrichmentSupported } from '@/lib/product/pdpDetailEnrichment';
 import { SearchSort } from '@/types/searchSort';
@@ -16,6 +18,7 @@ import { useGroupedProducts } from '@/hooks/useGroupedProducts';
 import { estimatePurchasePrice, getGroupPurchaseMetrics } from '@/lib/product/purchasePricing';
 import { rerankProductsByPreference, type PreferenceProfile } from '@/lib/search/preferenceRerank';
 import { logSearchInteraction } from '@/lib/search/searchInteractionClient';
+import { buildRealtimeSearchPersistentFeedback } from '@/lib/search/realtimeSearchFeedback';
 
 interface InfiniteProductGridProps {
     query: string;
@@ -35,6 +38,7 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
         searchMeta,
         suggestedQueries,
         blockedReason,
+        realtimeFeedback,
     } = useMultiSourceSearch(query, sort);
 
     const [sortedProducts, setSortedProducts] = useState<UnifiedProduct[]>([]);
@@ -42,6 +46,7 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
     const [selectedProduct, setSelectedProduct] = useState<UnifiedProduct | null>(null);
     const [selectedVariants, setSelectedVariants] = useState<UnifiedProduct[]>([]);
     const [selectedMatchConfidence, setSelectedMatchConfidence] = useState<number | null>(null);
+    const [selectedMatchStrategy, setSelectedMatchStrategy] = useState<GroupedProduct['matchStrategy'] | null>(null);
     const [filters, setFilters] = useState<FilterState>({ priceRange: 'all', brand: '', source: '' });
     const [enrichedProductsByKey, setEnrichedProductsByKey] = useState<Record<string, UnifiedProduct>>({});
     const [preferenceProfile, setPreferenceProfile] = useState<PreferenceProfile>({
@@ -187,6 +192,10 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
         () => suggestedQueries.filter((suggestion) => suggestion !== query).slice(0, 4),
         [query, suggestedQueries]
     );
+    const persistentRealtimeFeedback = useMemo(
+        () => buildRealtimeSearchPersistentFeedback(realtimeFeedback),
+        [realtimeFeedback]
+    );
 
     useEffect(() => {
         let cancelled = false;
@@ -265,6 +274,7 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
         setSelectedProduct(enrichedGroup.representative);
         setSelectedVariants(enrichedGroup.variants);
         setSelectedMatchConfidence(enrichedGroup.matchConfidence ?? null);
+        setSelectedMatchStrategy(enrichedGroup.matchStrategy);
     };
 
     if (!query) return null;
@@ -377,6 +387,26 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
                             ))}
                         </div>
                     )}
+                    {persistentRealtimeFeedback && (
+                        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div className="space-y-1">
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-700">
+                                        {persistentRealtimeFeedback.badgeLabel}
+                                    </p>
+                                    <p className="text-sm font-semibold leading-6 text-amber-950">
+                                        {persistentRealtimeFeedback.title}
+                                    </p>
+                                    <p className="text-xs leading-5 text-amber-800">
+                                        {persistentRealtimeFeedback.detail}
+                                    </p>
+                                </div>
+                                <div className="inline-flex w-fit shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-900 ring-1 ring-amber-200">
+                                    직접 {persistentRealtimeFeedback.directSourceCount} · 보완 {persistentRealtimeFeedback.fallbackSourceCount}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     {searchMeta?.resultQuality !== 'weak' && preferenceProfile.totalSignals > 0 && preferenceProfile.topBrands.length > 0 && (
                         <p className="mt-3 text-xs text-slate-500">
                             최근 본 상품 기반 선호 반영: {preferenceProfile.topBrands.slice(0, 2).join(', ')}
@@ -396,33 +426,12 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
             )}
 
             {filteredProducts.length > 0 && (
-                <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 mb-2">최저 결제가</p>
-                        <p className="text-3xl font-black tracking-tight text-slate-900">
-                            {Number.isFinite(lowestVisiblePrice) ? lowestVisiblePrice.toLocaleString() : 0}원
-                        </p>
-                        <p className="text-sm text-slate-500 mt-2">배송비를 반영한 예상 결제가 기준입니다.</p>
-                    </div>
-                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 mb-2">비교 가능 상품</p>
-                        <p className="text-3xl font-black tracking-tight text-slate-900">
-                            {comparisonReadyGroups.length.toLocaleString()}개
-                        </p>
-                        <p className="text-sm text-slate-500 mt-2">
-                            같은 상품이 2개 이상 쇼핑몰에서 잡힌 경우만 카운트합니다.
-                        </p>
-                    </div>
-                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 mb-2">최대 결제가 차이</p>
-                        <p className="text-3xl font-black tracking-tight text-slate-900">
-                            {biggestSpread.toLocaleString()}원
-                        </p>
-                        <p className="text-sm text-slate-500 mt-2">
-                            현재 결과 내 최고 결제가 {highestVisiblePrice.toLocaleString()}원까지 비교됩니다.
-                        </p>
-                    </div>
-                </section>
+                <SearchSummaryMetricsSection
+                    lowestVisiblePrice={lowestVisiblePrice}
+                    comparisonReadyCount={comparisonReadyGroups.length}
+                    biggestSpread={biggestSpread}
+                    highestVisiblePrice={highestVisiblePrice}
+                />
             )}
 
             <ComparisonHighlights
@@ -450,63 +459,15 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
                     animate="visible"
                 >
                     {gridGroups.map((group, index) => {
-                        const product = group.representative;
+                        const enrichedGroup = enrichGroup(group);
                         return (
-                            <motion.div
+                            <SearchResultCard
                                 key={group.groupKey}
-                                className={`relative group overflow-hidden rounded-xl bg-slate-100 ${getGridClass(index)}`}
-                                variants={InteractionNarrative.parallaxReveal}
-                                custom={index % 5}
-                                onClick={() => handleGroupClick(group)}
-                            >
-                                {/* Image Layer */}
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    src={product.image}
-                                    alt={product.title}
-                                    className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                                    loading="lazy"
-                                />
-
-                                {/* Overlay Gradient */}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                                {/* Multi-mall badge */}
-                                {group.mallCount > 1 && (
-                                    <div className="absolute top-2 left-2 z-10">
-                                        <div className="flex flex-col gap-1">
-                                            <span className="bg-accent text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                {group.mallCount}개 쇼핑몰 비교
-                                            </span>
-                                            {applyEnrichedProducts(group.variants).some((variant) => hasPdpDetailData(variant)) && (
-                                                <span className="bg-violet-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                    PDP 확인
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Content Layer */}
-                                <div className="absolute bottom-0 left-0 p-4 w-full text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100">
-                                    <span className="text-[10px] font-bold tracking-widest uppercase mb-1 block text-yellow-400">
-                                        {product.mallName}
-                                    </span>
-                                    <h3 className="text-sm md:text-base font-serif leading-tight mb-1 line-clamp-2">
-                                        {product.title}
-                                    </h3>
-                                    <div className="flex items-baseline gap-2">
-                                        <p className="text-sm font-bold text-white">
-                                            {group.lowestPrice.toLocaleString()}원~
-                                        </p>
-                                        {group.mallCount > 1 && (
-                                            <p className="text-xs text-slate-300 line-through">
-                                                최고 {group.highestPrice.toLocaleString()}원
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </motion.div>
+                                group={enrichedGroup}
+                                index={index}
+                                gridClassName={getGridClass(index)}
+                                onProductClick={handleGroupClick}
+                            />
                         );
                     })}
                 </motion.div>
@@ -534,9 +495,11 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
                     setSelectedProduct(null);
                     setSelectedVariants([]);
                     setSelectedMatchConfidence(null);
+                    setSelectedMatchStrategy(null);
                 }}
                 variants={selectedVariants}
                 matchConfidence={selectedMatchConfidence || undefined}
+                matchStrategy={selectedMatchStrategy || undefined}
             />
         </div>
     );

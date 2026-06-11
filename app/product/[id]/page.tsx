@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import VariantScopedCompareSections from '@/components/product/VariantScopedCompareSections';
 import { buildCanonicalProductDetailHref, decodeProductSnapshot, normalizeProductSource } from '@/lib/api/productSnapshot';
 import type { UnifiedProduct } from '@/lib/api/types';
+import { classifyRetailerTrust, getRetailerTrustLabel } from '@/lib/api/sourceCatalog';
+import { getFreshnessBadgeClassName, summarizeDetailFreshness } from '@/lib/product/dataFreshness';
 import { comparePurchaseOffers } from '@/lib/product/purchasePricing';
 import { analyzeVariantAlignment } from '@/lib/product/variantAlignment';
 import { SITE_URL } from '@/lib/site';
@@ -10,9 +12,12 @@ import { escapeJsonForHtml, sanitizeExternalUrl } from '@/lib/security/urlSafety
 import { enrichProductsWithPdpDetails } from '@/lib/server/pdpDetailService';
 import { readComparableGroup, readTrackedProduct } from '@/lib/server/priceHistoryStore';
 
+type ProductPageParams = { id: string };
+type ProductPageSearchParams = { [key: string]: string | string[] | undefined };
+
 type Props = {
-    params: { id: string };
-    searchParams: { [key: string]: string | string[] | undefined };
+    params: Promise<ProductPageParams>;
+    searchParams: Promise<ProductPageSearchParams>;
 };
 
 export const dynamic = 'force-dynamic';
@@ -22,15 +27,15 @@ function extractSingleValue(value: string | string[] | undefined): string | null
     return value || null;
 }
 
-function extractSnapshot(searchParams: Props['searchParams']): string | null {
+function extractSnapshot(searchParams: ProductPageSearchParams): string | null {
     return extractSingleValue(searchParams?.snapshot);
 }
 
-function extractSource(searchParams: Props['searchParams']) {
+function extractSource(searchParams: ProductPageSearchParams) {
     return normalizeProductSource(extractSingleValue(searchParams?.source));
 }
 
-function extractVariantKey(searchParams: Props['searchParams']): string | null {
+function extractVariantKey(searchParams: ProductPageSearchParams): string | null {
     const value = extractSingleValue(searchParams?.variantKey);
     return value?.trim() ? value.trim() : null;
 }
@@ -70,7 +75,10 @@ function resolveSchemaAvailability(product: UnifiedProduct): string {
     return 'https://schema.org/InStock';
 }
 
-async function resolveProduct(params: Props['params'], searchParams: Props['searchParams']): Promise<UnifiedProduct | null> {
+async function resolveProduct(
+    params: ProductPageParams,
+    searchParams: ProductPageSearchParams
+): Promise<UnifiedProduct | null> {
     const snapshotRaw = extractSnapshot(searchParams);
     if (snapshotRaw) {
         const fromSnapshot = decodeProductSnapshot(snapshotRaw);
@@ -89,7 +97,9 @@ export async function generateMetadata(
     { params, searchParams }: Props,
     parent: ResolvingMetadata
 ): Promise<Metadata> {
-    const product = await resolveProduct(params, searchParams);
+    const resolvedParams = await params;
+    const resolvedSearchParams = await searchParams;
+    const product = await resolveProduct(resolvedParams, resolvedSearchParams);
 
     if (!product) {
         return {
@@ -114,7 +124,9 @@ export async function generateMetadata(
 }
 
 export default async function ProductPage({ params, searchParams }: Props) {
-    const product = await resolveProduct(params, searchParams);
+    const resolvedParams = await params;
+    const resolvedSearchParams = await searchParams;
+    const product = await resolveProduct(resolvedParams, resolvedSearchParams);
 
     if (!product) {
         notFound();
@@ -142,7 +154,9 @@ export default async function ProductPage({ params, searchParams }: Props) {
     const safeStoreUrl = sanitizeExternalUrl(resolvedProduct.link);
     const canonicalUrl = new URL(buildCanonicalProductDetailHref(resolvedProduct), SITE_URL).toString();
     const maxCheckoutSpread = Math.max(0, compareMetrics.highestCheckoutPrice - compareMetrics.lowestCheckoutPrice);
-    const initialVariantKey = extractVariantKey(searchParams);
+    const initialVariantKey = extractVariantKey(resolvedSearchParams);
+    const retailerTrust = classifyRetailerTrust(resolvedProduct);
+    const detailFreshness = summarizeDetailFreshness(resolvedProduct.detailCollectedAt);
 
     const jsonLd = {
         '@context': 'https://schema.org',
@@ -222,6 +236,19 @@ export default async function ProductPage({ params, searchParams }: Props) {
                                                 {compareMallCount}개 쇼핑몰 비교 · 신뢰도 {Math.round(comparableGroup.matchConfidence * 100)}%
                                             </p>
                                         </div>
+                                    )}
+                                </div>
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                    <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700">
+                                        {getRetailerTrustLabel(retailerTrust)}
+                                    </span>
+                                    <span className={`rounded-full border px-3 py-1.5 text-xs font-bold ${getFreshnessBadgeClassName(detailFreshness.status)}`}>
+                                        {detailFreshness.shortLabel}
+                                    </span>
+                                    {detailFreshness.status !== 'unknown' && (
+                                        <span className="text-xs text-slate-500">
+                                            {detailFreshness.detailLabel}
+                                        </span>
                                     )}
                                 </div>
 

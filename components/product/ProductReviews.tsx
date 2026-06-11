@@ -20,6 +20,12 @@ interface ProductReviewsProps {
     productId?: string;
 }
 
+function isPermissionDeniedError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const code = (error as { code?: unknown }).code;
+    return code === 'permission-denied' || code === 'firebase/permission-denied';
+}
+
 export default function ProductReviews({ productId }: ProductReviewsProps) {
     const { user, appId } = useUser();
     const [reviews, setReviews] = useState<Review[]>([]);
@@ -29,20 +35,32 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
     const [fit, setFit] = useState<'small' | 'true' | 'large' | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [feedUnavailable, setFeedUnavailable] = useState(false);
 
     // Firestore에서 리뷰 실시간 구독
     useEffect(() => {
-        if (!db || !appId || !productId) return;
+        if (!db || !appId || !productId) {
+            setFeedUnavailable(false);
+            setReviews([]);
+            return;
+        }
 
         const reviewsRef = collection(db, `artifacts/${appId}/products/${productId}/reviews`);
         const q = query(reviewsRef, orderBy('createdAt', 'desc'), limit(10));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
+            setFeedUnavailable(false);
             const loaded: Review[] = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...(doc.data() as Omit<Review, 'id'>),
             }));
             setReviews(loaded);
+        }, (error) => {
+            setReviews([]);
+            setFeedUnavailable(true);
+            if (!isPermissionDeniedError(error)) {
+                console.error('[ProductReviews] review feed unavailable:', error);
+            }
         });
 
         return () => unsubscribe();
@@ -50,7 +68,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
-        if (rating === 0 || !db || !appId || !productId || submitting) return;
+        if (rating === 0 || !db || !appId || !productId || !user || submitting) return;
 
         setSubmitting(true);
         try {
@@ -73,6 +91,8 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
             setSubmitting(false);
         }
     }, [rating, reviewText, fit, appId, productId, user, submitting]);
+
+    const canSubmit = Boolean(user && db && appId && productId);
 
     // 평균 별점
     const avgRating = reviews.length > 0
@@ -125,6 +145,12 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
                             )}
                         </motion.div>
                     ))}
+                </div>
+            )}
+
+            {feedUnavailable && (
+                <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    리뷰 데이터 접근 권한이 없어 현재는 커뮤니티 리뷰를 표시하지 않습니다.
                 </div>
             )}
 
@@ -195,10 +221,10 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
 
                 <button
                     type="submit"
-                    disabled={rating === 0 || submitting}
+                    disabled={rating === 0 || submitting || !canSubmit}
                     className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800 transition-all"
                 >
-                    {submitting ? '등록 중...' : '리뷰 등록'}
+                    {submitting ? '등록 중...' : canSubmit ? '리뷰 등록' : '로그인 후 리뷰 등록'}
                 </button>
             </form>
         </div>

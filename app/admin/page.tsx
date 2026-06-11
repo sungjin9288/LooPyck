@@ -2,27 +2,20 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/contexts/UserContext';
 import SearchDiagnosticsDashboard from '@/components/admin/SearchDiagnosticsDashboard';
-
-const adminUids = (process.env.NEXT_PUBLIC_ADMIN_UIDS ?? '')
-    .split(',')
-    .map((uid) => uid.trim())
-    .filter(Boolean);
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 export default function AdminPage() {
-    const { user, loading } = useUser();
+    const { authLoading, isAdmin } = useAdminAccess();
     const router = useRouter();
 
-    const isAdmin = !!user && adminUids.length > 0 && adminUids.includes(user.uid);
-
     useEffect(() => {
-        if (!loading && !isAdmin) {
+        if (!authLoading && isAdmin === false) {
             router.replace('/');
         }
-    }, [loading, isAdmin, router]);
+    }, [authLoading, isAdmin, router]);
 
-    if (loading || !isAdmin) return null;
+    if (authLoading || isAdmin !== true) return null;
 
     return <SearchDiagnosticsDashboard scope="full" />;
 }

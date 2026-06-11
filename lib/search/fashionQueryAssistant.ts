@@ -3,6 +3,7 @@ import { normalizeTitle } from '../core/dataNormalizer.ts';
 import { resolveSemanticFashionExpansion } from './fashionOntology.ts';
 import { buildSourceRewriteQueries } from './sourceRewriteRules.ts';
 import type { SearchSort } from '../../types/searchSort.ts';
+import { classifyRetailerTrust } from '../api/sourceCatalog.ts';
 
 type QueryIntent = 'fashion' | 'mixed' | 'unknown' | 'non_fashion';
 type ResultQuality = 'strong' | 'mixed' | 'weak';
@@ -573,6 +574,7 @@ function scoreProduct(product: UnifiedProduct, analysis: FashionQueryAnalysis): 
     const text = buildSearchText(product);
     const effectiveQuery = normalizeSearchText(analysis.normalizedQuery);
     const requestedQuery = normalizeSearchText(analysis.originalQuery);
+    const retailerTrust = classifyRetailerTrust(product);
     const queryTokens = uniqueOrdered([
         ...analysis.primaryTokens,
         ...analysis.categorySignals,
@@ -654,6 +656,14 @@ function scoreProduct(product: UnifiedProduct, analysis: FashionQueryAnalysis): 
     if (analysis.categorySignals.length > 0) {
         const categoryMatched = analysis.categorySignals.some((category) => text.title.includes(normalizeSearchText(category)) || text.categories.includes(normalizeSearchText(category)));
         score += categoryMatched ? 22 : -10;
+    }
+
+    if (retailerTrust === 'official_mall') {
+        score += 10;
+    } else if (retailerTrust === 'marketplace_seller') {
+        score -= 4;
+    } else {
+        score -= 8;
     }
 
     const coverage = queryTokens.length > 0 ? matchedTokens / queryTokens.length : 0;

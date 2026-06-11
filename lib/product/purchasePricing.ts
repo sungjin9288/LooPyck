@@ -13,10 +13,17 @@ export interface PurchasePriceEstimate {
     checkoutPrice: number;
     potentialCouponDiscount: number;
     potentialCouponLabel?: string;
+    benefitEstimated: boolean;
     bestCasePrice: number;
     stockStatus: StockStatus;
     stockLabel: string;
     isAvailable: boolean;
+}
+
+export interface PurchaseEvidenceSummary {
+    checkoutBasisLabel: string;
+    bestCaseBasisLabel?: string;
+    detailLabels: string[];
 }
 
 const SOLD_OUT_KEYWORDS = [
@@ -210,6 +217,62 @@ function getBenefit(source: ProductSource, product: UnifiedProduct): {
     };
 }
 
+function normalizeEvidenceLabel(label?: string): string | undefined {
+    if (!label) return undefined;
+
+    const normalized = label.replace(/\s+/g, ' ').trim();
+    if (!normalized) return undefined;
+
+    return normalized.length > 56 ? `${normalized.slice(0, 53)}...` : normalized;
+}
+
+function buildShippingEvidenceLabel(offer: PurchasePriceEstimate): string {
+    if (offer.shippingFee === 0) {
+        if (typeof offer.shippingFreeThreshold === 'number' && offer.shippingFreeThreshold > 0) {
+            return offer.shippingEstimated
+                ? `${offer.shippingFreeThreshold.toLocaleString()}원 이상 무료배송 추정`
+                : `${offer.shippingFreeThreshold.toLocaleString()}원 이상 무료배송 확인`;
+        }
+
+        return offer.shippingEstimated ? '무료배송 추정' : '무료배송 확인';
+    }
+
+    return offer.shippingEstimated
+        ? `배송비 추정 ${offer.shippingFee.toLocaleString()}원`
+        : `실배송비 ${offer.shippingFee.toLocaleString()}원`;
+}
+
+function buildBenefitEvidenceLabel(offer: PurchasePriceEstimate): string | undefined {
+    if (offer.potentialCouponDiscount <= 0) {
+        return undefined;
+    }
+
+    if (!offer.benefitEstimated && typeof offer.product.benefitPrice === 'number') {
+        const normalizedLabel = normalizeEvidenceLabel(offer.potentialCouponLabel);
+        return normalizedLabel || `회원/혜택가 ${offer.product.benefitPrice.toLocaleString()}원`;
+    }
+
+    const normalizedLabel = normalizeEvidenceLabel(offer.potentialCouponLabel);
+    return normalizedLabel || `혜택 추정 ${offer.potentialCouponDiscount.toLocaleString()}원`;
+}
+
+export function summarizePurchaseEvidence(offer: PurchasePriceEstimate): PurchaseEvidenceSummary {
+    const shippingEvidenceLabel = buildShippingEvidenceLabel(offer);
+    const benefitEvidenceLabel = buildBenefitEvidenceLabel(offer);
+
+    return {
+        checkoutBasisLabel: offer.shippingEstimated ? '표시가 + 배송비 추정 기준' : '표시가 + 실배송비 기준',
+        bestCaseBasisLabel: benefitEvidenceLabel
+            ? `${offer.benefitEstimated ? '추정 혜택 반영' : '회원/혜택가 반영'} · ${benefitEvidenceLabel}`
+            : undefined,
+        detailLabels: [
+            `표시가 ${offer.basePrice.toLocaleString()}원`,
+            shippingEvidenceLabel,
+            ...(benefitEvidenceLabel ? [benefitEvidenceLabel] : []),
+        ],
+    };
+}
+
 export function estimatePurchasePrice(product: UnifiedProduct): PurchasePriceEstimate {
     const stockStatus = inferStockStatus(product);
     const shipping = getShippingFee(product.source, product.price, product);
@@ -227,6 +290,7 @@ export function estimatePurchasePrice(product: UnifiedProduct): PurchasePriceEst
         checkoutPrice,
         potentialCouponDiscount: benefit.discount,
         potentialCouponLabel: benefit.label,
+        benefitEstimated: benefit.estimated,
         bestCasePrice,
         stockStatus,
         stockLabel: getStockStatusLabel(stockStatus),
@@ -255,13 +319,34 @@ export function getGroupPurchaseMetrics(group: GroupedProduct): {
     lowestCheckoutPrice: number;
     highestCheckoutPrice: number;
     lowestBestCasePrice: number;
+    lowestCheckoutOffer: PurchasePriceEstimate | null;
+    lowestBestCaseOffer: PurchasePriceEstimate | null;
 } {
-    const offers = comparePurchaseOffers(group.variants).filter((offer) => offer.isAvailable);
-    const pool = offers.length > 0 ? offers : comparePurchaseOffers(group.variants);
+    const allOffers = comparePurchaseOffers(group.variants);
+    const availableOffers = allOffers.filter((offer) => offer.isAvailable);
+    const pool = availableOffers.length > 0 ? availableOffers : allOffers;
+    const lowestCheckoutOffer = pool[0] || null;
+    const lowestBestCaseOffer = pool.reduce<PurchasePriceEstimate | null>((best, offer) => {
+        if (!best) {
+            return offer;
+        }
+
+        if (offer.bestCasePrice !== best.bestCasePrice) {
+            return offer.bestCasePrice < best.bestCasePrice ? offer : best;
+        }
+
+        if (offer.checkoutPrice !== best.checkoutPrice) {
+            return offer.checkoutPrice < best.checkoutPrice ? offer : best;
+        }
+
+        return offer.basePrice < best.basePrice ? offer : best;
+    }, null);
 
     return {
         lowestCheckoutPrice: pool.reduce((min, offer) => Math.min(min, offer.checkoutPrice), Number.POSITIVE_INFINITY),
         highestCheckoutPrice: pool.reduce((max, offer) => Math.max(max, offer.checkoutPrice), 0),
         lowestBestCasePrice: pool.reduce((min, offer) => Math.min(min, offer.bestCasePrice), Number.POSITIVE_INFINITY),
+        lowestCheckoutOffer,
+        lowestBestCaseOffer,
     };
 }

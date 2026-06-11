@@ -3,11 +3,14 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
+import type { GroupedProduct } from '@/lib/api/types';
 import { buildProductDetailHref } from '@/lib/api/productSnapshot';
 import FutureValueInsight from './FutureValueInsight';
 import ProductReviews from './ProductReviews';
 import RichShare from '@/components/shared/RichShare';
 import PriceHistoryChart from './PriceHistoryChart';
+import CompareShortlistButton from './CompareShortlistButton';
+import PurchaseDecisionBlock from './PurchaseDecisionBlock';
 import SizeFitGuide from './SizeFitGuide';
 import AffordableAlternatives from './AffordableAlternatives';
 import PurchaseComparisonTable from './PurchaseComparisonTable';
@@ -21,6 +24,9 @@ import { hasPdpDetailData, isPdpDetailEnrichmentSupported } from '@/lib/product/
 import { analyzeVariantAlignment } from '@/lib/product/variantAlignment';
 import { applyVariantSelectionToProducts, findSelectedVariantOption, getDefaultVariantSelectionKey, listVariantSelectionOptions } from '@/lib/product/variantSelection';
 import { buildFavoriteProductFromUnified } from '@/lib/favorites/favoriteProduct';
+import { classifyRetailerTrust, getRetailerTrustLabel } from '@/lib/api/sourceCatalog';
+import { getFreshnessBadgeClassName, summarizeDetailFreshness } from '@/lib/product/dataFreshness';
+import { getMatchStrategyLabel } from '@/lib/product/matchStrategyLabel';
 import { logSearchInteraction } from '@/lib/search/searchInteractionClient';
 
 interface ProductDetailModalProps {
@@ -28,9 +34,10 @@ interface ProductDetailModalProps {
     onClose: () => void;
     variants?: UnifiedProduct[]; // 동일 상품의 다른 쇼핑몰 목록
     matchConfidence?: number;
+    matchStrategy?: GroupedProduct['matchStrategy'];
 }
 
-export default function ProductDetailModal({ product, onClose, variants = [], matchConfidence }: ProductDetailModalProps) {
+export default function ProductDetailModal({ product, onClose, variants = [], matchConfidence, matchStrategy }: ProductDetailModalProps) {
     if (!product) return null;
     const baseVariants = React.useMemo(
         () => (variants.length > 0 ? variants : [product]),
@@ -136,6 +143,8 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
         }),
         [activeProduct, optionHistory.optionKey, selectedVariant]
     );
+    const retailerTrust = classifyRetailerTrust(activeProduct);
+    const detailFreshness = summarizeDetailFreshness(activeProduct.detailCollectedAt);
 
     return (
         <AnimatePresence>
@@ -184,6 +193,14 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                             <div className="text-3xl font-bold text-black mb-6">
                                 {activeProduct.price.toLocaleString()}원
                             </div>
+                            <div className="mb-5 flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-700">
+                                    {getRetailerTrustLabel(retailerTrust)}
+                                </span>
+                                <span className={`rounded-full border px-3 py-1 text-[11px] font-bold ${getFreshnessBadgeClassName(detailFreshness.status)}`}>
+                                    {detailFreshness.shortLabel}
+                                </span>
+                            </div>
 
                             <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 mb-1">
@@ -204,7 +221,7 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                                 )}
                                 {typeof matchConfidence === 'number' && allVariants.length > 1 && (
                                     <p className="mt-2 text-xs text-slate-500">
-                                        브랜드/모델/핵심 토큰 기준 매칭 신뢰도 {Math.round(matchConfidence * 100)}%
+                                        {getMatchStrategyLabel(matchStrategy)} 매칭 신뢰도 {Math.round(matchConfidence * 100)}%
                                     </p>
                                 )}
                                 {optionAlignment.hasMismatchRisk && allVariants.length > 1 && (
@@ -220,6 +237,15 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                                 {activeProduct.optionSummary && (
                                     <p className="mt-2 text-xs text-slate-500">
                                         상세 옵션 확인: {activeProduct.optionSummary}
+                                    </p>
+                                )}
+                                {detailFreshness.status !== 'unknown' ? (
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        마지막 상세 확인: {detailFreshness.detailLabel}
+                                    </p>
+                                ) : (
+                                    <p className="mt-2 text-xs text-amber-700">
+                                        PDP 수집 시각이 없어 일부 배송/재고 정보는 검색 결과 또는 쇼핑몰 정책 기준 추정일 수 있습니다.
                                     </p>
                                 )}
                                 {selectedVariant && (
@@ -311,6 +337,9 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                             <div className="mb-4">
                                 <ComparePriceAlertButton product={favoriteProduct} className="w-full justify-center" />
                             </div>
+                            <div className="mb-4">
+                                <CompareShortlistButton product={favoriteProduct} className="w-full justify-center" />
+                            </div>
 
                             {/* Phase 39: Rich Share Stock Card */}
                             <div className="flex w-full">
@@ -327,6 +356,14 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                     {/* 쇼핑몰별 가격 비교 테이블 */}
                     {allVariants.length > 1 && (
                         <div className="border-t border-slate-100 pt-6 mb-6">
+                            <div className="mb-4">
+                                <PurchaseDecisionBlock
+                                    offers={offers}
+                                    productName={activeProduct.title}
+                                    category={activeProduct.category2 || activeProduct.category1}
+                                    selectedVariantLabel={selectedVariant?.label}
+                                />
+                            </div>
                             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
                                 쇼핑몰별 실구매가 비교
                             </h3>

@@ -8,7 +8,7 @@
  * - 메모리 사용량 스냅샷 (Node.js 환경)
  */
 
-type PerformanceMetric = {
+export type PerformanceMetric = {
     operationName: string;
     startTime: number;
     endTime: number;

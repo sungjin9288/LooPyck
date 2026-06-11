@@ -1,4 +1,4 @@
-import type { SearchLearningActivityEvent, SearchLearningActivityType } from './queryLearning.ts';
+import type { SearchLearningActivityEvent, SearchLearningActivityType } from './queryLearningTypes.ts';
 
 export type SearchLearningActivityEntryLike = SearchLearningActivityEvent;
 

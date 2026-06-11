@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { aggregateRealtimeSearchDetailed, aggregateRealtimeSearchNaverOnly, type SearchAggregationDiagnostics, type SearchSourceDiagnostic, type UnifiedProduct } from '@/lib/api/realtimeAggregator';
-import { persistSearchDiagnostics, recordSearchDiagnostics } from '@/lib/api/searchDiagnostics';
+import { buildSearchComparisonSnapshot, persistSearchDiagnostics, recordSearchDiagnostics } from '@/lib/api/searchDiagnostics';
 import { analyzeFashionQuery, buildSourceAwareSearchPlan, rerankProductsByFashionRelevance } from '@/lib/search/fashionQueryAssistant';
-import { loadApprovedSearchLearningQueries, loadApprovedSearchLearningRewritePlan, mergeLearnedQueriesIntoPlan, persistSearchLearningCandidate, recordSearchLearningCandidate } from '@/lib/search/queryLearning';
+import { loadApprovedSearchLearningQueries, loadApprovedSearchLearningRewritePlan, mergeLearnedQueriesIntoPlan, persistSearchLearningCandidate, recordSearchLearningCandidate } from '@/lib/search/searchLearningRealtime';
 import { mergeSourceQueryPlans } from '@/lib/search/searchLearningRewritePacks';
-import { SearchSort, ALLOWED_SORTS } from '@/types/searchSort';
+import { normalizeSearchSort, type SearchSort } from '@/types/searchSort';
 import { checkRateLimit, getRateLimitKey, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
 import { persistPriceHistorySnapshot, searchTrackedProductsByFashionQuery } from '@/lib/server/priceHistoryStore';
 
@@ -112,8 +112,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const query = normalizeQuery(searchParams.get('q'));
     const pageRaw = parseInt(searchParams.get('page') || '1', 10);
-    const sortRaw = searchParams.get('sort') || 'sim';
-    const sort: SearchSort = ALLOWED_SORTS.includes(sortRaw as SearchSort) ? (sortRaw as SearchSort) : 'sim';
+    const sort: SearchSort = normalizeSearchSort(searchParams.get('sort'));
     const page = Number.isFinite(pageRaw) && pageRaw > 0 ? Math.min(pageRaw, 25) : 1;
     const debug = searchParams.get('debug') === '1';
 
@@ -209,6 +208,7 @@ export async function GET(request: NextRequest) {
 
         const { products, diagnostics } = aggregation;
         const reranked = rerankProductsByFashionRelevance(products, queryAnalysis, sort);
+        const comparisonSnapshot = buildSearchComparisonSnapshot(reranked.products);
         const diagnosticsPayload = {
             ...diagnostics,
             effectiveQuery,
@@ -218,6 +218,7 @@ export async function GET(request: NextRequest) {
             strongMatchCount: reranked.meta.strongMatchCount,
             suggestedQueries: reranked.meta.suggestedQueries,
             totalProducts: reranked.products.length,
+            ...comparisonSnapshot,
         };
         recordSearchDiagnostics(diagnosticsPayload);
         recordSearchLearningCandidate(diagnosticsPayload);

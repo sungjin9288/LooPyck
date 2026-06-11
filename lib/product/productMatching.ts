@@ -1,5 +1,6 @@
 import type { GroupedProduct, UnifiedProduct } from '../api/types.ts';
 import { normalizeBrand, normalizeTitle } from '../core/dataNormalizer.ts';
+import { detectVariantOptionSignal, type GenderSignal } from './variantAlignment.ts';
 
 type ProductMatchStrategy = GroupedProduct['matchStrategy'];
 
@@ -10,6 +11,10 @@ type ProductSignature = {
     category: string;
     modelTokens: string[];
     coreTokens: string[];
+    gender?: GenderSignal;
+    hasVerifiedOptions: boolean;
+    optionColors: string[];
+    optionSizes: string[];
     fingerprintKey: string;
 };
 
@@ -230,6 +235,13 @@ function extractTitleTokens(title: string): string[] {
         .filter(Boolean);
 }
 
+function getSearchTokens(product: UnifiedProduct): string[] {
+    return uniqueTokens([
+        ...extractTitleTokens(product.title),
+        ...extractTitleTokens(product.normalizedTitle || ''),
+    ]);
+}
+
 function extractBracketBrand(title: string): string {
     const match = normalizeTitle(title).match(/^\s*[\[(]([^)\]]+)[)\]]/);
     return match?.[1]?.trim() || '';
@@ -277,10 +289,11 @@ function isModelToken(token: string): boolean {
 }
 
 function buildSignature(product: UnifiedProduct): ProductSignature {
-    const rawTokens = extractTitleTokens(product.title);
+    const rawTokens = getSearchTokens(product);
     const brandKey = normalizeBrandKey(product.brand || extractBracketBrand(product.title));
     const brandTokens = getBrandTokens(product, brandKey);
     const category = detectCategory(product, rawTokens);
+    const optionSignal = detectVariantOptionSignal(product);
     const modelTokens = uniqueTokens(
         rawTokens.filter((token) => isModelToken(token)).slice(0, 3)
     );
@@ -312,6 +325,10 @@ function buildSignature(product: UnifiedProduct): ProductSignature {
         category,
         modelTokens,
         coreTokens,
+        gender: optionSignal.gender,
+        hasVerifiedOptions: optionSignal.hasVerifiedOptions,
+        optionColors: optionSignal.colors,
+        optionSizes: optionSignal.sizes,
         fingerprintKey: `${brandKey || 'unknown'}|${fingerprintBody}`,
     };
 }
@@ -342,9 +359,35 @@ function noMatch(): MatchAssessment {
     };
 }
 
+function hasStrictGenderConflict(left?: GenderSignal, right?: GenderSignal): boolean {
+    if (!left || !right) return false;
+    const directConflict =
+        (left === '남성' && right === '여성')
+        || (left === '여성' && right === '남성');
+
+    return directConflict;
+}
+
+function hasVerifiedOptionConflict(left: ProductSignature, right: ProductSignature): boolean {
+    if (!left.hasVerifiedOptions || !right.hasVerifiedOptions) {
+        return false;
+    }
+
+    const sharedColors = intersect(left.optionColors, right.optionColors);
+    const sharedSizes = intersect(left.optionSizes, right.optionSizes);
+    const bothHaveColors = left.optionColors.length > 0 && right.optionColors.length > 0;
+    const bothHaveSizes = left.optionSizes.length > 0 && right.optionSizes.length > 0;
+
+    return bothHaveColors && bothHaveSizes && sharedColors.length === 0 && sharedSizes.length === 0;
+}
+
 function assessProductMatch(left: ProductSignature, right: ProductSignature): MatchAssessment {
     const brandConflict = left.brandKey && right.brandKey && left.brandKey !== right.brandKey;
     if (brandConflict) {
+        return noMatch();
+    }
+
+    if (hasStrictGenderConflict(left.gender, right.gender)) {
         return noMatch();
     }
 
@@ -368,6 +411,8 @@ function assessProductMatch(left: ProductSignature, right: ProductSignature): Ma
     const sameBrand = Boolean(left.brandKey && right.brandKey && left.brandKey === right.brandKey);
     const sameCategory = Boolean(left.category && right.category && left.category === right.category);
     const priceCloseness = getPriceCloseness(left.product.price, right.product.price);
+    const optionConflict = hasVerifiedOptionConflict(left, right);
+    const sharedOptionSignals = intersect(left.optionColors, right.optionColors).length + intersect(left.optionSizes, right.optionSizes).length;
 
     if (sharedModels.length > 0) {
         const confidence = Math.min(
@@ -376,6 +421,7 @@ function assessProductMatch(left: ProductSignature, right: ProductSignature): Ma
                 (sameBrand ? 0.08 : 0) +
                 (sameCategory ? 0.04 : 0) +
                 Math.min(sharedModels.length * 0.03, 0.06) +
+                Math.min(sharedOptionSignals * 0.01, 0.02) +
                 priceCloseness * 0.04
         );
 
@@ -384,6 +430,10 @@ function assessProductMatch(left: ProductSignature, right: ProductSignature): Ma
             confidence,
             strategy: sameBrand ? 'brand_model' : 'model',
         };
+    }
+
+    if (optionConflict) {
+        return noMatch();
     }
 
     if (sharedCore.length === 0 || coreDice < 0.5 || priceCloseness < 0.45) {
@@ -397,6 +447,7 @@ function assessProductMatch(left: ProductSignature, right: ProductSignature): Ma
             (sameCategory ? 0.14 : !left.category || !right.category ? 0.06 : 0) +
             coreDice * 0.28 +
             Math.min(sharedCore.length * 0.04, 0.12) +
+            Math.min(sharedOptionSignals * 0.02, 0.04) +
             priceCloseness * 0.1
     );
 

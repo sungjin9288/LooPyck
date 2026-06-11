@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import CompareEntryPage from '@/components/landing/CompareEntryPage';
 
 const BRANDS: Record<string, { label: string; description: string; tags: string[]; color: string }> = {
     musinsa: {
@@ -121,66 +122,91 @@ export default async function BrandPage({ params }: BrandPageProps) {
         );
     }
 
+    const quickRoutes = brand.tags.map((tag, index) => ({
+        label: tag,
+        query: tag,
+        note: [
+            '대표 라인부터 compare-ready 묶음 확인',
+            '옵션과 재고가 갈리는 구간 먼저 체크',
+            '세일/대체 상품까지 이어서 탐색',
+        ][index] || '브랜드 비교 검색으로 바로 이동',
+    }));
+
+    const decisionSignals = [
+        {
+            label: '우선 보는 기준',
+            value: '실구매가, 무료배송 조건, 회원가 적용 여부를 먼저 정리합니다.',
+        },
+        {
+            label: '분리해서 봐야 하는 경우',
+            value: '남녀 라인, 옵션 불일치, 모델명 차이가 보이면 같은 브랜드라도 다른 후보로 분리합니다.',
+        },
+        {
+            label: '이 페이지의 역할',
+            value: `${brand.label} 검색을 바로 시작하고 shortlist에 담아 compare page까지 이어지는 입구로 씁니다.`,
+        },
+    ];
+
+    const proofPoints = [
+        {
+            title: '브랜드 결과를 seller noise 없이 압축',
+            description: `${brand.label} 관련 검색어로 진입해도 generic seller보다 패션 전문몰과 공식 채널 결과를 먼저 끌어올리도록 정리했습니다.`,
+        },
+        {
+            title: '같은 라인은 묶고 다른 옵션은 분리',
+            description: '브랜드/모델명뿐 아니라 옵션, 성별, 정규화 제목 신호까지 같이 봐서 compare-ready 그룹과 다른 상품을 분리합니다.',
+        },
+        {
+            title: '결제 직전 판단 신호까지 바로 연결',
+            description: '상세 페이지에서는 실구매가 근거, 재고, 사이즈/핏, 배송 정책까지 decision block으로 이어집니다.',
+        },
+    ];
+
+    const siblingLinks = Object.entries(BRANDS)
+        .filter(([entrySlug]) => entrySlug !== slug)
+        .slice(0, 6)
+        .map(([entrySlug, entryBrand]) => ({
+            href: `/brand/${entrySlug}`,
+            label: entryBrand.label,
+            note: entryBrand.description,
+        }));
+
+    const compareEntrySections = {
+        hero: {
+            breadcrumbLabel: brand.label,
+            eyebrow: 'Brand Compare Entry',
+            title: `${brand.label} 비교 시작`,
+            description: brand.description,
+            accentColor: brand.color,
+            decisionSignals,
+            searchHeading: `${brand.label} 안에서 바로 compare-ready 검색 시작`,
+            searchDescription:
+                '모델명, 라인명, 옵션 키워드를 바로 넣으면 홈 검색 결과에서 가격 spread와 옵션 일치 여부를 이어서 볼 수 있습니다.',
+            starterQuery: brand.tags[0],
+        },
+        routes: {
+            routesHeading: `${brand.label}에서 자주 시작하는 비교 루트`,
+            routesDescription:
+                '브랜드 페이지는 소개용 SEO 랜딩이 아니라, 자주 비교되는 라인과 옵션 분기 지점을 바로 여는 진입 화면으로 재구성했습니다.',
+            quickRoutes,
+            accentColor: brand.color,
+        },
+        proof: {
+            accentColor: brand.color,
+            proofHeading: `${brand.label} 비교에서 먼저 드러나야 하는 신호`,
+            proofDescription:
+                '브랜드 단위로 진입할 때는 판매처 수보다 공식몰 여부, 옵션 분리, 실구매가 근거가 먼저 보여야 합니다.',
+            proofPoints,
+        },
+        siblings: {
+            siblingHeading: '다른 브랜드 비교로 이어가기',
+            siblingDescription:
+                '같은 카테고리 안에서 브랜드별 price spread와 재고 차이를 빠르게 옮겨가며 확인할 수 있습니다.',
+            siblingLinks,
+        },
+    };
+
     return (
-        <main className="min-h-screen mesh-bg">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                {/* Breadcrumb */}
-                <nav className="flex items-center gap-2 text-sm text-slate-500 mb-8">
-                    <Link href="/" className="hover:text-slate-700 transition-colors">홈</Link>
-                    <span>/</span>
-                    <span className="text-slate-900 font-medium">{brand.label}</span>
-                </nav>
-
-                {/* Hero */}
-                <div className="glass-panel rounded-3xl p-8 mb-10 relative overflow-hidden">
-                    <div
-                        className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-10"
-                        style={{ backgroundColor: brand.color }}
-                    />
-                    <h1 className="text-4xl font-black text-slate-900 mb-2 relative">
-                        {brand.label}
-                    </h1>
-                    <p className="text-slate-500 text-lg max-w-xl relative">{brand.description}</p>
-                </div>
-
-                {/* Quick Search Keywords */}
-                <div className="mb-10">
-                    <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">추천 검색어</h2>
-                    <div className="flex flex-wrap gap-3">
-                        {brand.tags.map(tag => (
-                            <Link
-                                key={tag}
-                                href={`/?q=${encodeURIComponent(tag)}`}
-                                className="px-5 py-2.5 glass-panel rounded-2xl text-sm font-medium text-slate-700 hover:shadow-md transition-all hover:text-accent-dark"
-                            >
-                                {tag}
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Other Brands */}
-                <div>
-                    <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">다른 브랜드</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {Object.entries(BRANDS)
-                            .filter(([s]) => s !== slug)
-                            .map(([s, b]) => (
-                                <Link
-                                    key={s}
-                                    href={`/brand/${s}`}
-                                    className="glass-panel rounded-2xl p-4 text-center hover:shadow-md transition-all group"
-                                >
-                                    <div
-                                        className="w-8 h-8 rounded-full mx-auto mb-2"
-                                        style={{ backgroundColor: b.color }}
-                                    />
-                                    <p className="text-sm font-semibold text-slate-700 group-hover:text-accent-dark transition-colors">{b.label}</p>
-                                </Link>
-                            ))}
-                    </div>
-                </div>
-            </div>
-        </main>
+        <CompareEntryPage {...compareEntrySections} />
     );
 }

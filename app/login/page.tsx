@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getRedirectResult, signInWithCustomToken } from 'firebase/auth';
+import { getReadableAuthMessage } from '@/lib/auth/authErrorMessage';
 import { signInWithGoogle } from '@/lib/auth/firebase';
 import { auth } from '@/lib/firebase';
 import { useUser } from '@/contexts/UserContext';
@@ -30,6 +31,7 @@ export default function LoginPage() {
     const [status, setStatus] = useState<'ready' | 'redirecting' | 'failed'>('ready');
     const [error, setError] = useState<string | null>(null);
     const [nextPath, setNextPath] = useState('/');
+    const [nextPathResolved, setNextPathResolved] = useState(false);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -38,6 +40,7 @@ export default function LoginPage() {
             setNextPath(resolvedNext);
             window.sessionStorage.setItem(POST_LOGIN_NEXT_KEY, resolvedNext);
         }
+        setNextPathResolved(true);
     }, []);
 
     useEffect(() => {
@@ -47,13 +50,14 @@ export default function LoginPage() {
     }, [nextPath]);
 
     useEffect(() => {
-        if (loading) return;
+        if (!nextPathResolved || loading) return;
         if (user && !user.isAnonymous) {
             router.replace(nextPath);
         }
-    }, [loading, nextPath, router, user]);
+    }, [loading, nextPath, nextPathResolved, router, user]);
 
     useEffect(() => {
+        if (!nextPathResolved) return;
         if (!auth) {
             setStatus('failed');
             setError('Firebase Auth가 초기화되지 않았습니다. NEXT_PUBLIC_FIREBASE_* 설정을 다시 확인하세요.');
@@ -110,7 +114,7 @@ export default function LoginPage() {
             } catch (redirectError) {
                 if (cancelled) return;
                 console.error('Dedicated login route error:', redirectError);
-                const message = redirectError instanceof Error ? redirectError.message : 'Google 로그인에 실패했습니다.';
+                const message = getReadableAuthMessage(redirectError);
                 setStatus('failed');
                 setError(message);
             }
@@ -121,7 +125,7 @@ export default function LoginPage() {
         return () => {
             cancelled = true;
         };
-    }, [nextPath, router]);
+    }, [nextPath, nextPathResolved, router]);
 
     return (
         <main className="min-h-screen mesh-bg flex items-center justify-center px-4">
@@ -159,7 +163,7 @@ export default function LoginPage() {
                                     window.sessionStorage.removeItem(REDIRECT_PENDING_KEY);
                                 }
                                 setStatus('failed');
-                                setError(retryError instanceof Error ? retryError.message : 'Google 로그인 재시도에 실패했습니다.');
+                                setError(getReadableAuthMessage(retryError));
                             });
                         }}
                         className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800"

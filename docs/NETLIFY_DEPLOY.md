@@ -117,6 +117,26 @@ ALERT_TUNING_WEBHOOK_FORMAT
 ALERT_TUNING_WEBHOOK_BEARER
 ```
 
+## 8.1 Firebase Auth Authorized Domains
+
+Netlify production login requires a matching Firebase Auth allowlist entry. In
+Firebase Console:
+
+1. Open `Authentication`
+2. Open `Settings`
+3. Open `Authorized domains`
+4. Add every web hostname that serves this app
+
+Minimum production entry:
+
+```text
+loo-pyck.netlify.app
+```
+
+If you use preview URLs, a custom domain, or alternate staging hosts, add those
+hosts too. If this step is missing, Google login fails with
+`auth/unauthorized-domain` even when `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` is set correctly.
+
 ## 9. Verification
 
 After deploy, verify:
@@ -135,16 +155,25 @@ After deploy, verify:
 Reusable smoke check:
 
 ```bash
+npm run ntl:uat
 npm run ntl:smoke
 npm run ntl:admin-smoke
 npm run ntl:browser-smoke
 npm run ntl:admin-browser-smoke
+npm run ntl:quick-pass:runtime-ready
+npm run ntl:release-closeout
+npm run ntl:release-report
 ```
 
 Notes:
+- `ntl:uat` is the default release gate. It runs API smoke, admin API smoke, public browser smoke, and authenticated admin browser smoke in sequence, then writes `output/playwright/netlify-uat-summary.json`.
 - `ntl:browser-smoke` validates public search repeat-flow and the unauthenticated `/admin` gate.
 - `ntl:admin-smoke` mints a Firebase custom token for the first `ADMIN_UIDS` entry and validates `/api/admin/access` plus `/api/realtime-search/diagnostics`.
-- `ntl:admin-browser-smoke` uses the same custom token flow to sign into the browser session and verifies the authenticated `/admin` terminal surface headings, visible batch action buttons, and both advanced chain toggles.
+- `ntl:admin-browser-smoke` uses the same custom token flow to sign into the browser session and verifies the authenticated `/admin` terminal surface headings, `Admin runtime telemetry` debug console, visible batch action buttons, and both advanced chain toggles.
+- After `ntl:uat`, run the visual compare funnel pass described in [PLAYWRIGHT_MCP_UAT.md](/Users/sungjin/dev/personal/LooPyck/docs/PLAYWRIGHT_MCP_UAT.md).
+- `ntl:quick-pass:runtime-ready` is the final operational check for the Playwright MCP layer. It regenerates the runtime packet, runs the readiness assertion, and writes `output/playwright/playwright-mcp-runtime-ready.json`.
+- `ntl:release-closeout` runs `ntl:uat`, `ntl:quick-pass:runtime-ready`, and `ntl:release-report` back-to-back as the standard release closeout path.
+- `ntl:release-report` refreshes MCP health, the runtime cleanup plan, and a forced dry-run cleanup result, then builds a human-readable summary from `netlify-uat-summary.json`, `playwright-mcp-runtime-ready.json`, and the refreshed MCP evidence. It writes `output/playwright/release-closeout-report.md`. If cleanup was executed immediately before report generation, the execution audit is preserved as `output/playwright/playwright-mcp-runtime-cleanup-last-execution.json`.
 
 ## 10. Mobile Real-Device Testing
 

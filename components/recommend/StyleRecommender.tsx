@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LookRecommendation } from '@/app/api/style-recommend/route';
+import type { StyleRecommendLook } from '@/lib/ai/styleRecommend';
 
 interface StyleRecommenderProps {
     onSearch: (keyword: string) => void;
@@ -25,7 +25,7 @@ export default function StyleRecommender({ onSearch, onSwitchToSearch }: StyleRe
     const [weight, setWeight] = useState('');
     const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
     const [budget, setBudget] = useState<'low' | 'mid' | 'high'>('mid');
-    const [looks, setLooks] = useState<LookRecommendation[]>([]);
+    const [looks, setLooks] = useState<StyleRecommendLook[]>([]);
     const [bodyNote, setBodyNote] = useState('');
     const [error, setError] = useState('');
 

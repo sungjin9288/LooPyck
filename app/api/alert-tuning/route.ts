@@ -9,13 +9,39 @@ import { requireAdminRequest } from '@/lib/server/adminAccess';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     const record = await loadAlertTuningConfigRecord();
-    return NextResponse.json(record, {
-        headers: {
-            'Cache-Control': 'public, max-age=60',
+    const hasBearerToken = (request.headers.get('authorization') || '').startsWith('Bearer ');
+
+    if (hasBearerToken) {
+        const adminCheck = await requireAdminRequest(request);
+        if (!adminCheck.ok) {
+            return NextResponse.json(
+                { error: adminCheck.error },
+                { status: adminCheck.status, headers: { 'Cache-Control': 'private, no-store' } }
+            );
+        }
+
+        return NextResponse.json(record, {
+            headers: {
+                'Cache-Control': 'private, no-store',
+            },
+        });
+    }
+
+    return NextResponse.json(
+        {
+            config: record.config,
+            updatedAt: record.updatedAt,
+            updatedBy: null,
+            storage: record.storage,
         },
-    });
+        {
+            headers: {
+                'Cache-Control': 'private, no-store',
+            },
+        }
+    );
 }
 
 export async function PATCH(request: NextRequest) {

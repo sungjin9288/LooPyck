@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { getFreshnessBadgeClassName, summarizePriceHistoryFreshness } from '@/lib/product/dataFreshness';
 
 interface PricePoint {
     date: string;
@@ -94,6 +95,9 @@ export default function PriceHistoryChart({
     const [loading, setLoading] = useState(true);
     const [enabled, setEnabled] = useState(true);
     const [scope, setScope] = useState<'product' | 'option' | 'variant'>('product');
+    const [latestRecordedAt, setLatestRecordedAt] = useState<number | null>(null);
+    const chartContainerRef = useRef<HTMLDivElement | null>(null);
+    const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
 
     useEffect(() => {
         if (!source || !productId) return;
@@ -102,6 +106,7 @@ export default function PriceHistoryChart({
 
         async function loadHistory() {
             setLoading(true);
+            setLatestRecordedAt(null);
             try {
                 const params = new URLSearchParams({
                     source,
@@ -147,12 +152,14 @@ export default function PriceHistoryChart({
                     .slice(-7);
 
                 if (normalized.length === 0) {
+                    setLatestRecordedAt(null);
                     setData([{
                         price: currentPrice,
                         capturedAt: Date.now(),
                         date: '현재',
                     }]);
                 } else {
+                    setLatestRecordedAt(normalized[normalized.length - 1]?.capturedAt ?? null);
                     setData(normalized);
                 }
             } catch (error) {
@@ -160,6 +167,7 @@ export default function PriceHistoryChart({
                     return;
                 }
                 console.error('[PriceHistoryChart] load failed:', error);
+                setLatestRecordedAt(null);
                 setData([{
                     price: currentPrice,
                     capturedAt: Date.now(),
@@ -180,6 +188,34 @@ export default function PriceHistoryChart({
     );
 
     const insight = useMemo(() => getInsight(data, enabled), [data, enabled]);
+    const historyFreshness = useMemo(() => summarizePriceHistoryFreshness(latestRecordedAt), [latestRecordedAt]);
+    const canRenderChart = !loading && chartSize.width > 0 && chartSize.height > 0;
+
+    useEffect(() => {
+        const element = chartContainerRef.current;
+        if (!element) return;
+
+        const updateSize = () => {
+            const nextWidth = element.clientWidth;
+            const nextHeight = element.clientHeight;
+            setChartSize((current) => (
+                current.width === nextWidth && current.height === nextHeight
+                    ? current
+                    : { width: nextWidth, height: nextHeight }
+            ));
+        };
+
+        updateSize();
+
+        if (typeof ResizeObserver === 'undefined') {
+            const frameId = window.requestAnimationFrame(updateSize);
+            return () => window.cancelAnimationFrame(frameId);
+        }
+
+        const observer = new ResizeObserver(() => updateSize());
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, []);
 
     return (
         <div className="w-full bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
@@ -194,63 +230,75 @@ export default function PriceHistoryChart({
                         </p>
                     )}
                 </div>
-                <span className={`text-[11px] font-medium ${insight.color}`}>
-                    {insight.text}
-                </span>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${getFreshnessBadgeClassName(historyFreshness.status)}`}>
+                        {historyFreshness.shortLabel}
+                    </span>
+                    <span className={`text-[11px] font-medium ${insight.color}`}>
+                        {insight.text}
+                    </span>
+                </div>
             </div>
-            <div className="h-[180px]">
+            {historyFreshness.status !== 'unknown' && (
+                <p className="mb-3 text-[11px] text-slate-400">
+                    마지막 가격 수집: {historyFreshness.detailLabel}
+                </p>
+            )}
+            <div ref={chartContainerRef} className="h-[180px] min-w-0">
                 {loading ? (
                     <div className="h-full flex items-center justify-center text-xs text-slate-400">
                         가격 이력을 불러오는 중...
                     </div>
+                ) : !canRenderChart ? (
+                    <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                        차트 영역을 준비하는 중...
+                    </div>
                 ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data}>
-                            <defs>
-                                <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.12} />
-                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis
-                                dataKey="date"
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fontSize: 10, fill: '#94a3b8' }}
-                            />
-                            <YAxis hide domain={['dataMin - 1000', 'dataMax + 1000']} />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: '#1e293b',
-                                    border: 'none',
-                                    borderRadius: '10px',
-                                    color: '#fff',
-                                    fontSize: '12px'
-                                }}
-                                itemStyle={{ color: '#fff' }}
-                                formatter={(value: number, _name, item) => {
-                                    const payload = item.payload as PricePoint | undefined;
-                                    const lines = [`${value.toLocaleString()}원`];
-                                    if (payload?.stockStatus === 'sold_out') {
-                                        lines.push('품절');
-                                    } else if (payload?.stockStatus === 'low_stock') {
-                                        lines.push('재고 적음');
-                                    }
-                                    return [lines.join(' · '), '가격'];
-                                }}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="price"
-                                stroke="#6366f1"
-                                strokeWidth={2}
-                                fillOpacity={1}
-                                fill="url(#colorPrice)"
-                                animationDuration={800}
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                    <AreaChart width={chartSize.width} height={chartSize.height} data={data}>
+                        <defs>
+                            <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.12} />
+                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis
+                            dataKey="date"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                        />
+                        <YAxis hide domain={['dataMin - 1000', 'dataMax + 1000']} />
+                        <Tooltip
+                            contentStyle={{
+                                backgroundColor: '#1e293b',
+                                border: 'none',
+                                borderRadius: '10px',
+                                color: '#fff',
+                                fontSize: '12px'
+                            }}
+                            itemStyle={{ color: '#fff' }}
+                            formatter={(value: number, _name, item) => {
+                                const payload = item.payload as PricePoint | undefined;
+                                const lines = [`${value.toLocaleString()}원`];
+                                if (payload?.stockStatus === 'sold_out') {
+                                    lines.push('품절');
+                                } else if (payload?.stockStatus === 'low_stock') {
+                                    lines.push('재고 적음');
+                                }
+                                return [lines.join(' · '), '가격'];
+                            }}
+                        />
+                        <Area
+                            type="monotone"
+                            dataKey="price"
+                            stroke="#6366f1"
+                            strokeWidth={2}
+                            fillOpacity={1}
+                            fill="url(#colorPrice)"
+                            animationDuration={800}
+                        />
+                    </AreaChart>
                 )}
             </div>
         </div>

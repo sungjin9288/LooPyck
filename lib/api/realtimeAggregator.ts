@@ -98,6 +98,14 @@ export interface SearchAggregationDiagnostics {
     strongMatchCount?: number;
     suggestedQueries?: string[];
     totalProducts: number;
+    totalGroups?: number;
+    comparableGroupCount?: number;
+    compareReadyGroupCount?: number;
+    spreadCapturedGroupCount?: number;
+    capturedPriceSpreadTotal?: number;
+    maxCapturedPriceSpread?: number;
+    verifiedOptionGroupCount?: number;
+    preciseOptionGroupCount?: number;
     directSourceCount: number;
     fallbackSourceCount: number;
     sources: SearchSourceDiagnostic[];

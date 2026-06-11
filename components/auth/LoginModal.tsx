@@ -2,48 +2,26 @@
 
 import React, { useState, useEffect } from 'react';
 import { signInWithGoogle, signOut } from '@/lib/auth/firebase';
+import { getReadableAuthMessage } from '@/lib/auth/authErrorMessage';
 import { User } from 'firebase/auth';
 import StyleDashboard from '@/components/auth/StyleDashboard';
 import MyAsset from '@/components/profile/MyAsset'; // Portfolio Component
 import { useUser } from '@/contexts/UserContext';
 import { pushAppNotification } from '@/lib/core/notifications';
-import { BottomSheet } from '@toss/tds-mobile';
 import { isTossWebView } from '@/lib/native/tossWebView';
+import { useTdsMobile } from '@/lib/native/tdsMobile';
 
 interface LoginModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-function getReadableAuthMessage(error: unknown): string {
-    if (!error || typeof error !== 'object') {
-        return '로그인에 실패했습니다.';
-    }
-
-    const code = typeof (error as { code?: unknown }).code === 'string'
-        ? (error as { code: string }).code
-        : '';
-
-    switch (code) {
-        case 'auth/unauthorized-domain':
-            return 'Firebase Authentication의 Authorized domains에 현재 도메인을 추가해야 합니다.';
-        case 'auth/popup-blocked':
-            return '브라우저가 로그인 팝업을 차단했습니다. 팝업 차단을 해제하고 다시 시도하세요.';
-        case 'auth/popup-closed-by-user':
-            return '로그인 팝업이 닫혔습니다. 다시 시도하세요.';
-        case 'auth/operation-not-allowed':
-            return 'Firebase Authentication에서 Google 로그인이 활성화되지 않았습니다.';
-        case 'auth/network-request-failed':
-            return '네트워크 문제로 로그인에 실패했습니다.';
-        default:
-            return error instanceof Error ? error.message : '로그인에 실패했습니다.';
-    }
-}
-
 export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     const { user, linkAccount } = useUser();
     const [loginError, setLoginError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const inToss = isTossWebView();
+    const tdsMobile = useTdsMobile(inToss);
 
     useEffect(() => {
         if (!isOpen) {
@@ -52,10 +30,9 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         }
     }, [isOpen]);
 
-    const inToss = isTossWebView();
-
     // 토스 WebView: TDS BottomSheet
-    if (inToss) {
+    if (inToss && tdsMobile?.BottomSheet) {
+        const BottomSheet = tdsMobile.BottomSheet;
         return (
             <BottomSheet open={isOpen} onDimmerClick={onClose}>
                 <LoginModalContent

@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { normalizeKeywordList, parseGeminiJson } from '@/lib/ai/geminiJson';
+import { parseGeminiJson } from '@/lib/ai/geminiJson';
+import {
+    buildStyleRecommendFallback,
+    normalizeStyleRecommendResponse,
+    StyleRecommendLooseResponseSchema,
+    type StyleRecommendInput,
+    type StyleRecommendLook,
+    type StyleRecommendResult,
+} from '@/lib/ai/styleRecommend';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 const REQUEST_TIMEOUT_MS = 15_000;
 
 const StyleRecommendRequestSchema = z.object({
@@ -17,24 +25,23 @@ const StyleRecommendRequestSchema = z.object({
     budget: z.enum(['low', 'mid', 'high']).optional().default('mid'),
 });
 
-const LookRecommendationSchema = z.object({
-    lookName: z.string().trim().min(1).max(40),
-    description: z.string().trim().min(1).max(220),
-    keyItems: z.array(z.string().trim().min(1).max(40)).max(8).optional().default([]),
-    reason: z.string().trim().min(1).max(160),
-});
-
-const StyleRecommendResponseSchema = z.object({
-    looks: z.array(LookRecommendationSchema).min(2).max(3),
-    bodyNote: z.string().trim().min(1).max(140),
-});
-
 export type StyleRecommendRequest = z.infer<typeof StyleRecommendRequestSchema>;
-export type LookRecommendation = z.infer<typeof LookRecommendationSchema>;
-export type StyleRecommendResponse = {
-    looks: Array<LookRecommendation & { keyItems: string[] }>;
-    bodyNote: string;
-};
+export type LookRecommendation = StyleRecommendLook;
+export type StyleRecommendResponse = StyleRecommendResult;
+
+function buildFallbackResponse(
+    input: StyleRecommendInput,
+    remaining: number,
+    reason: string
+) {
+    return NextResponse.json(buildStyleRecommendFallback(input), {
+        headers: {
+            'X-RateLimit-Remaining': String(remaining),
+            'X-Style-Recommend-Source': 'fallback',
+            'X-Style-Recommend-Reason': reason,
+        },
+    });
+}
 
 export async function POST(request: NextRequest) {
     const rateLimit = await checkRateLimit(getRateLimitKey(request, 'style-recommend'), 10, 60_000);
@@ -48,14 +55,6 @@ export async function POST(request: NextRequest) {
                     'X-RateLimit-Remaining': '0',
                 },
             }
-        );
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        return NextResponse.json(
-            { error: 'AI 서비스가 설정되지 않았습니다.' },
-            { status: 503, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
         );
     }
 
@@ -75,6 +74,11 @@ export async function POST(request: NextRequest) {
             { error: parsedRequest.error.issues[0]?.message || '요청 형식이 올바르지 않습니다.' },
             { status: 400, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
         );
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        return buildFallbackResponse(parsedRequest.data, rateLimit.remaining, 'missing_api_key');
     }
 
     const { gender, height, weight, preferredStyles, budget } = parsedRequest.data;
@@ -126,46 +130,39 @@ keyItems는 반드시 무신사, 29cm 같은 쇼핑몰에서 실제 검색 가�
         });
 
         if (!res.ok) {
-            throw new Error(`Gemini API error: ${res.status}`);
+            console.error('[Style Recommend API Error] Gemini status:', res.status);
+            return buildFallbackResponse(parsedRequest.data, rateLimit.remaining, `gemini_status_${res.status}`);
         }
 
         const data = (await res.json()) as unknown;
-        const parsed = parseGeminiJson(data, StyleRecommendResponseSchema);
+        const parsed = parseGeminiJson(data, StyleRecommendLooseResponseSchema);
 
-        if (!parsed.ok) {
-            return NextResponse.json(
-                { error: 'AI 응답을 파싱하는 데 실패했습니다.' },
-                { status: 502, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
-            );
+        if (parsed.ok === false) {
+            console.error('[Style Recommend API Error] Gemini parse failed:', parsed.error, parsed.rawText);
+            return buildFallbackResponse(parsedRequest.data, rateLimit.remaining, 'gemini_parse_failed');
         }
 
-        const looks = parsed.data.looks.map((look) => ({
-            ...look,
-            keyItems: normalizeKeywordList(look.keyItems, 3),
-        }));
+        const normalized = normalizeStyleRecommendResponse(parsed.data);
+        if (!normalized) {
+            console.error('[Style Recommend API Error] Gemini normalized payload unusable');
+            return buildFallbackResponse(parsedRequest.data, rateLimit.remaining, 'gemini_normalize_failed');
+        }
 
         return NextResponse.json(
-            {
-                bodyNote: parsed.data.bodyNote,
-                looks,
-            } satisfies StyleRecommendResponse,
+            normalized satisfies StyleRecommendResponse,
             {
                 headers: {
                     'X-RateLimit-Remaining': String(rateLimit.remaining),
+                    'X-Style-Recommend-Source': 'ai',
                 },
             }
         );
     } catch (error) {
         if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
-            return NextResponse.json(
-                { error: 'AI 추천 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.' },
-                { status: 504, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
-            );
+            console.error('[Style Recommend API Error] Gemini timeout');
+            return buildFallbackResponse(parsedRequest.data, rateLimit.remaining, 'gemini_timeout');
         }
         console.error('[Style Recommend API Error]', error);
-        return NextResponse.json(
-            { error: 'AI 추천 오류가 발생했습니다.' },
-            { status: 500, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
-        );
+        return buildFallbackResponse(parsedRequest.data, rateLimit.remaining, 'gemini_unknown_error');
     }
 }

@@ -16,6 +16,21 @@ function product(overrides: Partial<UnifiedProduct>): UnifiedProduct {
         category2: overrides.category2,
         source: overrides.source || 'MUSINSA',
         normalizedTitle: overrides.normalizedTitle,
+        shippingFee: overrides.shippingFee,
+        shippingFreeThreshold: overrides.shippingFreeThreshold,
+        shippingText: overrides.shippingText,
+        benefitPrice: overrides.benefitPrice,
+        benefitText: overrides.benefitText,
+        stockStatus: overrides.stockStatus,
+        stockText: overrides.stockText,
+        variantId: overrides.variantId,
+        variantSku: overrides.variantSku,
+        optionSummary: overrides.optionSummary,
+        optionValues: overrides.optionValues,
+        sizeOptions: overrides.sizeOptions,
+        colorOptions: overrides.colorOptions,
+        variantCandidates: overrides.variantCandidates,
+        detailCollectedAt: overrides.detailCollectedAt,
     };
 }
 
@@ -128,6 +143,95 @@ test('generic overlap with different categories stays separated', () => {
             price: 49900,
             category1: '상의',
             category2: '셔츠',
+        }),
+    ]);
+
+    assert.equal(groups.length, 2);
+});
+
+test('explicit men and women variants of the same model stay separated', () => {
+    const groups = groupProducts([
+        product({
+            id: 'nb-530-men',
+            title: '뉴발란스 530 men white',
+            brand: '뉴발란스',
+            mallName: '무신사',
+            source: 'MUSINSA',
+            price: 129000,
+            category1: '신발',
+            category2: '스니커즈',
+        }),
+        product({
+            id: 'nb-530-women',
+            title: '뉴발란스 530 women white',
+            brand: '뉴발란스',
+            mallName: '29CM',
+            source: '29CM',
+            price: 127000,
+            category1: '신발',
+            category2: '스니커즈',
+        }),
+    ]);
+
+    assert.equal(groups.length, 2);
+});
+
+test('normalized title helps align equivalent jacket and blazer wording', () => {
+    const groups = groupProducts([
+        product({
+            id: 'ms-jacket',
+            title: '무신사 스탠다드 릴렉스드 싱글 자켓',
+            normalizedTitle: '무신사 스탠다드 릴렉스드 싱글 블레이저',
+            brand: '무신사 스탠다드',
+            mallName: '무신사',
+            source: 'MUSINSA',
+            price: 89900,
+            category1: '아우터',
+            category2: '자켓',
+        }),
+        product({
+            id: 'ms-blazer',
+            title: '무신사 스탠다드 릴렉스드 싱글 블레이저',
+            brand: '무신사 스탠다드',
+            mallName: 'SSF',
+            source: 'SSF',
+            price: 91900,
+            category1: '여성의류',
+            category2: '블레이저',
+        }),
+    ]);
+
+    assert.equal(groups.length, 1);
+    assert.equal(groups[0].mallCount, 2);
+});
+
+test('verified option conflicts do not group token-only candidates', () => {
+    const groups = groupProducts([
+        product({
+            id: 'shirt-black',
+            title: '무신사 스탠다드 릴렉스드 셔츠',
+            brand: '무신사 스탠다드',
+            mallName: '무신사',
+            source: 'MUSINSA',
+            price: 49900,
+            category1: '상의',
+            category2: '셔츠',
+            optionSummary: '색상 블랙 · 사이즈 M',
+            colorOptions: ['블랙'],
+            sizeOptions: ['M'],
+        }),
+        product({
+            id: 'shirt-white',
+            title: '무신사 스탠다드 릴렉스드 셔츠',
+            brand: '무신사 스탠다드',
+            mallName: '29CM',
+            source: '29CM',
+            price: 51900,
+            category1: '상의',
+            category2: '셔츠',
+            optionSummary: '색상 화이트 · 사이즈 XL',
+            colorOptions: ['화이트'],
+            sizeOptions: ['XL'],
         }),
     ]);
 

@@ -5,3 +5,9 @@
 export type SearchSort = 'sim' | 'asc' | 'dsc';
 
 export const ALLOWED_SORTS: SearchSort[] = ['sim', 'asc', 'dsc'];
+
+export function normalizeSearchSort(sortRaw?: string | null): SearchSort {
+    return ALLOWED_SORTS.includes(sortRaw as SearchSort)
+        ? (sortRaw as SearchSort)
+        : 'sim';
+}

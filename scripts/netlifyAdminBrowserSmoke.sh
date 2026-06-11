@@ -59,6 +59,7 @@ poll_terminal_surface() {
         'Search Learning Terminal Validation',
         'Search Learning Terminal Handoff',
         'Search Learning Terminal Command Center',
+        'Admin runtime telemetry',
       ].every((needle) => headings.includes(needle));
       process.exit(hasAll ? 0 : 1);
     " "$headings"; then
@@ -149,6 +150,9 @@ require_button_text "Advanced Playbook Chain 펼치기" "$BUTTON_TEXTS_JSON"
 require_button_text "pending 전체 선택" "$BUTTON_TEXTS_JSON"
 require_button_text "선택 AI 제안" "$BUTTON_TEXTS_JSON"
 
+echo "[ntl:admin-browser-smoke] verify -> debug console" >&2
+DEBUG_CONSOLE_HEADINGS_JSON="$(poll_heading_text "Recent Diagnostics Polls")"
+
 echo "[ntl:admin-browser-smoke] verify -> advanced chain toggles" >&2
 click_button_by_text "Advanced Chain 펼치기"
 ADVANCED_CHAIN_BUTTONS_JSON="$(poll_button_label "Advanced Chain 접기")"
@@ -169,12 +173,14 @@ cat <<EOF
     "validation": true,
     "handoff": true,
     "commandCenter": true,
+    "debugConsole": true,
     "queueActions": true,
     "advancedSearchChainToggle": true,
     "advancedPlaybookChainToggle": true
   },
   "adminHeadings": ${ADMIN_HEADINGS_JSON},
   "adminButtons": ${BUTTON_TEXTS_JSON},
+  "debugConsoleHeadings": ${DEBUG_CONSOLE_HEADINGS_JSON},
   "advancedSearchChainHeadings": ${ADVANCED_CHAIN_HEADINGS_JSON},
   "advancedPlaybookHeadings": ${ADVANCED_PLAYBOOK_HEADINGS_JSON},
   "adminSnippet": "${ADMIN_SNIPPET}"

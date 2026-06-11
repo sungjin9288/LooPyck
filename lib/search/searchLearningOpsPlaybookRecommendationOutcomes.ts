@@ -2,7 +2,7 @@ import type {
     SearchLearningApprovalBaseline,
     SearchLearningStatus,
     SearchLearningSuggestion,
-} from './queryLearning.ts';
+} from './queryLearningTypes.ts';
 import { buildSearchLearningImpact } from './searchLearningImpact.ts';
 import type { SearchLearningOpsPlaybookRecommendationRun } from './searchLearningOpsPlaybookRecommendationActivity.ts';
 

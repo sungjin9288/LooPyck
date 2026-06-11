@@ -2,6 +2,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import { SearchSort } from '@/types/searchSort';
 import { SearchExperienceMeta } from '@/lib/search/fashionQueryAssistant';
+import { pushAppNotification } from '@/lib/core/notifications';
+import {
+    buildRealtimeSearchFallbackNotification,
+    buildRealtimeSearchFeedbackNotificationKey,
+    mergeRealtimeSearchFeedbackMeta,
+    parseRealtimeSearchFeedbackMeta,
+    type RealtimeSearchFeedbackMeta,
+} from '@/lib/search/realtimeSearchFeedback';
 
 interface UseMultiSourceSearchResult {
     products: UnifiedProduct[];
@@ -15,7 +23,10 @@ interface UseMultiSourceSearchResult {
     searchMeta: SearchExperienceMeta | null;
     suggestedQueries: string[];
     blockedReason: string | null;
+    realtimeFeedback: RealtimeSearchFeedbackMeta | null;
 }
+
+let lastRealtimeSearchFallbackNotificationKey: string | null = null;
 
 export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): UseMultiSourceSearchResult {
     const [products, setProducts] = useState<UnifiedProduct[]>([]);
@@ -28,6 +39,7 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
     const [hasMore, setHasMore] = useState(true);
     const [searchMeta, setSearchMeta] = useState<SearchExperienceMeta | null>(null);
     const [suggestedQueries, setSuggestedQueries] = useState<string[]>([]);
+    const [realtimeFeedback, setRealtimeFeedback] = useState<RealtimeSearchFeedbackMeta | null>(null);
     const controllerRef = useRef<AbortController | null>(null);
 
     const fetchData = useCallback(async (searchQuery: string, pageNum: number, isInitial: boolean) => {
@@ -46,7 +58,7 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
                 `/api/realtime-search?q=${encodeURIComponent(searchQuery)}&page=${pageNum}&sort=${sort}`,
                 { signal: controllerRef.current.signal }
             );
-            const data = await res.json();
+            const data = await res.json().catch(() => ({} as Record<string, unknown>));
 
             if (!res.ok) {
                 setBlockedReason(data.blocked ? data.error || '검색 제한' : null);
@@ -61,6 +73,18 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
             setSuggestedQueries(Array.isArray(data.searchMeta?.suggestedQueries) ? data.searchMeta.suggestedQueries : []);
 
             const newProducts: UnifiedProduct[] = data.products || [];
+            const feedbackMeta = parseRealtimeSearchFeedbackMeta(res.headers);
+            const fallbackNotification = buildRealtimeSearchFallbackNotification(feedbackMeta, newProducts.length);
+            const notificationKey = buildRealtimeSearchFeedbackNotificationKey(searchQuery, feedbackMeta, newProducts.length);
+
+            setRealtimeFeedback((previous) => mergeRealtimeSearchFeedbackMeta(isInitial ? null : previous, feedbackMeta));
+
+            if (isInitial && fallbackNotification) {
+                if (notificationKey && lastRealtimeSearchFallbackNotificationKey !== notificationKey) {
+                    pushAppNotification(fallbackNotification);
+                    lastRealtimeSearchFallbackNotificationKey = notificationKey;
+                }
+            }
 
             if (isInitial) {
                 setProducts(newProducts);
@@ -104,6 +128,7 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
         setSources([]);
         setSearchMeta(null);
         setSuggestedQueries([]);
+        setRealtimeFeedback(null);
 
         fetchData(query, 1, true);
     }, [query, sort, fetchData]);
@@ -144,5 +169,6 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
         searchMeta,
         suggestedQueries,
         blockedReason,
+        realtimeFeedback,
     };
 }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '@/components/auth/LoginModal';
 import { signInWithGoogle } from '@/lib/auth/firebase';
+import { getReadableAuthMessage } from '@/lib/auth/authErrorMessage';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import BrandTicker from '@/components/layout/BrandTicker'; // Phase 39 Ticker
 import { useUser } from '@/contexts/UserContext';
@@ -46,7 +47,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
                 await signInWithGoogle();
             }
         } catch (error) {
-            const message = error instanceof Error ? error.message : '로그인에 실패했습니다.';
+            const message = getReadableAuthMessage(error);
             setLoginError(message);
             pushAppNotification({
                 title: '로그인 실패',

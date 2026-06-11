@@ -1,4 +1,4 @@
-import type { SearchLearningActivityEvent } from './queryLearning.ts';
+import type { SearchLearningActivityEvent } from './queryLearningTypes.ts';
 import type { SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationAction } from './searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations.ts';
 
 export type SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRun = {

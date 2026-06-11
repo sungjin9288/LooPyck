@@ -1,7 +1,11 @@
 import type { SearchAggregationDiagnostics, SearchSourceDiagnostic } from './realtimeAggregator.ts';
+import type { UnifiedProduct } from './types.ts';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminDb } from '../server/firebaseAdmin.ts';
 import type { ProductSource } from './types.ts';
+import { groupProducts } from '../product/productMatching.ts';
+import { getGroupPurchaseMetrics } from '../product/purchasePricing.ts';
+import { analyzeVariantAlignment } from '../product/variantAlignment.ts';
 
 const MAX_RECENT_SNAPSHOTS = 120;
 const MAX_RECENT_INTERACTIONS = 200;
@@ -59,6 +63,22 @@ export type SearchQualitySummary = {
     lowFitShare: number;
     avgStrongMatches: number;
     avgExactMatches: number;
+    compareReadyRatio: number;
+    priceSpreadCaptureRate: number;
+    optionMatchPrecision: number;
+    avgCapturedPriceSpread: number;
+    maxCapturedPriceSpread: number;
+};
+
+export type SearchComparisonSnapshot = {
+    totalGroups: number;
+    comparableGroupCount: number;
+    compareReadyGroupCount: number;
+    spreadCapturedGroupCount: number;
+    capturedPriceSpreadTotal: number;
+    maxCapturedPriceSpread: number;
+    verifiedOptionGroupCount: number;
+    preciseOptionGroupCount: number;
 };
 
 type SourceSummaryState = {
@@ -143,6 +163,57 @@ function countBy<T extends string>(values: T[]): Array<{ value: T; count: number
         .sort((left, right) => right.count - left.count || left.value.localeCompare(right.value));
 }
 
+function toRate(numerator: number, denominator: number): number {
+    if (denominator <= 0) {
+        return 0;
+    }
+
+    return Math.round((numerator / denominator) * 1000) / 10;
+}
+
+export function buildSearchComparisonSnapshot(products: UnifiedProduct[]): SearchComparisonSnapshot {
+    const groups = groupProducts(products);
+    const comparableGroups = groups.filter((group) => group.mallCount > 1);
+    const compareReadyGroups = comparableGroups.filter((group) => group.matchConfidence >= 0.72);
+
+    let spreadCapturedGroupCount = 0;
+    let capturedPriceSpreadTotal = 0;
+    let maxCapturedPriceSpread = 0;
+    let verifiedOptionGroupCount = 0;
+    let preciseOptionGroupCount = 0;
+
+    compareReadyGroups.forEach((group) => {
+        const metrics = getGroupPurchaseMetrics(group);
+        const priceSpread = Number.isFinite(metrics.lowestCheckoutPrice) && Number.isFinite(metrics.highestCheckoutPrice)
+            ? Math.max(0, metrics.highestCheckoutPrice - metrics.lowestCheckoutPrice)
+            : 0;
+        if (priceSpread > 0) {
+            spreadCapturedGroupCount += 1;
+            capturedPriceSpreadTotal += priceSpread;
+            maxCapturedPriceSpread = Math.max(maxCapturedPriceSpread, priceSpread);
+        }
+
+        const alignment = analyzeVariantAlignment(group.variants);
+        if (alignment.verifiedOptionCount >= 2) {
+            verifiedOptionGroupCount += 1;
+            if (alignment.overlapLevel !== 'none') {
+                preciseOptionGroupCount += 1;
+            }
+        }
+    });
+
+    return {
+        totalGroups: groups.length,
+        comparableGroupCount: comparableGroups.length,
+        compareReadyGroupCount: compareReadyGroups.length,
+        spreadCapturedGroupCount,
+        capturedPriceSpreadTotal,
+        maxCapturedPriceSpread,
+        verifiedOptionGroupCount,
+        preciseOptionGroupCount,
+    };
+}
+
 export function buildSearchQualitySummary(snapshots: SearchAggregationDiagnostics[]): SearchQualitySummary {
     const strong = snapshots.filter((snapshot) => snapshot.resultQuality === 'strong').length;
     const mixed = snapshots.filter((snapshot) => snapshot.resultQuality === 'mixed').length;
@@ -150,6 +221,13 @@ export function buildSearchQualitySummary(snapshots: SearchAggregationDiagnostic
     const sampleCount = snapshots.length || 1;
     const strongMatches = snapshots.reduce((sum, snapshot) => sum + (snapshot.strongMatchCount || 0), 0);
     const exactMatches = snapshots.reduce((sum, snapshot) => sum + (snapshot.exactMatchCount || 0), 0);
+    const totalGroups = snapshots.reduce((sum, snapshot) => sum + (snapshot.totalGroups || 0), 0);
+    const compareReadyGroups = snapshots.reduce((sum, snapshot) => sum + (snapshot.compareReadyGroupCount || 0), 0);
+    const spreadCapturedGroups = snapshots.reduce((sum, snapshot) => sum + (snapshot.spreadCapturedGroupCount || 0), 0);
+    const capturedPriceSpreadTotal = snapshots.reduce((sum, snapshot) => sum + (snapshot.capturedPriceSpreadTotal || 0), 0);
+    const maxCapturedPriceSpread = snapshots.reduce((max, snapshot) => Math.max(max, snapshot.maxCapturedPriceSpread || 0), 0);
+    const verifiedOptionGroups = snapshots.reduce((sum, snapshot) => sum + (snapshot.verifiedOptionGroupCount || 0), 0);
+    const preciseOptionGroups = snapshots.reduce((sum, snapshot) => sum + (snapshot.preciseOptionGroupCount || 0), 0);
 
     return {
         strong,
@@ -158,6 +236,11 @@ export function buildSearchQualitySummary(snapshots: SearchAggregationDiagnostic
         lowFitShare: Math.round(((weak + mixed) / sampleCount) * 1000) / 10,
         avgStrongMatches: Math.round((strongMatches / sampleCount) * 10) / 10,
         avgExactMatches: Math.round((exactMatches / sampleCount) * 10) / 10,
+        compareReadyRatio: toRate(compareReadyGroups, totalGroups),
+        priceSpreadCaptureRate: toRate(spreadCapturedGroups, compareReadyGroups),
+        optionMatchPrecision: toRate(preciseOptionGroups, verifiedOptionGroups),
+        avgCapturedPriceSpread: spreadCapturedGroups > 0 ? Math.round(capturedPriceSpreadTotal / spreadCapturedGroups) : 0,
+        maxCapturedPriceSpread,
     };
 }
 
@@ -252,6 +335,14 @@ function serializeSnapshot(snapshot: SearchAggregationDiagnostics): Record<strin
         strongMatchCount: snapshot.strongMatchCount ?? null,
         suggestedQueries: snapshot.suggestedQueries || [],
         totalProducts: snapshot.totalProducts,
+        totalGroups: snapshot.totalGroups ?? null,
+        comparableGroupCount: snapshot.comparableGroupCount ?? null,
+        compareReadyGroupCount: snapshot.compareReadyGroupCount ?? null,
+        spreadCapturedGroupCount: snapshot.spreadCapturedGroupCount ?? null,
+        capturedPriceSpreadTotal: snapshot.capturedPriceSpreadTotal ?? null,
+        maxCapturedPriceSpread: snapshot.maxCapturedPriceSpread ?? null,
+        verifiedOptionGroupCount: snapshot.verifiedOptionGroupCount ?? null,
+        preciseOptionGroupCount: snapshot.preciseOptionGroupCount ?? null,
         directSourceCount: snapshot.directSourceCount,
         fallbackSourceCount: snapshot.fallbackSourceCount,
         sources: snapshot.sources.map((source) => ({
@@ -400,6 +491,14 @@ function parseRecentSnapshot(raw: Record<string, unknown>): SearchAggregationDia
         strongMatchCount: typeof raw.strongMatchCount === 'number' ? raw.strongMatchCount : undefined,
         suggestedQueries: Array.isArray(raw.suggestedQueries) ? raw.suggestedQueries.filter((entry): entry is string => typeof entry === 'string') : undefined,
         totalProducts: raw.totalProducts,
+        totalGroups: typeof raw.totalGroups === 'number' ? raw.totalGroups : undefined,
+        comparableGroupCount: typeof raw.comparableGroupCount === 'number' ? raw.comparableGroupCount : undefined,
+        compareReadyGroupCount: typeof raw.compareReadyGroupCount === 'number' ? raw.compareReadyGroupCount : undefined,
+        spreadCapturedGroupCount: typeof raw.spreadCapturedGroupCount === 'number' ? raw.spreadCapturedGroupCount : undefined,
+        capturedPriceSpreadTotal: typeof raw.capturedPriceSpreadTotal === 'number' ? raw.capturedPriceSpreadTotal : undefined,
+        maxCapturedPriceSpread: typeof raw.maxCapturedPriceSpread === 'number' ? raw.maxCapturedPriceSpread : undefined,
+        verifiedOptionGroupCount: typeof raw.verifiedOptionGroupCount === 'number' ? raw.verifiedOptionGroupCount : undefined,
+        preciseOptionGroupCount: typeof raw.preciseOptionGroupCount === 'number' ? raw.preciseOptionGroupCount : undefined,
         directSourceCount: typeof raw.directSourceCount === 'number' ? raw.directSourceCount : 0,
         fallbackSourceCount: typeof raw.fallbackSourceCount === 'number' ? raw.fallbackSourceCount : 0,
         sources,

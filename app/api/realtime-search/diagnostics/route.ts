@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadPdpDiagnostics } from '@/lib/api/pdpDiagnostics';
 import { loadSearchDiagnostics } from '@/lib/api/searchDiagnostics';
 import { buildSearchQualityCoverageSummary } from '@/lib/search/searchQualityCoverage';
-import { loadSearchLearningActivity, loadSearchLearningQueue } from '@/lib/search/queryLearning';
+import { loadSearchLearningActivity, loadSearchLearningQueue } from '@/lib/search/searchLearningDiagnostics';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 import { loadAlertDiagnostics } from '@/lib/server/alertDiagnostics';
 import { requireAdminRequest } from '@/lib/server/adminAccess';

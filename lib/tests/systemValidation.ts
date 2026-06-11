@@ -3,12 +3,12 @@
  * 전체 시스템의 무결성을 검증하는 E2E 테스트 및 스트레스 테스트 스크립트.
  * 
  * Usage:
- * - Run Validation: npx ts-node lib/tests/systemValidation.ts
- * - Run Stress Test: npx ts-node lib/tests/systemValidation.ts --stress
+ * - Run Validation: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --experimental-specifier-resolution=node lib/tests/systemValidation.ts
+ * - Run Stress Test: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --experimental-specifier-resolution=node lib/tests/systemValidation.ts --stress
  */
 
-import { performanceMonitor } from '../core/performanceMonitor';
-import { performLinearRegression, TimeSeriesPoint } from '../core/predictiveEngine';
+import { performanceMonitor } from '../core/performanceMonitor.ts';
+import { performLinearRegression, type TimeSeriesPoint } from '../core/predictiveEngine.ts';
 
 // --- Mock Interfaces & Data Generators for Simulation ---
 

@@ -207,6 +207,30 @@ npm run env:check
 - `ADMIN_UIDS` 존재 여부
 - webhook format 유효성
 
+## 4.1 Firebase Authorized Domains 수동 확인
+
+운영 로그인은 env만으로 끝나지 않는다. Firebase Console에서도 현재 웹 도메인을 직접 허용해야 한다.
+
+확인 순서:
+
+1. Firebase Console > `Authentication`
+2. `Settings`
+3. `Authorized domains`
+4. 현재 서비스 도메인 추가
+
+Netlify production 최소 항목:
+
+```text
+loo-pyck.netlify.app
+```
+
+추가로 직접 써야 하는 항목:
+
+- preview URL을 실제 로그인에 쓸 경우 해당 preview host
+- custom domain을 붙였으면 그 custom domain
+
+이 값이 없으면 Google 로그인은 `auth/unauthorized-domain` 으로 실패한다.
+
 ## 5. 최종 확인
 
 ```bash

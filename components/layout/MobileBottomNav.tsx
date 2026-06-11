@@ -4,7 +4,7 @@ import React from 'react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { triggerHaptic } from '@/lib/native/bridge';
 import { isTossWebView } from '@/lib/native/tossWebView';
-import { Tab } from '@toss/tds-mobile';
+import { useTdsMobile } from '@/lib/native/tdsMobile';
 
 interface MobileBottomNavProps {
     currentView: 'search' | 'favorites' | 'recommend';
@@ -16,6 +16,7 @@ const VIEWS = ['search', 'favorites', 'recommend'] as const;
 export default function MobileBottomNav({ currentView, setCurrentView }: MobileBottomNavProps) {
     const { t } = useLanguage();
     const inToss = isTossWebView();
+    const tdsMobile = useTdsMobile(inToss);
 
     const labels = {
         search: t('nav.search') || '검색',
@@ -29,8 +30,9 @@ export default function MobileBottomNav({ currentView, setCurrentView }: MobileB
     };
 
     // 토스 WebView: TDS 플로팅 탭바
-    if (inToss) {
+    if (inToss && tdsMobile?.Tab) {
         const tabIndex = VIEWS.indexOf(currentView);
+        const Tab = tdsMobile.Tab;
         return (
             <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden pb-[var(--sab,0px)]">
                 <Tab fluid onChange={(index) => handleSelect(VIEWS[index])}>

@@ -58,8 +58,11 @@ npm run ntl:smoke
 npm run ntl:admin-smoke
 
 # Browser smoke check
+npm run ntl:uat
 npm run ntl:browser-smoke
 npm run ntl:admin-browser-smoke
+npm run ntl:quick-pass:runtime-ready
+npm run ntl:release-closeout
 
 # Real-device smoke prep
 npm run cap:doctor
@@ -76,9 +79,17 @@ Important:
 - `ntl:admin-smoke` uses local Firebase Admin credentials plus the first `ADMIN_UIDS`
   entry to mint a custom token and verify Netlify `/api/admin/access` and
   `/api/realtime-search/diagnostics`.
+- `ntl:uat` is the standard release gate. It runs API smoke and both browser smokes in sequence,
+  writes `output/playwright/netlify-uat-summary.json`, and should be followed by the quick visual pass in
+  [PLAYWRIGHT_MCP_UAT.md](/Users/sungjin/dev/personal/LooPyck/docs/PLAYWRIGHT_MCP_UAT.md).
+- `ntl:quick-pass:runtime-ready` is the operational closeout command for the Playwright MCP layer.
+  It refreshes the runtime packet, asserts that the current stance is `fallback-ready` or `fully-ok`,
+  and writes `output/playwright/playwright-mcp-runtime-ready.json`.
+- `ntl:release-closeout` is the one-command operator path: it runs `ntl:uat` first and then `ntl:quick-pass:runtime-ready`.
 - `ntl:admin-browser-smoke` uses the same custom token flow inside the browser to
-  verify the authenticated `/admin` terminal surface headings, visible queue/draft action buttons,
-  and both advanced chain toggles without manual login.
+  verify the authenticated `/admin` terminal surface headings, `Admin runtime telemetry`
+  debug console, visible queue/draft action buttons, and both advanced chain toggles
+  without manual login.
 - `cap:build:prod` rewrites Capacitor native config to `https://loo-pyck.netlify.app`
   so real-device tests hit the same production deployment.
 

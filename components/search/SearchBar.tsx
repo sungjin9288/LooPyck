@@ -9,13 +9,19 @@ import { logSearchInteraction } from '@/lib/search/searchInteractionClient';
 
 interface SearchBarProps {
     query?: string;
+    sort?: SearchSort;
     onSearch: (query: string, sort: SearchSort) => void;
     isLoading?: boolean;
 }
 
-export default function SearchBar({ query: initialQuery = '', onSearch, isLoading }: SearchBarProps) {
+export default function SearchBar({
+    query: initialQuery = '',
+    sort: initialSort = 'sim',
+    onSearch,
+    isLoading,
+}: SearchBarProps) {
     const [query, setQuery] = useState(initialQuery);
-    const [sort, setSort] = useState<SearchSort>('sim');
+    const [sort, setSort] = useState<SearchSort>(initialSort);
     const [feedback, setFeedback] = useState<{
         tone: 'alert' | 'info';
         message: string;
@@ -31,6 +37,10 @@ export default function SearchBar({ query: initialQuery = '', onSearch, isLoadin
         setQuery(initialQuery);
         setFeedback(null);
     }, [initialQuery]);
+
+    useEffect(() => {
+        setSort(initialSort);
+    }, [initialSort]);
 
     useEffect(() => {
         const trimmed = query.trim();

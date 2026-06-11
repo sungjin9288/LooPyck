@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getRateLimitKey, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
 import { analyzeFashionQuery } from '@/lib/search/fashionQueryAssistant';
+import { normalizeSearchSort } from '@/types/searchSort';
 
 /**
  * 네이버 쇼핑 API 검색 엔드포인트
@@ -26,8 +27,7 @@ export async function GET(request: NextRequest) {
     const query = normalizeQuery(searchParams.get('query'));
     const displayRaw = Number.parseInt(searchParams.get('display') || '20', 10);
     const startRaw = Number.parseInt(searchParams.get('start') || '1', 10);
-    const sortRaw = searchParams.get('sort') || 'sim';
-    const sort = ['sim', 'asc', 'dsc'].includes(sortRaw) ? sortRaw : 'sim';
+    const sort = normalizeSearchSort(searchParams.get('sort'));
     const display = Number.isFinite(displayRaw) ? Math.min(Math.max(displayRaw, 1), 100) : 20;
     const start = Number.isFinite(startRaw) ? Math.min(Math.max(startRaw, 1), 1000) : 1;
 

@@ -28,8 +28,17 @@ https://loo-pyck.netlify.app
 
 ### Android
 - Android Studio installed
-- USB debugging enabled
-- real device connected and visible to `adb devices`
+- USB debugging enabled, or an Android emulator/AVD available
+- real device or emulator visible to `adb devices`
+- `npm run cap:android:prod` will auto-resolve common Android Studio locations, including `/Applications/Android Studio.app`, `~/Applications/Android Studio.app`, and JetBrains Toolbox installs
+- if Android Studio is installed outside those locations, set `CAPACITOR_ANDROID_STUDIO_PATH`
+- if `adb` exists under the resolved SDK `platform-tools`, `npm run cap:android:prod` will prepend it automatically; otherwise expose `adb` on `PATH`
+- if Gradle cannot find a system Java runtime on macOS, use Android Studio's bundled JBR:
+
+```bash
+cd android
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew installDebug
+```
 
 ## 2. Production Device Prep
 
@@ -44,6 +53,8 @@ npm run cap:build:prod
 Expected:
 - `resolvedCapacitorServerUrl` is `https://loo-pyck.netlify.app`
 - after sync, both native `capacitor.config.json` files also point to that URL
+- `androidStudioAvailable` and `adbOnPath` should be `true` before Android device launch
+- if `adbOnPath` is `false` but `adbSdkPath` is present, the production Android opener can still inject the SDK path automatically
 
 ## 3. Open the Native Project
 
@@ -66,12 +77,21 @@ npm run cap:android:prod
 
 Then in Android Studio:
 1. wait for Gradle sync
-2. select the connected device
+2. select the connected device or running emulator
 3. Run `app`
 
-## 4. Real-Device Smoke Flow
+If you do not have a physical device attached, you can validate the native shell with an emulator:
 
-On the device:
+1. open `Device Manager`
+2. create a device such as `Medium Phone`
+3. choose a downloadable `Google Play` `ARM 64 v8a` system image
+4. boot the emulator
+5. confirm it appears in `adb devices`
+6. Run `app`
+
+## 4. Native Smoke Flow
+
+On the device or emulator:
 1. launch the app
 2. search `남자 후드`
 3. confirm loading panel appears first, then result cards
@@ -80,6 +100,13 @@ On the device:
 6. open one product detail / comparison flow
 7. log in if admin QA is needed
 8. open `/admin` and verify terminal surface if required
+
+Pass / fail signals:
+- pass: `남자 후드` 와 `운동용 후드` 검색 결과가 순차적으로 교체되고 blank screen이 없다
+- pass: compare detail에서 purchase evidence, freshness badge, decision block이 함께 보인다
+- pass: favorites 진입과 compare link 이동이 web smoke와 동일하다
+- pass: `adb shell dumpsys activity activities` 기준으로 `app.loopyck.fashion/.MainActivity` 가 `topResumedActivity` 또는 `mCurrentFocus` 로 보인다
+- fail: auth state mismatch, infinite loader, broken navigation, empty shell, or native-only layout break
 
 ## 5. Verify Native Config
 
@@ -109,5 +136,9 @@ npm run cap:android:prod
 ## 7. Notes
 
 - Use the `:prod` variants for real-device QA.
+- Emulator-only validation is acceptable for release smoke when a physical Android device is not available, but note that strict physical-device sign-off is still optional follow-up.
 - If the primary deployment URL changes, update the scripts and rerun `npm run cap:build:prod`.
 - If Capacitor plugins or native config change, rerun `npm run cap:build:prod` before testing again.
+- If `npm run cap:android:prod` says Android Studio was not found, either install it in a common location or export `CAPACITOR_ANDROID_STUDIO_PATH`.
+- If `adb` is not on PATH but the SDK binary exists, verify devices with `~/Library/Android/sdk/platform-tools/adb devices`. The production Android opener will reuse that path automatically once a device is attached.
+- If Android Studio says the SDK root is invalid, move the broken SDK aside and let Android Studio recreate `~/Library/Android/sdk` before retrying.
