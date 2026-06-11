@@ -1,3 +1,4 @@
+import type { OpsChainGroupData } from '../opsChainSections';
 import type { BuildSearchLearningSectionPropsParams } from './types';
 
 export function buildSearchLearningChainDataProps({
@@ -54,20 +55,68 @@ export function buildSearchLearningChainDataProps({
         searchLearningRewriteSourceDraftSummary,
     } = searchLearningWorkbench;
 
+    /**
+     * Group g = { activity(g), outcomes(g), recommendations(g), queue(g) } where
+     * queue(g) feeds activity(g+1). The snapshot keys are unchanged — only the
+     * grouping into OpsChainGroupData is new. The last group has no queue.
+     */
+    const completionChainGroups: OpsChainGroupData[] = [
+        {
+            activity: searchLearningOpsCompletionActivity,
+            outcomes: searchLearningOpsCompletionOutcomes,
+            recommendations: searchLearningOpsCompletionRecommendations,
+            queue: searchLearningOpsCompletionRecommendationQueue,
+        },
+        {
+            activity: searchLearningOpsCompletionRecommendationActivity,
+            outcomes: searchLearningOpsCompletionRecommendationOutcomes,
+            recommendations: searchLearningOpsCompletionRecommendationOutcomeRecommendations,
+            queue: searchLearningOpsCompletionRecommendationOutcomeRecommendationQueue,
+        },
+        {
+            activity: searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity,
+            outcomes: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes,
+            recommendations: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations,
+            queue: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue,
+        },
+        {
+            activity: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity,
+            outcomes: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes,
+            recommendations: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
+            queue: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue,
+        },
+        {
+            activity: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity,
+            outcomes: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes,
+            recommendations: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations,
+            queue: null,
+        },
+    ];
+
+    const playbookChainGroups: OpsChainGroupData[] = [
+        {
+            activity: searchLearningOpsPlaybookRecommendationActivity,
+            outcomes: searchLearningOpsPlaybookRecommendationOutcomes,
+            recommendations: searchLearningOpsPlaybookRecommendationOutcomeRecommendations,
+            queue: searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue,
+        },
+        {
+            activity: searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity,
+            outcomes: searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes,
+            recommendations: searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations,
+            queue: searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue,
+        },
+        {
+            activity: searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity,
+            outcomes: searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes,
+            recommendations: searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
+            queue: null,
+        },
+    ];
+
     return {
         playbookChainDataProps: {
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations,
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity,
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes,
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue,
-            searchLearningOpsPlaybookRecommendationActivity,
-            searchLearningOpsPlaybookRecommendations,
-            searchLearningOpsPlaybookRecommendationOutcomes,
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendations,
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue,
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity,
-            searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes,
+            playbookChainGroups,
             searchLearningImpactSummary,
             searchLearningImpactClusterRollup,
             searchLearningImpactClusters,
@@ -82,25 +131,7 @@ export function buildSearchLearningChainDataProps({
             searchLearningOpsCompletionActions,
             searchLearningOpsCompletionQueue,
             searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
-            searchLearningOpsCompletionActivity,
-            searchLearningOpsCompletionOutcomes,
-            searchLearningOpsCompletionRecommendations,
-            searchLearningOpsCompletionRecommendationQueue,
-            searchLearningOpsCompletionRecommendationActivity,
-            searchLearningOpsCompletionRecommendationOutcomes,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendations,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationQueue,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationActivity,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomes,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueue,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationActivity,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueue,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationActivity,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationOutcomes,
-            searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations,
+            completionChainGroups,
         },
         playbookDataProps: {
             searchLearningOpsPlaybooks,

@@ -1,30 +1,17 @@
 import type { ReactNode } from 'react';
+import { buildSearchLearningWorkbench } from './searchLearningWorkbench';
 import {
-    buildSearchLearningWorkbench,
-    type SearchLearningOpsPlaybookRecommendation,
-    type OpsChainOutcome,
-    type OpsChainRecommendation,
-} from './searchLearningWorkbench';
+    OpsChainGroupSections,
+    type OpsChainGroupData,
+    type OpsChainGroupHandlers,
+} from './opsChainSections';
+import { playbookChainGroupsUi } from './opsChainSectionConfig';
 import { SearchLearningImpactSections } from './searchLearningImpactSections';
-import { SearchLearningPlaybookAdvancedSections } from './searchLearningPlaybookAdvancedSections';
-import { SearchLearningPlaybookRecommendationOutcomeSections } from './searchLearningPlaybookRecommendationOutcomeSections';
 
 type SearchLearningWorkbench = ReturnType<typeof buildSearchLearningWorkbench>;
 
 type SearchLearningPlaybookChainSectionsProps = Pick<
     SearchLearningWorkbench,
-    | 'searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations'
-    | 'searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity'
-    | 'searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes'
-    | 'searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations'
-    | 'searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue'
-    | 'searchLearningOpsPlaybookRecommendationActivity'
-    | 'searchLearningOpsPlaybookRecommendations'
-    | 'searchLearningOpsPlaybookRecommendationOutcomes'
-    | 'searchLearningOpsPlaybookRecommendationOutcomeRecommendations'
-    | 'searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue'
-    | 'searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity'
-    | 'searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes'
     | 'searchLearningImpactSummary'
     | 'searchLearningImpactClusterRollup'
     | 'searchLearningImpactClusters'
@@ -36,27 +23,11 @@ type SearchLearningPlaybookChainSectionsProps = Pick<
 > & {
     children: ReactNode;
     processingSearchLearningId: string | null;
+    playbookChainGroups: OpsChainGroupData[];
+    playbookChainHandlers: OpsChainGroupHandlers[];
     showAdvancedPlaybookChain: boolean;
     onToggleAdvancedChain: () => void;
     onSelectEntries: (entryIds: string[], message: string) => void;
-    onRunOutcomeRecommendationAction: (
-        recommendation: OpsChainRecommendation
-    ) => Promise<void> | void;
-    onRunAdvancedRecommendationAction: (
-        recommendation: OpsChainRecommendation
-    ) => Promise<void> | void;
-    onRunPlaybookRecommendationAction: (
-        recommendation: SearchLearningOpsPlaybookRecommendation
-    ) => Promise<void> | void;
-    onRunPlaybookRecommendationOutcomeAction: (
-        outcome: OpsChainOutcome
-    ) => Promise<void> | void;
-    onRunOutcomeOutcomeRecommendationAction: (
-        recommendation: OpsChainRecommendation
-    ) => Promise<void> | void;
-    onRunOutcomeRecommendationRecommendationAction: (
-        recommendation: OpsChainRecommendation
-    ) => Promise<void> | void;
     onGenerateImpactAwaitingClusterSuggestions: () => Promise<void> | void;
     onGenerateImpactAwaitingSuggestions: () => Promise<void> | void;
     onGenerateImpactNoImprovementClusterSuggestions: () => Promise<void> | void;
@@ -72,18 +43,8 @@ type SearchLearningPlaybookChainSectionsProps = Pick<
 export function SearchLearningPlaybookChainSections({
     children,
     processingSearchLearningId,
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations,
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity,
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes,
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue,
-    searchLearningOpsPlaybookRecommendationActivity,
-    searchLearningOpsPlaybookRecommendations,
-    searchLearningOpsPlaybookRecommendationOutcomes,
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendations,
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue,
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity,
-    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes,
+    playbookChainGroups,
+    playbookChainHandlers,
     searchLearningImpactSummary,
     searchLearningImpactClusterRollup,
     searchLearningImpactClusters,
@@ -95,12 +56,6 @@ export function SearchLearningPlaybookChainSections({
     showAdvancedPlaybookChain,
     onToggleAdvancedChain,
     onSelectEntries,
-    onRunOutcomeRecommendationAction,
-    onRunAdvancedRecommendationAction,
-    onRunPlaybookRecommendationAction,
-    onRunPlaybookRecommendationOutcomeAction,
-    onRunOutcomeOutcomeRecommendationAction,
-    onRunOutcomeRecommendationRecommendationAction,
     onGenerateImpactAwaitingClusterSuggestions,
     onGenerateImpactAwaitingSuggestions,
     onGenerateImpactNoImprovementClusterSuggestions,
@@ -132,62 +87,40 @@ export function SearchLearningPlaybookChainSections({
                 </div>
             </section>
 
-            {showAdvancedPlaybookChain && (
-                <SearchLearningPlaybookAdvancedSections
-                    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations={searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations}
-                    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity={searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationActivity}
-                    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes={searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationOutcomes}
-                    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations={searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations}
-                    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue={searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationQueue}
-                    onSelectEntries={onSelectEntries}
-                    onRunOutcomeRecommendationAction={onRunOutcomeRecommendationAction}
-                    onRunAdvancedRecommendationAction={onRunAdvancedRecommendationAction}
+            {showAdvancedPlaybookChain && playbookChainGroups.map((groupData, index) => (
+                <OpsChainGroupSections
+                    key={playbookChainGroupsUi[index].key}
+                    ui={playbookChainGroupsUi[index]}
+                    data={groupData}
+                    handlers={playbookChainHandlers[index]}
                 />
-            )}
+            ))}
 
             {children}
 
             {showAdvancedPlaybookChain && (
-                <>
-                    <SearchLearningPlaybookRecommendationOutcomeSections
-                        searchLearningOpsPlaybookRecommendationActivity={searchLearningOpsPlaybookRecommendationActivity}
-                        searchLearningOpsPlaybookRecommendations={searchLearningOpsPlaybookRecommendations}
-                        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations={searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations}
-                        searchLearningOpsPlaybookRecommendationOutcomes={searchLearningOpsPlaybookRecommendationOutcomes}
-                        searchLearningOpsPlaybookRecommendationOutcomeRecommendations={searchLearningOpsPlaybookRecommendationOutcomeRecommendations}
-                        searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue={searchLearningOpsPlaybookRecommendationOutcomeRecommendationQueue}
-                        searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity={searchLearningOpsPlaybookRecommendationOutcomeRecommendationActivity}
-                        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes={searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomes}
-                        onSelectEntries={onSelectEntries}
-                        onRunPlaybookRecommendationAction={onRunPlaybookRecommendationAction}
-                        onRunPlaybookRecommendationOutcomeAction={onRunPlaybookRecommendationOutcomeAction}
-                        onRunOutcomeOutcomeRecommendationAction={onRunOutcomeOutcomeRecommendationAction}
-                        onRunOutcomeRecommendationAction={onRunOutcomeRecommendationRecommendationAction}
-                    />
-
-                    <SearchLearningImpactSections
-                        processingSearchLearningId={processingSearchLearningId}
-                        searchLearningImpactSummary={searchLearningImpactSummary}
-                        searchLearningImpactClusterRollup={searchLearningImpactClusterRollup}
-                        searchLearningImpactClusters={searchLearningImpactClusters}
-                        searchLearningRewritePacks={searchLearningRewritePacks}
-                        searchLearningRewriteRecommendationSummary={searchLearningRewriteRecommendationSummary}
-                        searchLearningRewriteRecommendations={searchLearningRewriteRecommendations}
-                        searchLearningRewriteSourceDraftSummary={searchLearningRewriteSourceDraftSummary}
-                        searchLearningRewriteSourceDrafts={searchLearningRewriteSourceDrafts}
-                        onGenerateImpactAwaitingClusterSuggestions={onGenerateImpactAwaitingClusterSuggestions}
-                        onGenerateImpactAwaitingSuggestions={onGenerateImpactAwaitingSuggestions}
-                        onGenerateImpactNoImprovementClusterSuggestions={onGenerateImpactNoImprovementClusterSuggestions}
-                        onGenerateImpactNoImprovementSuggestions={onGenerateImpactNoImprovementSuggestions}
-                        onSelectEntries={onSelectEntries}
-                        onSelectImpactAwaitingClusters={onSelectImpactAwaitingClusters}
-                        onSelectImpactAwaitingEntries={onSelectImpactAwaitingEntries}
-                        onSelectImpactClusterEntries={onSelectImpactClusterEntries}
-                        onSelectImpactImprovedEntries={onSelectImpactImprovedEntries}
-                        onSelectImpactNoImprovementClusters={onSelectImpactNoImprovementClusters}
-                        onSelectImpactNoImprovementEntries={onSelectImpactNoImprovementEntries}
-                    />
-                </>
+                <SearchLearningImpactSections
+                    processingSearchLearningId={processingSearchLearningId}
+                    searchLearningImpactSummary={searchLearningImpactSummary}
+                    searchLearningImpactClusterRollup={searchLearningImpactClusterRollup}
+                    searchLearningImpactClusters={searchLearningImpactClusters}
+                    searchLearningRewritePacks={searchLearningRewritePacks}
+                    searchLearningRewriteRecommendationSummary={searchLearningRewriteRecommendationSummary}
+                    searchLearningRewriteRecommendations={searchLearningRewriteRecommendations}
+                    searchLearningRewriteSourceDraftSummary={searchLearningRewriteSourceDraftSummary}
+                    searchLearningRewriteSourceDrafts={searchLearningRewriteSourceDrafts}
+                    onGenerateImpactAwaitingClusterSuggestions={onGenerateImpactAwaitingClusterSuggestions}
+                    onGenerateImpactAwaitingSuggestions={onGenerateImpactAwaitingSuggestions}
+                    onGenerateImpactNoImprovementClusterSuggestions={onGenerateImpactNoImprovementClusterSuggestions}
+                    onGenerateImpactNoImprovementSuggestions={onGenerateImpactNoImprovementSuggestions}
+                    onSelectEntries={onSelectEntries}
+                    onSelectImpactAwaitingClusters={onSelectImpactAwaitingClusters}
+                    onSelectImpactAwaitingEntries={onSelectImpactAwaitingEntries}
+                    onSelectImpactClusterEntries={onSelectImpactClusterEntries}
+                    onSelectImpactImprovedEntries={onSelectImpactImprovedEntries}
+                    onSelectImpactNoImprovementClusters={onSelectImpactNoImprovementClusters}
+                    onSelectImpactNoImprovementEntries={onSelectImpactNoImprovementEntries}
+                />
             )}
         </>
     );

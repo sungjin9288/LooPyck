@@ -47,6 +47,11 @@ export function useSearchLearningSectionProps({
                 dashboardModel.searchLearningWorkbench.searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
             searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations:
                 dashboardModel.searchLearningWorkbench.searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations,
+            searchLearningOpsPlaybookRecommendations: dashboardModel.searchLearningWorkbench.searchLearningOpsPlaybookRecommendations,
+            searchLearningOpsPlaybookRecommendationOutcomeRecommendations:
+                dashboardModel.searchLearningWorkbench.searchLearningOpsPlaybookRecommendationOutcomeRecommendations,
+            searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations:
+                dashboardModel.searchLearningWorkbench.searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations,
         },
     });
 

@@ -3,8 +3,6 @@
 import type {
     SearchLearningOpsPlaybookOutcome,
     SearchLearningOpsPlaybookRecommendation,
-    OpsChainOutcome,
-    OpsChainRecommendation,
 } from './searchLearningWorkbench';
 import {
     runSearchLearningOutcomeAction,
@@ -16,6 +14,10 @@ type UseSearchLearningPlaybookActionsParams = {
     searchLearningActionRunnerDeps: SearchLearningActionRunnerDeps;
 };
 
+/**
+ * Root playbook-lane handlers used by SearchLearningPlaybookSections.
+ * The deeper per-level chain handlers live in useOpsChainActions.ts.
+ */
 export function useSearchLearningPlaybookActions({
     searchLearningActionRunnerDeps,
 }: UseSearchLearningPlaybookActionsParams) {
@@ -39,56 +41,8 @@ export function useSearchLearningPlaybookActions({
         });
     }
 
-    async function handleSearchLearningOpsPlaybookRecommendationOutcomeAction(
-        outcome: OpsChainOutcome
-    ) {
-        await runSearchLearningOutcomeAction({
-            outcome,
-            noun: 'recommendation outcome',
-            contextBase: 'ops_playbook_recommendation_outcome',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
-    async function handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationAction(
-        recommendation: OpsChainRecommendation
-    ) {
-        await runSearchLearningRecommendationAction({
-            recommendation,
-            noun: 'recommendation outcome recommendation',
-            contextBase: 'ops_playbook_recommendation_outcome_recommendation',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
-    async function handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationAction(
-        recommendation: OpsChainRecommendation
-    ) {
-        await runSearchLearningRecommendationAction({
-            recommendation,
-            noun: 'recommendation outcome recommendation outcome recommendation',
-            contextBase: 'ops_playbook_recommendation_outcome_recommendation_outcome_recommendation',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
-    async function handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationAction(
-        recommendation: OpsChainRecommendation
-    ) {
-        await runSearchLearningRecommendationAction({
-            recommendation,
-            noun: 'recommendation outcome recommendation outcome recommendation recommendation',
-            contextBase: 'ops_playbook_recommendation_outcome_recommendation_outcome_recommendation_recommendation',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
     return {
         handleSearchLearningOpsPlaybookOutcomeAction,
         handleSearchLearningOpsPlaybookRecommendationAction,
-        handleSearchLearningOpsPlaybookRecommendationOutcomeAction,
-        handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationAction,
-        handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationAction,
-        handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationAction,
     };
 }

@@ -26,6 +26,9 @@ type SearchLearningWorkbenchActions = Pick<
     | 'searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations'
     | 'searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations'
     | 'searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations'
+    | 'searchLearningOpsPlaybookRecommendations'
+    | 'searchLearningOpsPlaybookRecommendationOutcomeRecommendations'
+    | 'searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations'
 >;
 
 type UseSearchLearningActionsParams = {
@@ -61,6 +64,9 @@ export function useSearchLearningActions({
         searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations,
         searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
         searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations,
+        searchLearningOpsPlaybookRecommendations,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendations,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations,
     } = workbench;
 
     const {
@@ -120,6 +126,9 @@ export function useSearchLearningActions({
         searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations,
         searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
         searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations,
+        searchLearningOpsPlaybookRecommendations,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendations,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations,
     });
 
     return {

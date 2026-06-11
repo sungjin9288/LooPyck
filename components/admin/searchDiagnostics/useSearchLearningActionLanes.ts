@@ -3,6 +3,7 @@
 import type { User } from 'firebase/auth';
 import type { SearchLearningEntry } from './types';
 import { buildSearchLearningActionRunnerDeps } from './searchLearningActionRunnerDeps';
+import { useOpsChainActions } from './useOpsChainActions';
 import { useSearchLearningBatchActions } from './useSearchLearningBatchActions';
 import { useSearchLearningCompletionActions } from './useSearchLearningCompletionActions';
 import { useSearchLearningPlaybookActions } from './useSearchLearningPlaybookActions';
@@ -19,6 +20,9 @@ import type {
     SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationsSummary,
     SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationsSummary,
     SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendationsSummary,
+    SearchLearningOpsPlaybookRecommendationsSummary,
+    SearchLearningOpsPlaybookRecommendationOutcomeRecommendationsSummary,
+    SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationsSummary,
 } from './sectionProps/types';
 
 type GenerateEntries = (
@@ -57,6 +61,9 @@ type UseSearchLearningActionLanesParams = {
     searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationsSummary;
     searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationsSummary;
     searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendationsSummary;
+    searchLearningOpsPlaybookRecommendations: SearchLearningOpsPlaybookRecommendationsSummary;
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendations: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationsSummary;
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations: SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationsSummary;
 };
 
 export function useSearchLearningActionLanes({
@@ -78,6 +85,9 @@ export function useSearchLearningActionLanes({
     searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations,
     searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
     searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations,
+    searchLearningOpsPlaybookRecommendations,
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendations,
+    searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations,
 }: UseSearchLearningActionLanesParams) {
     const batchActions = useSearchLearningBatchActions({
         handleBulkGenerateSearchLearningSuggestionsForIds,
@@ -100,18 +110,25 @@ export function useSearchLearningActionLanes({
     const completionActions = useSearchLearningCompletionActions({
         handleBulkGenerateSearchLearningSuggestionsForIds,
         handleBulkReviewSearchLearningForIds,
-        searchLearningActionRunnerDeps,
         searchLearningOpsCompletionActions,
-        searchLearningOpsCompletionRecommendations,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendations,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
-        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations,
         selectSearchLearningEntries,
     });
 
     const playbookActions = useSearchLearningPlaybookActions({
         searchLearningActionRunnerDeps,
+    });
+
+    const opsChainActions = useOpsChainActions({
+        searchLearningActionRunnerDeps,
+        selectSearchLearningEntries,
+        searchLearningOpsCompletionRecommendations,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendations,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
+        searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations,
+        searchLearningOpsPlaybookRecommendations,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendations,
+        searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations,
     });
 
     const primaryActions = useSearchLearningPrimaryActions({
@@ -127,6 +144,7 @@ export function useSearchLearningActionLanes({
         ...batchActions,
         ...completionActions,
         ...playbookActions,
+        ...opsChainActions,
         ...primaryActions,
     };
 }

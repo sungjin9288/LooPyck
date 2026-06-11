@@ -3,22 +3,8 @@
 import type {
     SearchLearningOpsCompletionAction,
     SearchLearningOpsCompletionQueueItem,
-    OpsChainRecommendation,
-    OpsChainQueueItem,
 } from './searchLearningWorkbench';
-import {
-    runSearchLearningRecommendationAction,
-    runSearchLearningRecommendationQueueItem,
-    type SearchLearningActionRunnerDeps,
-} from './searchLearningActionRunners';
-import type {
-    SearchLearningOpsCompletionActionsSummary,
-    SearchLearningOpsCompletionRecommendationsSummary,
-    SearchLearningOpsCompletionRecommendationOutcomeRecommendationsSummary,
-    SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationsSummary,
-    SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationsSummary,
-    SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendationsSummary,
-} from './sectionProps/types';
+import type { SearchLearningOpsCompletionActionsSummary } from './sectionProps/types';
 
 type GenerateEntries = (
     entryIds: string[],
@@ -40,26 +26,18 @@ type SelectEntries = (entryIds: string[], message: string) => void;
 type UseSearchLearningCompletionActionsParams = {
     handleBulkGenerateSearchLearningSuggestionsForIds: GenerateEntries;
     handleBulkReviewSearchLearningForIds: ReviewEntries;
-    searchLearningActionRunnerDeps: SearchLearningActionRunnerDeps;
     searchLearningOpsCompletionActions: SearchLearningOpsCompletionActionsSummary;
-    searchLearningOpsCompletionRecommendations: SearchLearningOpsCompletionRecommendationsSummary;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendations: SearchLearningOpsCompletionRecommendationOutcomeRecommendationsSummary;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationsSummary;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationsSummary;
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations: SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendationsSummary;
     selectSearchLearningEntries: SelectEntries;
 };
 
+/**
+ * Root completion-lane handlers used by SearchLearningCompletionSections.
+ * The deeper per-level chain handlers live in useOpsChainActions.ts.
+ */
 export function useSearchLearningCompletionActions({
     handleBulkGenerateSearchLearningSuggestionsForIds,
     handleBulkReviewSearchLearningForIds,
-    searchLearningActionRunnerDeps,
     searchLearningOpsCompletionActions,
-    searchLearningOpsCompletionRecommendations,
-    searchLearningOpsCompletionRecommendationOutcomeRecommendations,
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations,
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
-    searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations,
     selectSearchLearningEntries,
 }: UseSearchLearningCompletionActionsParams) {
     async function handleSearchLearningOpsCompletionAction(action: SearchLearningOpsCompletionAction) {
@@ -99,128 +77,8 @@ export function useSearchLearningCompletionActions({
         selectSearchLearningEntries(item.entryIds, `${item.title}의 ${item.entryIds.length}개 query를 선택했습니다.`);
     }
 
-    async function handleSearchLearningOpsCompletionRecommendation(
-        recommendation: OpsChainRecommendation
-    ) {
-        await runSearchLearningRecommendationAction({
-            recommendation,
-            noun: 'completion recommendation',
-            contextBase: 'completion_recommendation',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
-    async function handleSearchLearningOpsCompletionRecommendationQueueItem(
-        item: OpsChainQueueItem
-    ) {
-        await runSearchLearningRecommendationQueueItem({
-            summary: searchLearningOpsCompletionRecommendations,
-            recommendationId: item.recommendationId,
-            entryIds: item.entryIds,
-            title: item.title,
-            noun: 'completion recommendation',
-            contextBase: 'completion_recommendation',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
-    async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendation(
-        recommendation: OpsChainRecommendation
-    ) {
-        await runSearchLearningRecommendationAction({
-            recommendation,
-            noun: 'completion recommendation outcome',
-            contextBase: 'completion_recommendation_outcome',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
-    async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendation(
-        recommendation: OpsChainRecommendation
-    ) {
-        await runSearchLearningRecommendationAction({
-            recommendation,
-            noun: 'completion recommendation outcome recommendation outcome',
-            contextBase: 'completion_recommendation_outcome_recommendation_outcome',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
-    async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation(
-        recommendation: OpsChainRecommendation
-    ) {
-        await runSearchLearningRecommendationAction({
-            recommendation,
-            noun: 'completion recommendation outcome recommendation outcome recommendation',
-            contextBase: 'completion_recommendation_outcome_recommendation_outcome_recommendation',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
-    async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendation(
-        recommendation: OpsChainRecommendation
-    ) {
-        await runSearchLearningRecommendationAction({
-            recommendation,
-            noun: 'completion recommendation outcome recommendation outcome recommendation recommendation',
-            contextBase: 'completion_recommendation_outcome_recommendation_outcome_recommendation_recommendation_recommendation',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
-    async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueueItem(
-        item: OpsChainQueueItem
-    ) {
-        await runSearchLearningRecommendationQueueItem({
-            summary: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations,
-            recommendationId: item.recommendationId,
-            entryIds: item.entryIds,
-            title: item.title,
-            noun: 'completion recommendation outcome recommendation outcome recommendation recommendation',
-            contextBase: 'completion_recommendation_outcome_recommendation_outcome_recommendation_recommendation',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
-    async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem(
-        item: OpsChainQueueItem
-    ) {
-        await runSearchLearningRecommendationQueueItem({
-            summary: searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendations,
-            recommendationId: item.recommendationId,
-            entryIds: item.entryIds,
-            title: item.title,
-            noun: 'completion recommendation outcome recommendation outcome',
-            contextBase: 'completion_recommendation_outcome_recommendation_outcome',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
-    async function handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem(
-        item: OpsChainQueueItem
-    ) {
-        await runSearchLearningRecommendationQueueItem({
-            summary: searchLearningOpsCompletionRecommendationOutcomeRecommendations,
-            recommendationId: item.recommendationId,
-            entryIds: item.entryIds,
-            title: item.title,
-            noun: 'completion recommendation outcome',
-            contextBase: 'completion_recommendation_outcome',
-            deps: searchLearningActionRunnerDeps,
-        });
-    }
-
     return {
         handleSearchLearningOpsCompletionAction,
         handleSearchLearningOpsCompletionQueueItem,
-        handleSearchLearningOpsCompletionRecommendation,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendation,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendation,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueueItem,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendation,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem,
-        handleSearchLearningOpsCompletionRecommendationQueueItem,
     };
 }

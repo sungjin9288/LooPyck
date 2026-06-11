@@ -26,6 +26,12 @@ export type SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcom
     SearchDiagnosticsDashboardModel['searchLearningWorkbench']['searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendations'];
 export type SearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendationsSummary =
     SearchDiagnosticsDashboardModel['searchLearningWorkbench']['searchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendations'];
+export type SearchLearningOpsPlaybookRecommendationsSummary =
+    SearchDiagnosticsDashboardModel['searchLearningWorkbench']['searchLearningOpsPlaybookRecommendations'];
+export type SearchLearningOpsPlaybookRecommendationOutcomeRecommendationsSummary =
+    SearchDiagnosticsDashboardModel['searchLearningWorkbench']['searchLearningOpsPlaybookRecommendationOutcomeRecommendations'];
+export type SearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationsSummary =
+    SearchDiagnosticsDashboardModel['searchLearningWorkbench']['searchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendations'];
 export type SearchLearningActivityFollowupItem =
     | SearchDiagnosticsDashboardModel['searchLearningWorkbench']['searchLearningActivityFollowups']['topRetrainNeeded'][number]
     | SearchDiagnosticsDashboardModel['searchLearningWorkbench']['searchLearningActivityFollowups']['topAwaitingSamples'][number]

@@ -4,18 +4,10 @@ export function buildSearchLearningCompletionChainActionProps({
     actions,
 }: Pick<BuildSearchLearningSectionPropsParams, 'actions'>) {
     const {
+        completionChainHandlers,
         handleSearchLearningOpsCompletionAction,
         handleSearchLearningOpsCompletionQueueItem,
-        handleSearchLearningOpsCompletionRecommendation,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendation,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendation,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueueItem,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendation,
-        handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem,
-        handleSearchLearningOpsCompletionRecommendationQueueItem,
-        handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationAction,
+        playbookChainHandlers,
         selectSearchLearningEntries,
         setShowAdvancedSearchLearningChain,
         showAdvancedSearchLearningChain,
@@ -27,15 +19,10 @@ export function buildSearchLearningCompletionChainActionProps({
         onSelectEntries: selectSearchLearningEntries,
         onRunCompletionAction: handleSearchLearningOpsCompletionAction,
         onRunCompletionQueueItem: handleSearchLearningOpsCompletionQueueItem,
-        onRunSummaryRecommendation: handleSearchLearningOpsPlaybookRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationAction,
-        onRunCompletionRecommendation: handleSearchLearningOpsCompletionRecommendation,
-        onRunCompletionRecommendationQueueItem: handleSearchLearningOpsCompletionRecommendationQueueItem,
-        onRunOutcomeRecommendation: handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendation,
-        onRunDeepQueueItem: handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationQueueItem,
-        onRunDeepRecommendation: handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendation,
-        onRunTerminalQueueItem: handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationQueueItem,
-        onRunTerminalRecommendation: handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationOutcomeRecommendationRecommendationRecommendation,
-        onRunRecommendationOutcomeRecommendation: handleSearchLearningOpsCompletionRecommendationOutcomeRecommendation,
-        onRunRecommendationQueueItem: handleSearchLearningOpsCompletionRecommendationOutcomeRecommendationQueueItem,
+        // The summary cards run the deepest playbook recommendation action
+        // ('ops_playbook_recommendation_outcome_recommendation_outcome_recommendation_recommendation'),
+        // which is exactly the playbook chain group 2 recommendation handler.
+        onRunSummaryRecommendation: playbookChainHandlers[2].onRunRecommendation,
+        completionChainHandlers,
     };
 }

@@ -126,6 +126,8 @@
 - [x] `lib/search/searchLearningOpsChain.ts` 제네릭 엔진 + `searchLearningOpsChainLevels.ts` 레벨 설정으로 재귀 체인 파일 28개(playbook 12 + completion 16) 통합 — 합성 픽스처 기반 신구 스냅샷 byte-identical 동등성 검증 후 삭제, Firestore 컨텍스트/id prefix 전부 보존
 - [x] `searchLearningOpsSnapshot.ts`를 buildOpsChainStep 루프 기반으로 재작성(39개 키 유지), `searchLearningOps.ts` 배럴 정리, 컴포넌트/테스트 타입 임포트를 OpsChain* 제네릭 타입으로 전환
 - [x] README의 Compare Entry Review Gate 운영 매뉴얼(108줄)을 `docs/COMPARE_ENTRY_REVIEW_GATE.md`로 이동
+- [x] admin 체인 UI 제네릭 통합: `opsChainSections.tsx`(제네릭 4블록 렌더러) + `opsChainSectionConfig.ts`(그룹별 문구/액센트/contextBase verbatim 전사) + `useOpsChainActions.ts`(레인별 핸들러 팩토리)로 레벨별 섹션 파일 6개(3,190줄) 삭제 — 한국어 문구 101개·헤딩 30개·contextBase 11개 byte-identical 감사, 스모크 토글 라벨 보존
+- [x] 체인 그룹 가시성 정규화: 모든 재귀 그룹을 기존 `Advanced Chain` / `Advanced Playbook Chain` 토글 뒤로 통일 (루트 섹션은 항상 노출) — 이후 깊은 레벨 축소는 config 배열 slice 한 줄로 가능
 
 **[4] Fashion Comparison Core Upgrade**
 - [x] 상품 canonicalization 정확도 개선: 브랜드/모델명/옵션/성별 신호 기반 그룹핑 품질 재튜닝
