@@ -25,6 +25,7 @@ export default function LandingCompareSearch({
             query={initialQuery}
             sort={initialSort}
             onSearch={handleSearch}
+            tone="dark"
         />
     );
 }

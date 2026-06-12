@@ -178,6 +178,7 @@ export default async function BrandPage({ params }: BrandPageProps) {
             title: `${brand.label} 비교 시작`,
             description: brand.description,
             accentColor: brand.color,
+            routePath: `/brand/${slug}`,
             decisionSignals,
             searchHeading: `${brand.label} 안에서 바로 compare-ready 검색 시작`,
             searchDescription:

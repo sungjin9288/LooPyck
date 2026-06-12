@@ -7,11 +7,15 @@ import { pushAppNotification } from '@/lib/core/notifications';
 import { SearchSort } from '@/types/searchSort';
 import { logSearchInteraction } from '@/lib/search/searchInteractionClient';
 
+type SearchBarTone = 'light' | 'dark';
+
 interface SearchBarProps {
     query?: string;
     sort?: SearchSort;
     onSearch: (query: string, sort: SearchSort) => void;
     isLoading?: boolean;
+    // Visual shell only — query/sort semantics are identical in both tones.
+    tone?: SearchBarTone;
 }
 
 export default function SearchBar({
@@ -19,6 +23,7 @@ export default function SearchBar({
     sort: initialSort = 'sim',
     onSearch,
     isLoading,
+    tone = 'light',
 }: SearchBarProps) {
     const [query, setQuery] = useState(initialQuery);
     const [sort, setSort] = useState<SearchSort>(initialSort);
@@ -121,7 +126,9 @@ export default function SearchBar({
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             placeholder="찾고 싶은 옷을 검색하세요 (예: 청바지, 맨투맨)"
-                            className="w-full px-4 py-4 pl-12 pr-4 bg-white/90 backdrop-blur-sm border border-slate-200/60 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent-light/50 focus:border-accent-light text-slate-900 transition-all duration-300 shadow-sm hover:shadow-md focus:shadow-lg focus:bg-white sm:text-lg"
+                            className={tone === 'dark'
+                                ? 'w-full px-4 py-4 pl-12 pr-4 bg-[#0B1220] border border-[#334155] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#F4FF3A]/40 focus:border-[#F4FF3A]/60 text-slate-100 placeholder:text-slate-500 transition-all duration-300 sm:text-lg'
+                                : 'w-full px-4 py-4 pl-12 pr-4 bg-white/90 backdrop-blur-sm border border-slate-200/60 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent-light/50 focus:border-accent-light text-slate-900 transition-all duration-300 shadow-sm hover:shadow-md focus:shadow-lg focus:bg-white sm:text-lg'}
                             disabled={isLoading}
                         />
                     </div>
@@ -133,11 +140,13 @@ export default function SearchBar({
                     <button
                         type="submit"
                         disabled={isLoading || !query.trim()}
-                        className="px-8 py-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed transition-all duration-300 font-semibold hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-xl whitespace-nowrap"
+                        className={tone === 'dark'
+                            ? 'px-8 py-4 bg-[#F4FF3A] text-[#0D1117] rounded-2xl hover:opacity-90 disabled:bg-[#182235] disabled:text-slate-500 disabled:cursor-not-allowed transition-all duration-300 font-bold hover:scale-[1.02] active:scale-95 whitespace-nowrap'
+                            : 'px-8 py-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed transition-all duration-300 font-semibold hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-xl whitespace-nowrap'}
                     >
                         {isLoading ? (
                             <span className="flex items-center gap-2">
-                                <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                <svg className={`animate-spin h-5 w-5 ${tone === 'dark' ? 'text-[#0D1117]' : 'text-white'}`} fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
@@ -149,26 +158,38 @@ export default function SearchBar({
 
                 <div className="flex items-center gap-2 sm:gap-3 flex-wrap animate-fade-in-up" style={{ animationDelay: '100ms' }}>
                     <span className="text-sm font-medium text-slate-500 mr-1">정렬:</span>
-                    {sortOptions.map((option) => (
-                        <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setSort(option.value)}
-                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 border ${sort === option.value
+                    {sortOptions.map((option) => {
+                        const isActive = sort === option.value;
+                        const chipClass = tone === 'dark'
+                            ? isActive
+                                ? 'bg-[#F4FF3A] text-[#0D1117] border-[#F4FF3A] scale-105 font-bold'
+                                : 'bg-[#182235] text-slate-300 border-[#334155] hover:border-slate-400 hover:text-white hover:scale-105'
+                            : isActive
                                 ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-105'
-                                : 'bg-white/60 text-slate-600 border-slate-200 hover:bg-white hover:border-slate-300 hover:text-slate-900 hover:scale-105 hover:shadow-sm'
-                                }`}
-                        >
-                            {option.label}
-                        </button>
-                    ))}
+                                : 'bg-white/60 text-slate-600 border-slate-200 hover:bg-white hover:border-slate-300 hover:text-slate-900 hover:scale-105 hover:shadow-sm';
+
+                        return (
+                            <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => setSort(option.value)}
+                                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 border ${chipClass}`}
+                            >
+                                {option.label}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {feedback && (
                     <div
                         className={`rounded-2xl border px-4 py-4 shadow-sm ${feedback.tone === 'alert'
-                            ? 'border-amber-200 bg-amber-50 text-amber-900'
-                            : 'border-slate-200 bg-white/80 text-slate-800'
+                            ? tone === 'dark'
+                                ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+                                : 'border-amber-200 bg-amber-50 text-amber-900'
+                            : tone === 'dark'
+                                ? 'border-[#334155] bg-[#182235] text-slate-200'
+                                : 'border-slate-200 bg-white/80 text-slate-800'
                             }`}
                     >
                         <p className="text-sm font-medium leading-6">{feedback.message}</p>
@@ -189,8 +210,12 @@ export default function SearchBar({
                                             submitSearch(suggestion);
                                         }}
                                         className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${feedback.tone === 'alert'
-                                            ? 'bg-white text-amber-900 hover:bg-amber-100'
-                                            : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                                            ? tone === 'dark'
+                                                ? 'bg-amber-500/20 text-amber-100 hover:bg-amber-500/30'
+                                                : 'bg-white text-amber-900 hover:bg-amber-100'
+                                            : tone === 'dark'
+                                                ? 'bg-[#0B1220] text-slate-200 hover:bg-[#243447]'
+                                                : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
                                             }`}
                                     >
                                         {suggestion}

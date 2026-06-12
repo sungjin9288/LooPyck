@@ -129,6 +129,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
             title: `${category.emoji} ${category.label} 비교 시작`,
             description: category.description,
             accentColor: '#0f172a',
+            routePath: `/category/${slug}`,
             decisionSignals,
             searchHeading: `${category.label} 카테고리에서 바로 비교 시작`,
             searchDescription:

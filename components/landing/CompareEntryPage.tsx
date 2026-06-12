@@ -24,7 +24,7 @@ export default function CompareEntryPage({
     siblings,
 }: CompareEntryPageProps) {
     return (
-        <main className="min-h-screen bg-slate-50 text-slate-950">
+        <main className="min-h-screen bg-[#0D1117] text-slate-100">
             <CompareEntryHeroSection
                 {...hero}
                 quickRoutes={routes.quickRoutes}
