@@ -17,7 +17,7 @@ export default function CompareShortlistSection() {
     }
 
     return (
-        <section className="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-sm">
+        <section className="rounded-[2rem] border border-[#243447] bg-[#111827] p-5 shadow-sm">
             <CompareShortlistSectionHeader
                 count={shortlist.length}
                 onClear={clearShortlist}

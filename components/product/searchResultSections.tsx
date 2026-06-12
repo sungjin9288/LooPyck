@@ -31,6 +31,7 @@ export function SearchSummaryMetricsSection({
     return (
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-2 h-1 w-8 rounded-full bg-[#F4FF3A]" />
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 mb-2">최저 결제가</p>
                 <p className="text-3xl font-black tracking-tight text-slate-900">
                     {Number.isFinite(lowestVisiblePrice) ? lowestVisiblePrice.toLocaleString() : 0}원
@@ -38,6 +39,7 @@ export function SearchSummaryMetricsSection({
                 <p className="text-sm text-slate-500 mt-2">배송비를 반영한 예상 결제가 기준입니다.</p>
             </div>
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-2 h-1 w-8 rounded-full bg-[#F4FF3A]" />
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 mb-2">비교 가능 상품</p>
                 <p className="text-3xl font-black tracking-tight text-slate-900">
                     {comparisonReadyCount.toLocaleString()}개
@@ -47,6 +49,7 @@ export function SearchSummaryMetricsSection({
                 </p>
             </div>
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-2 h-1 w-8 rounded-full bg-[#F4FF3A]" />
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 mb-2">최대 결제가 차이</p>
                 <p className="text-3xl font-black tracking-tight text-slate-900">
                     {biggestSpread.toLocaleString()}원
@@ -91,24 +94,24 @@ export function SearchResultCard({
             {/* Overlay Gradient */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-            {/* Multi-mall badge */}
-            {group.mallCount > 1 && (
-                <div className="absolute top-2 left-2 z-10">
-                    <div className="flex flex-col gap-1">
-                        <span className="bg-accent text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+            {/* Compare-signal badge stack: mall-compare first, then trust / PDP */}
+            <div className="absolute top-2 left-2 z-10">
+                <div className="flex flex-col gap-1">
+                    {group.mallCount > 1 && (
+                        <span className="bg-[#0D1117]/90 text-[#F4FF3A] text-[10px] font-bold px-2 py-0.5 rounded-full">
                             {group.mallCount}개 쇼핑몰 비교
                         </span>
-                        <span className="bg-white/90 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                            {getRetailerTrustLabel(retailerTrust)}
+                    )}
+                    <span className="bg-white/90 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        {getRetailerTrustLabel(retailerTrust)}
+                    </span>
+                    {group.variants.some((variant) => hasPdpDetailData(variant)) && (
+                        <span className="bg-violet-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            PDP 확인
                         </span>
-                        {group.variants.some((variant) => hasPdpDetailData(variant)) && (
-                            <span className="bg-violet-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                PDP 확인
-                            </span>
-                        )}
-                    </div>
+                    )}
                 </div>
-            )}
+            </div>
             <div className="absolute right-2 top-2 z-10">
                 <CompareShortlistButton
                     product={shortlistProduct}

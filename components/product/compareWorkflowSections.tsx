@@ -72,7 +72,7 @@ export function CompareWorkflowSectionHeader({
                 </p>
             </div>
             {badgeLabel ? (
-                <span className="hidden sm:inline-flex rounded-full bg-slate-900 text-white px-3 py-1 text-xs font-bold">
+                <span className="hidden sm:inline-flex rounded-full bg-[#F4FF3A] text-[#0D1117] px-3 py-1 text-xs font-bold">
                     {badgeLabel}
                 </span>
             ) : null}
@@ -120,23 +120,24 @@ export function CompareHighlightCard({
                 />
             </div>
             <div className="p-5">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                        {mallCount}개 쇼핑몰 비교
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-[#F4FF3A] text-[#0D1117] px-2.5 py-1 text-[11px] font-bold">
+                        Compare Ready
                     </span>
-                    <div className="flex items-center gap-2">
-                        <span className="rounded-full bg-sky-50 text-sky-700 px-2.5 py-1 text-[11px] font-bold">
-                            매칭 {confidence}%
+                    <span className="rounded-full bg-slate-100 text-slate-700 px-2.5 py-1 text-[11px] font-bold">
+                        {mallCount}개 쇼핑몰
+                    </span>
+                    <span className="rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-1 text-[11px] font-bold">
+                        최대 {spread.toLocaleString()}원 차이
+                    </span>
+                    <span className="rounded-full bg-sky-50 text-sky-700 px-2.5 py-1 text-[11px] font-bold">
+                        매칭 {confidence}%
+                    </span>
+                    {verifiedCount > 0 && (
+                        <span className="rounded-full bg-violet-50 text-violet-700 px-2.5 py-1 text-[11px] font-bold">
+                            PDP {verifiedCount}/{totalVariantCount}
                         </span>
-                        <span className="rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-1 text-[11px] font-bold">
-                            최대 {spread.toLocaleString()}원 차이
-                        </span>
-                        {verifiedCount > 0 && (
-                            <span className="rounded-full bg-violet-50 text-violet-700 px-2.5 py-1 text-[11px] font-bold">
-                                PDP {verifiedCount}/{totalVariantCount}
-                            </span>
-                        )}
-                    </div>
+                    )}
                 </div>
                 <h3 className="text-base font-bold text-slate-900 line-clamp-2 mb-3">
                     {title}
@@ -209,20 +210,20 @@ export function CompareShortlistSectionHeader({
     return (
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Guest Compare Shortlist</p>
-                <h2 className="mt-2 text-2xl font-black text-slate-950">로그인 없이 저장한 비교 후보</h2>
-                <p className="mt-2 max-w-2xl text-sm text-slate-600">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#F4FF3A]">Guest Compare Shortlist</p>
+                <h2 className="mt-2 text-2xl font-black text-slate-50">로그인 없이 저장한 비교 후보</h2>
+                <p className="mt-2 max-w-2xl text-sm text-slate-400">
                     나중에 다시 볼 상품만 먼저 담아두고, 준비가 되면 각 compare page로 바로 이어서 확인할 수 있습니다.
                 </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700">
+                <span className="rounded-full bg-[#F4FF3A] px-3 py-2 text-xs font-bold text-[#0D1117]">
                     {count}개 저장됨
                 </span>
                 <button
                     type="button"
                     onClick={onClear}
-                    className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50"
+                    className="rounded-full border border-[#334155] bg-[#182235] px-4 py-2 text-xs font-bold text-slate-200 transition-colors hover:border-slate-400 hover:text-white"
                 >
                     전체 비우기
                 </button>
@@ -278,7 +279,7 @@ export function CompareShortlistItemCard({
                 {internalHref ? (
                     <Link
                         href={href}
-                        className="inline-flex rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-800"
+                        className="inline-flex rounded-full bg-[#F4FF3A] px-4 py-2 text-xs font-bold text-[#0D1117] transition-opacity hover:opacity-85"
                     >
                         비교 이어보기
                     </Link>
@@ -287,7 +288,7 @@ export function CompareShortlistItemCard({
                         href={href}
                         target={externalHref ? '_blank' : undefined}
                         rel={externalHref ? 'noopener noreferrer' : undefined}
-                        className="inline-flex rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-800"
+                        className="inline-flex rounded-full bg-[#F4FF3A] px-4 py-2 text-xs font-bold text-[#0D1117] transition-opacity hover:opacity-85"
                     >
                         상품 열기
                     </a>
@@ -314,14 +315,14 @@ export function CompareShortlistActionButton({
         <button
             type="button"
             onClick={onClick}
-            className={`inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+            className={`inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-bold transition-all ${
                 shortlisted
-                    ? 'border-fuchsia-300 bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100'
-                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    : 'border-[#F4FF3A] bg-[#F4FF3A] text-[#0D1117] hover:opacity-85'
             } ${compact ? 'px-3 py-1.5 text-xs' : ''} ${className}`}
             aria-label={shortlisted ? '비교 후보 제거' : '비교 후보 저장'}
         >
-            {shortlisted ? '후보 저장됨' : '비교 후보'}
+            {shortlisted ? '후보 저장됨' : compact ? '+ 비교 후보' : '+ 비교 후보 담기'}
         </button>
     );
 }

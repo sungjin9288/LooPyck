@@ -128,6 +128,7 @@
 - [x] README의 Compare Entry Review Gate 운영 매뉴얼(108줄)을 `docs/COMPARE_ENTRY_REVIEW_GATE.md`로 이동
 - [x] SUN-10 게이트 해제 완료 (2026-06-12): Figma 데스크톱 개발 콘솔에서 Plugin API 템플릿 직접 실행으로 figma-mcp-rate-limit 우회 — `scripts/figmaCompareEntryFullBuildConsole.mjs`(청크 주입형 전체 빌드)로 6개 프레임 × 전 섹션 빌드 (보호 노드 14:2/14:3 보존), 빌드/리뷰 워크시트·결정 로그 작성, ready-check `READY` exit 0 — SUN-11/SUN-12 구현 가능 상태
 - [x] SUN-11 구현 완료 (2026-06-12): 랜딩 엔트리 표면을 승인된 Figma 다크 디렉션(#0D1117/#111827/#F4FF3A)으로 전환 — CompareEntryPage/compareEntrySections(히어로 ROUTE 칩·CompareLens 카드·SearchEntry 카드·QuickRoutes 카드·Proof 카드·Sibling 칩), SearchBar tone variant(라이트 홈 무변경), brand/category routePath 전달. 쿼리/정렬/라우트 동작 보존, typecheck·테스트 245·빌드·로컬 시각 검증 통과
+- [x] SUN-12 구현 완료 (2026-06-12): 검색결과 비교 계층 — 메트릭 카드 액센트 바, HighlightCard 배지 클러스터(Compare Ready 액센트 필 선두), ResultCard 신뢰 배지 상시 노출 + 몰 비교 배지 잉크/옐로, CompareShortlistActionButton '+ 비교 후보 담기' 액센트화, shortlist 섹션을 다크 연속성 존으로 통일. 부수 발견: useCompareShortlist의 setState-updater 내 side effect 버그(렌더 중 타 컴포넌트 setState) 별도 커밋으로 수정. grouping/모달 진입/favorite payload 보존, typecheck·테스트 245·로컬 시각/기능 검증 통과
 - [x] admin 체인 UI 제네릭 통합: `opsChainSections.tsx`(제네릭 4블록 렌더러) + `opsChainSectionConfig.ts`(그룹별 문구/액센트/contextBase verbatim 전사) + `useOpsChainActions.ts`(레인별 핸들러 팩토리)로 레벨별 섹션 파일 6개(3,190줄) 삭제 — 한국어 문구 101개·헤딩 30개·contextBase 11개 byte-identical 감사, 스모크 토글 라벨 보존
 - [x] 체인 그룹 가시성 정규화: 모든 재귀 그룹을 기존 `Advanced Chain` / `Advanced Playbook Chain` 토글 뒤로 통일 (루트 섹션은 항상 노출) — 이후 깊은 레벨 축소는 config 배열 slice 한 줄로 가능
 
