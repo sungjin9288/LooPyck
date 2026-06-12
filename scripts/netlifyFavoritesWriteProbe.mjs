@@ -32,7 +32,9 @@ async function fetchProbeProduct() {
   url.searchParams.set('pageSize', '1');
   url.searchParams.set('sort', 'sim');
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  // The server-side aggregation budget alone is 12s; cold serverless starts
+  // push first responses past 20s, so 15s here produced chronic false alarms.
+  const response = await fetch(url, { signal: AbortSignal.timeout(35000) });
   if (!response.ok) {
     throw new Error(`Realtime search probe failed (${response.status})`);
   }
