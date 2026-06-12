@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Product } from '@/types/product';
 import {
     COMPARE_SHORTLIST_STORAGE_KEY,
@@ -30,17 +30,30 @@ function writeCompareShortlistToStorage(items: CompareShortlistItem[]) {
 
 export function useCompareShortlist() {
     const [items, setItems] = useState<CompareShortlistItem[]>([]);
+    // Mutations must not run inside setState updaters: the storage write
+    // dispatches an event that setStates other hook instances, which React
+    // forbids mid-render. Keep the latest list in a ref and commit from the
+    // event handler scope instead.
+    const itemsRef = useRef<CompareShortlistItem[]>([]);
 
     useEffect(() => {
-        setItems(readCompareShortlistFromStorage());
+        const initial = readCompareShortlistFromStorage();
+        itemsRef.current = initial;
+        setItems(initial);
 
         const handleStorage = () => {
-            setItems(readCompareShortlistFromStorage());
+            const next = readCompareShortlistFromStorage();
+            itemsRef.current = next;
+            setItems(next);
         };
 
         const handleCustomEvent = (event: Event) => {
             const customEvent = event as CustomEvent<CompareShortlistItem[]>;
-            setItems(Array.isArray(customEvent.detail) ? customEvent.detail : readCompareShortlistFromStorage());
+            const next = Array.isArray(customEvent.detail)
+                ? customEvent.detail
+                : readCompareShortlistFromStorage();
+            itemsRef.current = next;
+            setItems(next);
         };
 
         window.addEventListener('storage', handleStorage);
@@ -51,36 +64,32 @@ export function useCompareShortlist() {
         };
     }, []);
 
-    const addToShortlist = useCallback((product: Product) => {
-        setItems((previous) => {
-            const next = upsertCompareShortlistItem(previous, product);
-            writeCompareShortlistToStorage(next);
-            return next;
-        });
+    const commit = useCallback((next: CompareShortlistItem[]) => {
+        itemsRef.current = next;
+        setItems(next);
+        writeCompareShortlistToStorage(next);
     }, []);
+
+    const addToShortlist = useCallback((product: Product) => {
+        commit(upsertCompareShortlistItem(itemsRef.current, product));
+    }, [commit]);
 
     const removeFromShortlist = useCallback((productOrId: string | Pick<Product, 'productId' | 'favoriteId' | 'source' | 'variantKey'>) => {
-        setItems((previous) => {
-            const next = removeCompareShortlistItem(previous, productOrId);
-            writeCompareShortlistToStorage(next);
-            return next;
-        });
-    }, []);
+        commit(removeCompareShortlistItem(itemsRef.current, productOrId));
+    }, [commit]);
 
     const clearShortlist = useCallback(() => {
-        setItems([]);
-        writeCompareShortlistToStorage([]);
-    }, []);
+        commit([]);
+    }, [commit]);
 
     const toggleShortlist = useCallback((product: Product) => {
-        setItems((previous) => {
-            const next = isShortlisted(previous, product)
+        const previous = itemsRef.current;
+        commit(
+            isShortlisted(previous, product)
                 ? removeCompareShortlistItem(previous, product)
-                : upsertCompareShortlistItem(previous, product);
-            writeCompareShortlistToStorage(next);
-            return next;
-        });
-    }, []);
+                : upsertCompareShortlistItem(previous, product)
+        );
+    }, [commit]);
 
     const isInShortlist = useCallback((product: Pick<Product, 'productId' | 'favoriteId' | 'source' | 'variantKey'>) => (
         isShortlisted(items, product)
