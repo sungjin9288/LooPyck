@@ -132,7 +132,7 @@ export function CompareEntryHeroSection({
 
             <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-16">
                 <div className="flex flex-wrap items-center gap-3">
-                    <nav className="flex items-center gap-2 text-sm text-slate-500">
+                    <nav className="flex items-center gap-2 text-sm text-slate-400">
                         <Link href="/" className="transition-colors hover:text-slate-200">
                             홈
                         </Link>
@@ -184,7 +184,7 @@ export function CompareEntryHeroSection({
                                 key={signal.label}
                                 className="rounded-2xl border border-[#243447] bg-[#111827] p-4"
                             >
-                                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
                                     {signal.label}
                                 </p>
                                 <p className="mt-2 text-sm font-semibold leading-6 text-slate-100 sm:text-base">
@@ -333,6 +333,7 @@ export function CompareSiblingSection({
                             key={link.href}
                             href={link.href}
                             title={link.note}
+                            aria-label={link.note ? `${link.label} — ${link.note}` : link.label}
                             className="rounded-full border border-[#334155] bg-[#182235] px-5 py-2.5 text-sm font-bold text-slate-100 transition-colors hover:border-[#F4FF3A] hover:text-[#F4FF3A]"
                         >
                             {link.label}

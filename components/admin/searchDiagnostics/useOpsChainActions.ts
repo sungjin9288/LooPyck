@@ -110,7 +110,12 @@ export function useOpsChainActions({
         };
     }
 
-    function buildCompletionQueueHandler(
+    // Single source of truth for queue-item behavior. queue.missingFallback
+    // decides what happens when the recommendation can no longer be resolved:
+    // 'select' (completion lane) selects the entries via the queue runner;
+    // 'noop' (playbook lane) runs the underlying recommendation and silently
+    // does nothing when it is gone.
+    function buildQueueHandler(
         config: OpsChainGroupActionConfig,
         summary: RecommendationSummaryLike
     ) {
@@ -120,29 +125,19 @@ export function useOpsChainActions({
         }
 
         return async function runQueueItem(item: OpsChainQueueItem) {
-            await runSearchLearningRecommendationQueueItem({
-                summary,
-                recommendationId: item.recommendationId,
-                entryIds: item.entryIds,
-                title: item.title,
-                noun: queueConfig.noun,
-                contextBase: queueConfig.contextBase,
-                deps,
-            });
-        };
-    }
+            if (queueConfig.missingFallback === 'select') {
+                await runSearchLearningRecommendationQueueItem({
+                    summary,
+                    recommendationId: item.recommendationId,
+                    entryIds: item.entryIds,
+                    title: item.title,
+                    noun: queueConfig.noun,
+                    contextBase: queueConfig.contextBase,
+                    deps,
+                });
+                return;
+            }
 
-    /** playbook queues run the underlying recommendation and no-op when it is gone. */
-    function buildPlaybookQueueHandler(
-        config: OpsChainGroupActionConfig,
-        summary: RecommendationSummaryLike
-    ) {
-        const queueConfig = config.queue;
-        if (!queueConfig) {
-            return undefined;
-        }
-
-        return async function runQueueItem(item: OpsChainQueueItem) {
             const recommendation = findSearchLearningRecommendationById(summary, item.recommendationId);
             if (!recommendation) {
                 return;
@@ -192,7 +187,7 @@ export function useOpsChainActions({
     const completionChainHandlers: OpsChainGroupHandlers[] = completionChainGroupActions.map((config, index) => ({
         onSelectEntries: selectSearchLearningEntries,
         onRunRecommendation: buildRecommendationHandler(config),
-        onRunQueueItem: buildCompletionQueueHandler(config, completionRecommendationSummaries[index]),
+        onRunQueueItem: buildQueueHandler(config, completionRecommendationSummaries[index]),
     }));
 
     const playbookRecommendationSummaries = [
@@ -221,7 +216,7 @@ export function useOpsChainActions({
         return {
             onSelectEntries: selectSearchLearningEntries,
             onRunRecommendation: buildRecommendationHandler(config),
-            onRunQueueItem: groupSummary ? buildPlaybookQueueHandler(config, groupSummary) : undefined,
+            onRunQueueItem: groupSummary ? buildQueueHandler(config, groupSummary) : undefined,
             onRunOutcome: outcomeConfig
                 ? async (outcome: OpsChainOutcome) => {
                     await runSearchLearningOutcomeAction({

@@ -50,6 +50,10 @@ function classifyOutcome(
     switch (outcome.status) {
         case 'ready_review':
             return {
+                // Intentional: the playbook ROOT uses >= 3 here. The generic
+                // ops-chain engine (searchLearningOpsChain.ts) hardcodes >= 2
+                // for every level it owns. Keep this bespoke; do NOT collapse
+                // this file into the engine without preserving the >= 3 cutoff.
                 action: 'review_now',
                 actionLabel: 'review 즉시 승인',
                 priority: outcome.readyReviewCount >= 3 ? 'critical' : 'high',
