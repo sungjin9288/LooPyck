@@ -13,7 +13,7 @@
 [![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-orange?logo=google)](https://ai.google.dev/)
 [![License](https://img.shields.io/badge/License-MIT-green)](./LICENSE)
 
-[Demo](https://loo-pyck.netlify.app) • [Docs](./docs/) • [Issues](https://github.com/sungjin9288/LooPyck/issues)
+[Demo](https://loo-pyck.netlify.app) • [Docs](./docs/) • [Changelog](./docs/CHANGELOG.md) • [Issues](https://github.com/sungjin9288/LooPyck/issues)
 
 </div>
 
@@ -361,6 +361,6 @@ MIT © 2026 LooPyck. All rights reserved.
 
 **Built with ❤️ and AI**
 
-[Demo](https://loo-pyck.netlify.app) • [Docs](./docs/) • [Issues](https://github.com/sungjin9288/LooPyck/issues)
+[Demo](https://loo-pyck.netlify.app) • [Docs](./docs/) • [Changelog](./docs/CHANGELOG.md) • [Issues](https://github.com/sungjin9288/LooPyck/issues)
 
 </div>
