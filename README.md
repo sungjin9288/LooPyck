@@ -4,9 +4,9 @@
 
 ![LooPyck Logo](./public/preview.png)
 
-### 🔥 **99.8% 비용 절감** | **94.2% 자동화** | **₩0 인프라 비용**
-
 **AI-Powered Fashion Price Comparison Platform**
+
+> 여러 쇼핑몰 검색 · 가격 비교 · AI 추천을 하나의 흐름으로 묶은 패션 가격 비교 웹앱 (MVP)
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
@@ -23,8 +23,8 @@
 
 > **"Look & Pick"** — AI로 주요 쇼핑몰 가격을 한눈에 비교하세요.
 
-LooPyck은 Zero-Cost AI 기술로 네이버 쇼핑 API, 무신사, 29CM 상품 정보를 실시간 수집하고,  
-**쇼핑몰 간 가격 비교 + AI 스타일 추천**을 제공하는 패션 가격 비교 플랫폼입니다.
+LooPyck은 무료 티어 인프라(Netlify · Firebase) 위에서 네이버 쇼핑 API, 무신사, 29CM 상품 정보를 실시간 수집하고,  
+**쇼핑몰 간 가격 비교 + AI 스타일 추천**을 제공하는 패션 가격 비교 웹앱(MVP)입니다.
 
 ---
 
@@ -310,14 +310,16 @@ https://loo-pyck.netlify.app
 
 ---
 
-## 📊 Performance
+## 📊 Performance (설계 목표 · 측정 상태)
 
-| Metric | Target | Achieved |
-|--------|--------|----------|
-| Extraction Success | 90% | **94.2%** |
-| Response Time (p95) | < 3s | **2.1s** |
-| API Cost/Request | €0.01 | **€0.0005** |
-| Lighthouse Score | 90 | **98** |
+아래는 **설계 목표(target)**이며, 신뢰할 수 있는 측정 근거가 확보된 항목만 실측치로 표기합니다.
+근거 없는 추출 정확도 · 요청당 API 비용 · 비용 절감률 수치는 표기하지 않습니다.
+
+| Metric | Target | 측정 방법 | 상태 |
+|--------|--------|----------|------|
+| Lighthouse Score | 90+ | Chrome Lighthouse 실행 | 미측정 (재현 가능) |
+| Response Time (p95) | < 3s | 검색 API 호출 로그 집계 | 미측정 |
+| Extraction 성공률 | 90%+ | 어댑터 테스트 로그 집계 | 미측정 |
 
 ---
 
@@ -348,6 +350,16 @@ https://loo-pyck.netlify.app
 - [x] 목표가 감지 배치 + 알림 발송 (`/api/jobs/scan-price-alerts`, 30분 크론)
 - [ ] AR Try-On Integration
 - [ ] Cross-Border 해외 쇼핑몰 확장
+
+---
+
+## 🔭 Scope & Limitations
+
+- 실제 커머스 **결제 기능은 포함하지 않습니다.** 상품 검색 · 비교 · 추천까지가 범위입니다.
+- 운영 중인 상용 서비스가 아니라 **MVP / PoC 확장형** 프로젝트입니다.
+- 무신사 · 29CM는 공식 API가 아닌 **스크래핑 / 폴백 어댑터** 기반이라, 대상 사이트 구조 변경 시 깨질 수 있습니다.
+- 검증되지 않은 비용 절감률 · 추천 정확도 · 자동화율 수치는 사용하지 않습니다.
+- 가격 이력 누적과 알림 배치는 동작하지만, 대규모 트래픽 · 데이터 정합성은 추가 검증이 필요합니다.
 
 ---
 
