@@ -52,8 +52,8 @@ export default function AffordableAlternatives({ baseProduct }: AffordableAltern
 
     if (loading) {
         return (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-100 dark:border-slate-800">
-                <h3 className="text-sm font-black text-slate-900 dark:text-white mb-3">💡 가성비 대체 상품 제안</h3>
+            <div className="bg-white rounded-2xl p-4 border border-slate-100">
+                <h3 className="text-sm font-black text-slate-900 mb-3">💡 가성비 대체 상품 제안</h3>
                 <div className="flex justify-center py-6">
                     <Spinner size="sm" />
                 </div>
@@ -64,9 +64,9 @@ export default function AffordableAlternatives({ baseProduct }: AffordableAltern
     if (alternatives.length === 0) return null;
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-100 dark:border-slate-800">
+        <div className="bg-white rounded-2xl p-4 border border-slate-100">
             <div className="mb-4">
-                <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
                     💡 가성비 대체 상품 제안
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
@@ -102,14 +102,14 @@ export default function AffordableAlternatives({ baseProduct }: AffordableAltern
                                 )}
                             </div>
                             <h4
-                                className="text-xs font-medium text-slate-800 dark:text-slate-200 line-clamp-2 mb-1 group-hover:text-accent transition-colors"
+                                className="text-xs font-medium text-slate-800 line-clamp-2 mb-1 group-hover:text-accent transition-colors"
                                 dangerouslySetInnerHTML={{ __html: alt.title }}
                             />
                             <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 rounded">
+                                <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 rounded">
                                     {alt.mallName}
                                 </span>
-                                <span className="text-sm font-black text-slate-900 dark:text-white">
+                                <span className="text-sm font-black text-slate-900">
                                     {alt.price.toLocaleString()}원
                                 </span>
                             </div>

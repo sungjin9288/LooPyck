@@ -187,7 +187,7 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                 >
                     <div
                         ref={modalRef}
-                        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 transform transition-all scale-100"
+                        className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 transform transition-all scale-100"
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -200,39 +200,39 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
                                 </div>
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                                <h3 className="text-lg font-bold text-gray-900 mb-2">
                                     알림이 설정되었습니다!
                                 </h3>
-                                <p className="text-gray-600 dark:text-gray-300 text-sm">
+                                <p className="text-gray-600 text-sm">
                                     관심 상품에 저장하고 가격을 추적합니다.
                                 </p>
                             </div>
                         ) : (
                             <>
-                                <h3 id="price-alert-title" className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                                <h3 id="price-alert-title" className="text-lg font-bold text-gray-900 mb-4">
                                     {hasAlert ? '가격 알림 수정' : '가격 하락 알림 설정'}
                                 </h3>
-                                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border border-gray-100 dark:border-gray-600">
+                                <p className="text-sm text-gray-600 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
                                     현재 가격: <span className="font-bold text-accent">{currentPrice.toLocaleString()}원</span>
                                 </p>
                                 {product.variantLabel && (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                                    <p className="text-xs text-gray-500 mb-4">
                                         선택 variant: {product.variantLabel}
                                     </p>
                                 )}
-                                <div className="mb-4 rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700">
+                                <div className="mb-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <div>
-                                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Alert Persona</p>
-                                            <p className="mt-1 text-sm font-bold text-gray-900 dark:text-white">{effectiveAlertProfile.summary}</p>
-                                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{effectiveAlertProfile.detail}</p>
+                                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-500">Alert Persona</p>
+                                            <p className="mt-1 text-sm font-bold text-gray-900">{effectiveAlertProfile.summary}</p>
+                                            <p className="mt-1 text-xs text-gray-500">{effectiveAlertProfile.detail}</p>
                                         </div>
                                         <span className={`rounded-full px-3 py-1.5 text-[11px] font-bold ${
                                             alertProfileStatus === 'synced'
                                                 ? 'bg-emerald-100 text-emerald-700'
                                                 : alertProfileStatus === 'syncing'
                                                     ? 'bg-amber-100 text-amber-700'
-                                                    : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                                                    : 'bg-white text-gray-700'
                                         }`}>
                                             {alertProfileStatus === 'synced' ? 'Cloud Synced' : alertProfileStatus === 'syncing' ? 'Syncing' : 'Local Persona'}
                                         </span>
@@ -240,7 +240,7 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                                 </div>
                                 <form onSubmit={handleSubmit} className="space-y-4">
                                     <div>
-                                        <label htmlFor="target-price-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        <label htmlFor="target-price-input" className="block text-sm font-medium text-gray-700 mb-2">
                                             목표 가격 (원)
                                         </label>
                                         <input
@@ -250,26 +250,26 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                                             onChange={(e) => setTargetPrice(e.target.value)}
                                             placeholder="예: 20000"
                                             required
-                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-shadow"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent bg-white text-gray-900 transition-shadow"
                                         />
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        <p className="text-xs text-gray-500 mt-1">
                                             이 가격 이하로 떨어지면 알림을 받습니다
                                         </p>
                                     </div>
                                     {targetSuggestion.suggestedPrice && (
-                                        <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700">
+                                        <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                                             <div className="flex flex-wrap items-start justify-between gap-2">
                                                 <div>
-                                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Recommended Target</p>
-                                                    <p className="mt-1 text-sm font-bold text-gray-900 dark:text-white">
+                                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-500">Recommended Target</p>
+                                                    <p className="mt-1 text-sm font-bold text-gray-900">
                                                         {targetSuggestion.label} · {targetSuggestion.suggestedPrice.toLocaleString()}원
                                                     </p>
-                                                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{targetSuggestion.reason}</p>
+                                                    <p className="mt-1 text-xs text-gray-500">{targetSuggestion.reason}</p>
                                                 </div>
                                                 <button
                                                     type="button"
                                                     onClick={() => setTargetPrice(String(targetSuggestion.suggestedPrice))}
-                                                    className="rounded-full border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 dark:border-gray-500 dark:bg-gray-800 dark:text-gray-200"
+                                                    className="rounded-full border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700"
                                                 >
                                                     추천가 적용
                                                 </button>
@@ -290,7 +290,7 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                                                 e.stopPropagation();
                                                 setShowModal(false);
                                             }}
-                                            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                                            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                                         >
                                             취소
                                         </button>

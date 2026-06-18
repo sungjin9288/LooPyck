@@ -38,7 +38,7 @@ const ProductCard = memo(function ProductCard({ product, relatedProducts }: Prod
                     event.preventDefault();
                 }
             }}
-            className="block bg-white dark:bg-gray-800 rounded-lg shadow-md dark:border dark:border-gray-700 hover:shadow-xl dark:hover:border-gray-500 transition-all duration-300 hover:-translate-y-1 overflow-hidden group h-full"
+            className="block bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden group h-full"
         >
             <div className="relative h-64 bg-gray-100 overflow-hidden">
                 <FavoriteButton product={product} />

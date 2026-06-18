@@ -43,7 +43,7 @@ export function StyleProfileCard({ favorites }: StyleProfileCardProps) {
         <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm"
+            className="mb-6 rounded-2xl overflow-hidden border border-slate-100 bg-white shadow-sm"
         >
             {/* Gradient Header */}
             <div className={`bg-gradient-to-r ${persona.gradient} px-5 py-4 text-white`}>
@@ -58,16 +58,16 @@ export function StyleProfileCard({ favorites }: StyleProfileCardProps) {
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-slate-700 px-1 py-3">
+            <div className="grid grid-cols-3 divide-x divide-slate-100 px-1 py-3">
                 {/* Total Favorites */}
                 <div className="text-center px-3">
-                    <p className="text-2xl font-black text-slate-900 dark:text-white">{uniqueFavorites.length}</p>
+                    <p className="text-2xl font-black text-slate-900">{uniqueFavorites.length}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5 uppercase font-semibold">찜 상품</p>
                 </div>
 
                 {/* Price Profile */}
                 <div className="text-center px-3">
-                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-tight">
+                    <p className="text-xs font-bold text-slate-700 leading-tight">
                         {priceProfile.label}
                     </p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
@@ -80,7 +80,7 @@ export function StyleProfileCard({ favorites }: StyleProfileCardProps) {
                 <div className="text-center px-3">
                     {topBrands.length > 0 ? (
                         <>
-                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-tight line-clamp-2">
+                            <p className="text-xs font-bold text-slate-700 leading-tight line-clamp-2">
                                 {topBrands[0]}
                             </p>
                             {topBrands[1] && (

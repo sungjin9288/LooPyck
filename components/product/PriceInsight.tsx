@@ -41,26 +41,26 @@ export default function PriceInsight({ product, relatedProducts = [] }: PriceIns
     const avgPosition = allPrices.length <= 1 ? 50 : ((avgPrice - minPrice) / (maxPrice - minPrice)) * 100;
 
     return (
-        <div className="w-full mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+        <div className="w-full mt-3 p-3 bg-gray-50 rounded-lg">
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
                 <span>최저 {minPrice.toLocaleString()}</span>
                 <span>최고 {maxPrice.toLocaleString()}</span>
             </div>
 
-            <div className="relative h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-visible">
+            <div className="relative h-2 bg-gray-200 rounded-full overflow-visible">
                 {/* Background Gradient Line */}
                 <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-400 opacity-50" />
 
                 {/* Average Marker (Line) */}
                 <div
-                    className="absolute top-0 bottom-0 w-0.5 bg-gray-400 dark:bg-gray-500 z-0 transition-all duration-700 ease-out"
+                    className="absolute top-0 bottom-0 w-0.5 bg-gray-400 z-0 transition-all duration-700 ease-out"
                     style={{ left: mounted ? `${avgPosition}%` : '0%' }}
                     aria-label={`평균 가격: ${avgPrice.toLocaleString()}원`}
                 />
 
                 {/* Current Price Marker */}
                 <div
-                    className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white dark:bg-gray-900 border-2 border-[color:var(--color-accent)] rounded-full shadow-md transition-all duration-1000 ease-out z-10"
+                    className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-[color:var(--color-accent)] rounded-full shadow-md transition-all duration-1000 ease-out z-10"
                     style={{
                         left: mounted ? `calc(${position}% - 8px)` : '0%',
                         borderColor: designTokens.colors.primary
@@ -75,7 +75,7 @@ export default function PriceInsight({ product, relatedProducts = [] }: PriceIns
 
             <div className="mt-2 flex justify-between items-center">
                 <span className="text-xs text-gray-400">평균 {avgPrice.toLocaleString()}</span>
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                <span className="text-xs font-medium text-gray-700">
                     위치: <span className="text-[color:var(--color-primary)]" style={{ color: designTokens.colors.primary }}>{Math.round(percentile)}%</span>
                 </span>
             </div>

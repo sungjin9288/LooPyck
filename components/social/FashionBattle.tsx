@@ -134,18 +134,18 @@ export default function FashionBattle() {
                 <h2 className="text-2xl font-black mb-1">Fashion Battle</h2>
                 <p className="text-gray-500 text-sm mb-2">{season.label} — Which style defines this season?</p>
                 {/* Countdown */}
-                <div className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-1.5 text-slate-600 dark:text-slate-400">
+                <div className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 rounded-full px-4 py-1.5 text-slate-600">
                     {countdown.ended ? (
                         <span className="text-rose-500 font-bold">배틀 종료</span>
                     ) : (
                         <>
                             <span className="text-slate-400 mr-1">마감까지</span>
-                            {countdown.days > 0 && <><span className="font-bold text-slate-700 dark:text-slate-200">{countdown.days}</span><span>일 </span></>}
-                            <span className="font-bold text-slate-700 dark:text-slate-200">{pad(countdown.hours)}</span>
+                            {countdown.days > 0 && <><span className="font-bold text-slate-700">{countdown.days}</span><span>일 </span></>}
+                            <span className="font-bold text-slate-700">{pad(countdown.hours)}</span>
                             <span>:</span>
-                            <span className="font-bold text-slate-700 dark:text-slate-200">{pad(countdown.minutes)}</span>
+                            <span className="font-bold text-slate-700">{pad(countdown.minutes)}</span>
                             <span>:</span>
-                            <span className="font-bold text-slate-700 dark:text-slate-200">{pad(countdown.seconds)}</span>
+                            <span className="font-bold text-slate-700">{pad(countdown.seconds)}</span>
                         </>
                     )}
                 </div>
@@ -212,8 +212,8 @@ export default function FashionBattle() {
 
                 {/* VS Badge */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                    <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-900 shadow-xl flex items-center justify-center border-2 border-slate-100 dark:border-slate-700">
-                        <span className="text-sm font-black text-slate-800 dark:text-white">VS</span>
+                    <div className="w-12 h-12 rounded-full bg-white shadow-xl flex items-center justify-center border-2 border-slate-100">
+                        <span className="text-sm font-black text-slate-800">VS</span>
                     </div>
                 </div>
             </div>
