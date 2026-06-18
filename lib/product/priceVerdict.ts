@@ -1,7 +1,7 @@
 /**
  * Price Verdict — 실제 수집된 가격 이력을 바탕으로 "지금 이 가격이 사기 좋은
- * 가격인지"를 결정적으로 판정한다. priceForecaster 의 난수 mock 과 달리 입력이
- * 같으면 결과가 항상 같으므로 테스트가 가능하다.
+ * 가격인지"를 결정적으로 판정한다. 입력이 같으면 결과가 항상 같으므로 테스트가
+ * 가능하다.
  */
 
 export interface PriceVerdictPoint {
