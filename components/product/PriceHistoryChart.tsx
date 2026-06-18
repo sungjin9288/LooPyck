@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { getFreshnessBadgeClassName, summarizePriceHistoryFreshness } from '@/lib/product/dataFreshness';
+import { computePriceVerdict, type PriceVerdict, type PriceVerdictLevel } from '@/lib/product/priceVerdict';
 
 interface PricePoint {
     date: string;
@@ -27,26 +28,31 @@ function formatLabel(capturedAt: number): string {
     return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
-function getInsight(
-    data: PricePoint[],
-    enabled: boolean
-): { text: string; color: string } {
-    if (!enabled) {
-        return { text: '서버 가격 이력 기능이 비활성화되어 있습니다', color: 'text-slate-500' };
+function verdictBadgeClass(level: PriceVerdictLevel): string {
+    switch (level) {
+        case 'great_deal':
+            return 'border-emerald-300 bg-emerald-50 text-emerald-700';
+        case 'good':
+            return 'border-emerald-200 bg-emerald-50 text-emerald-600';
+        case 'high':
+            return 'border-amber-300 bg-amber-50 text-amber-700';
+        case 'insufficient':
+            return 'border-slate-200 bg-slate-50 text-slate-400';
+        default:
+            return 'border-slate-200 bg-slate-100 text-slate-600';
     }
-    if (data.length < 2) {
-        return { text: '첫 가격 데이터가 수집되는 중입니다', color: 'text-slate-500' };
+}
+
+function verdictReasonClass(level: PriceVerdictLevel): string {
+    switch (level) {
+        case 'great_deal':
+        case 'good':
+            return 'text-emerald-600';
+        case 'high':
+            return 'text-amber-600';
+        default:
+            return 'text-slate-500';
     }
-
-    const first = data[0].price;
-    const last = data[data.length - 1].price;
-    const min = Math.min(...data.map(d => d.price));
-    const diff = ((last - first) / first) * 100;
-
-    if (last <= min) return { text: '최근 수집 구간 기준 낮은 가격대에 가깝습니다', color: 'text-green-600' };
-    if (diff < -5) return { text: '최근 수집 데이터에서 하락 흐름이 보입니다', color: 'text-green-600' };
-    if (diff > 10) return { text: '최근 수집 데이터에서 상승 흐름이 보입니다', color: 'text-amber-600' };
-    return { text: '최근 수집 구간에서는 큰 변동이 없습니다', color: 'text-slate-500' };
 }
 
 function resolveScopeHeading(scope: 'product' | 'option' | 'variant'): string {
@@ -95,6 +101,7 @@ export default function PriceHistoryChart({
     const [loading, setLoading] = useState(true);
     const [enabled, setEnabled] = useState(true);
     const [scope, setScope] = useState<'product' | 'option' | 'variant'>('product');
+    const [verdict, setVerdict] = useState<PriceVerdict | null>(null);
     const [latestRecordedAt, setLatestRecordedAt] = useState<number | null>(null);
     const chartContainerRef = useRef<HTMLDivElement | null>(null);
     const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
@@ -139,7 +146,7 @@ export default function PriceHistoryChart({
                 setEnabled(payload.enabled !== false);
                 setScope(payload.scope === 'variant' ? 'variant' : payload.scope === 'option' ? 'option' : 'product');
                 const points = Array.isArray(payload.points) ? payload.points : [];
-                const normalized = points
+                const sortedPoints = points
                     .filter((point) => Number.isFinite(point.price) && Number.isFinite(point.capturedAt))
                     .map((point) => ({
                         price: Math.round(point.price),
@@ -148,8 +155,13 @@ export default function PriceHistoryChart({
                         stockStatus: point.stockStatus,
                         stockText: point.stockText,
                     }))
-                    .sort((a, b) => a.capturedAt - b.capturedAt)
-                    .slice(-7);
+                    .sort((a, b) => a.capturedAt - b.capturedAt);
+
+                // verdict 는 통계 정확도를 위해 전체 수집 구간을, 차트는 가독성을
+                // 위해 최근 7개만 사용한다.
+                setVerdict(computePriceVerdict(sortedPoints, currentPrice));
+
+                const normalized = sortedPoints.slice(-7);
 
                 if (normalized.length === 0) {
                     setLatestRecordedAt(null);
@@ -167,6 +179,7 @@ export default function PriceHistoryChart({
                     return;
                 }
                 console.error('[PriceHistoryChart] load failed:', error);
+                setVerdict(computePriceVerdict([], currentPrice));
                 setLatestRecordedAt(null);
                 setData([{
                     price: currentPrice,
@@ -187,7 +200,6 @@ export default function PriceHistoryChart({
         [scope, variantLabel, optionLabel]
     );
 
-    const insight = useMemo(() => getInsight(data, enabled), [data, enabled]);
     const historyFreshness = useMemo(() => summarizePriceHistoryFreshness(latestRecordedAt), [latestRecordedAt]);
     const canRenderChart = !loading && chartSize.width > 0 && chartSize.height > 0;
 
@@ -231,14 +243,21 @@ export default function PriceHistoryChart({
                     )}
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
+                    {verdict && verdict.level !== 'insufficient' && (
+                        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${verdictBadgeClass(verdict.level)}`}>
+                            {verdict.label}
+                        </span>
+                    )}
                     <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${getFreshnessBadgeClassName(historyFreshness.status)}`}>
                         {historyFreshness.shortLabel}
                     </span>
-                    <span className={`text-[11px] font-medium ${insight.color}`}>
-                        {insight.text}
-                    </span>
                 </div>
             </div>
+            {verdict && (
+                <p className={`mb-2 text-xs font-medium ${verdictReasonClass(verdict.level)}`}>
+                    {verdict.reason}
+                </p>
+            )}
             {historyFreshness.status !== 'unknown' && (
                 <p className="mb-3 text-[11px] text-slate-400">
                     마지막 가격 수집: {historyFreshness.detailLabel}
