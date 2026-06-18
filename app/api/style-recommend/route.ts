@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { parseGeminiJson } from '@/lib/ai/geminiJson';
+import { sanitizePromptText } from '@/lib/ai/promptSafety';
 import {
     buildStyleRecommendFallback,
     normalizeStyleRecommendResponse,
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
 - 성별: ${genderLabel}
 - 키: ${height}cm
 - 몸무게: ${weight}kg (BMI: ${bmi.toFixed(1)})
-- 선호 스타일: ${preferredStyles.join(', ')}
+- 선호 스타일: ${preferredStyles.map((style) => sanitizePromptText(style, 30)).join(', ')}
 - 예산: 아이템당 ${budgetLabel}
 
 이 고객에게 딱 맞는 패션 룩 3가지를 추천해주세요.

@@ -4,51 +4,10 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Product } from '@/types/product';
 import { dedupeFavoritesForInsights } from '@/lib/favorites/favoriteProduct';
+import { getDominantPersona } from '@/lib/personalization/styleTaxonomy';
 
 interface StyleProfileCardProps {
     favorites: Product[];
-}
-
-interface StylePersona {
-    label: string;
-    icon: string;
-    description: string;
-    gradient: string;
-}
-
-const STREET_BRANDS = ['nike', 'adidas', 'jordan', 'supreme', 'stussy', 'kith', 'palace', 'carhartt', 'new era', 'vans', 'new balance'];
-const GORPCORE_BRANDS = ['arc\'teryx', 'arcteryx', 'salomon', 'north face', 'patagonia', 'mammut', 'columbia', 'hoka', 'merrell'];
-const OLD_MONEY_BRANDS = ['polo', 'lacoste', 'moncler', 'stone island', 'loro piana', 'brunello', 'cos '];
-const MINIMAL_BRANDS = ['uniqlo', 'cos', '무신사 스탠다드', 'lemaire', 'a.p.c', 'apc', 'toteme', 'theory'];
-
-function detectPersona(favorites: Product[]): StylePersona {
-    if (favorites.length === 0) {
-        return { label: '패션 탐험가', icon: '🌟', description: '나만의 스타일을 찾아가는 중', gradient: 'from-slate-400 to-slate-600' };
-    }
-
-    const combined = favorites.map(f => `${f.brand} ${f.title}`.toLowerCase());
-    const score = { street: 0, gorpcore: 0, oldmoney: 0, minimal: 0 };
-
-    for (const text of combined) {
-        if (STREET_BRANDS.some(b => text.includes(b))) score.street++;
-        if (GORPCORE_BRANDS.some(b => text.includes(b))) score.gorpcore++;
-        if (OLD_MONEY_BRANDS.some(b => text.includes(b))) score.oldmoney++;
-        if (MINIMAL_BRANDS.some(b => text.includes(b))) score.minimal++;
-    }
-
-    const maxKey = (Object.keys(score) as (keyof typeof score)[]).reduce((a, b) => score[a] >= score[b] ? a : b);
-    const maxScore = score[maxKey];
-
-    if (maxScore === 0) return { label: '패션 탐험가', icon: '🌟', description: '다양한 스타일을 자유롭게 탐구하는 개성파', gradient: 'from-purple-500 to-pink-500' };
-
-    const PERSONAS: Record<keyof typeof score, StylePersona> = {
-        street: { label: '스트릿 키드', icon: '🔥', description: '힙한 스트릿 컬처와 스니커즈 문화를 즐기는 스타일', gradient: 'from-orange-500 to-red-500' },
-        gorpcore: { label: '고프코어 마니아', icon: '🏔️', description: '기능성과 패션을 동시에 추구하는 아웃도어 감성', gradient: 'from-green-500 to-teal-600' },
-        oldmoney: { label: '올드머니 클래식', icon: '🎩', description: '절제된 럭셔리와 타임리스 엘레강스를 추구', gradient: 'from-amber-600 to-yellow-700' },
-        minimal: { label: '미니멀리스트', icon: '⬜', description: '군더더기 없는 깔끔함과 기본에 충실한 스타일', gradient: 'from-slate-500 to-slate-700' },
-    };
-
-    return PERSONAS[maxKey];
 }
 
 function getPriceProfile(favorites: Product[]): { label: string; avg: number } {
@@ -76,7 +35,7 @@ export function StyleProfileCard({ favorites }: StyleProfileCardProps) {
     const uniqueFavorites = dedupeFavoritesForInsights(favorites);
     if (uniqueFavorites.length < 3) return null;
 
-    const persona = detectPersona(uniqueFavorites);
+    const persona = getDominantPersona(uniqueFavorites);
     const priceProfile = getPriceProfile(uniqueFavorites);
     const topBrands = getTopBrands(uniqueFavorites);
 

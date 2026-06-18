@@ -42,37 +42,55 @@ function getCurrentSeason(): string {
     return '겨울';
 }
 
+const MAX_MOOD_KEYWORDS = 5;
+
 export const MoodEngine = {
     /**
-     * 추상적인 무드 쿼리를 구체적인 상품 키워드로 확장.
-     * 쿼리에 계절 언급이 없으면 현재 계절을 자동 주입.
+     * 무드 쿼리를 구체적인 상품 키워드로 확장한다.
+     * - 무드가 하나도 매칭되지 않으면 빈 배열을 반환한다(리터럴 검색어를
+     *   계절 키워드로 치환하던 과거 버그 방지).
+     * - 매칭된 무드에 계절 언급이 없으면 현재(또는 주입된) 계절의 대표
+     *   아이템 1개를 앞에 덧붙여 시즌성을 보강한다.
+     *
+     * @param options.season   테스트/결정성을 위해 계절을 주입(미지정 시 현재 계절)
+     * @param options.injectSeason  false면 계절 보강을 끈다
      */
-    analyze: (query: string): string => {
-        let matchedKeywords: string[] = [];
+    expandMoods: (query: string, options?: { season?: string; injectSeason?: boolean }): string[] => {
+        const matched: string[] = [];
+        let hasMood = false;
         let hasSeason = false;
 
         for (const mood of Object.keys(MOOD_MAP)) {
             if (query.includes(mood)) {
-                matchedKeywords = [...matchedKeywords, ...MOOD_MAP[mood]];
+                matched.push(...MOOD_MAP[mood]);
+                hasMood = true;
                 if (SEASON_KEYWORDS.includes(mood)) hasSeason = true;
             }
         }
 
-        // 계절 미언급 시 현재 계절 키워드 1개 주입
-        if (!hasSeason) {
-            const currentSeason = getCurrentSeason();
-            const seasonKeywords = MOOD_MAP[currentSeason];
+        // 무드 미매칭 → 리터럴 검색어이므로 확장하지 않는다.
+        if (!hasMood) {
+            return [];
+        }
+
+        if (!hasSeason && options?.injectSeason !== false) {
+            const season = options?.season ?? getCurrentSeason();
+            const seasonKeywords = MOOD_MAP[season];
             if (seasonKeywords) {
-                matchedKeywords = [seasonKeywords[0], ...matchedKeywords];
+                matched.unshift(seasonKeywords[0]);
             }
         }
 
-        if (matchedKeywords.length > 0) {
-            const uniqueKeywords = Array.from(new Set(matchedKeywords)).slice(0, 3);
-            return uniqueKeywords.join(' ');
-        }
+        return Array.from(new Set(matched)).slice(0, MAX_MOOD_KEYWORDS);
+    },
 
-        return query;
+    /**
+     * 추상적인 무드 쿼리를 구체적인 상품 키워드 문자열로 변환.
+     * 무드가 없으면 원본 쿼리를 그대로 반환한다.
+     */
+    analyze: (query: string): string => {
+        const expanded = MoodEngine.expandMoods(query);
+        return expanded.length > 0 ? expanded.slice(0, 3).join(' ') : query;
     },
 
     /**

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { parseGeminiJson } from '@/lib/ai/geminiJson';
+import { sanitizePromptText, wrapUntrustedBlock } from '@/lib/ai/promptSafety';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 
 const REQUEST_TIMEOUT_MS = 12_000;
@@ -65,19 +66,18 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
     const reviewTexts = parsedRequest.data.reviews
-        .map((review, index) => `리뷰 ${index + 1}: [별점 ${review.rating}점 / 핏: ${review.fit || '알수없음'}] ${review.text || '내용 없음'}`)
+        .map((review, index) => `리뷰 ${index + 1}: [별점 ${review.rating}점 / 핏: ${review.fit || '알수없음'}] ${sanitizePromptText(review.text || '내용 없음', 260)}`)
         .join('\n');
 
     const prompt = `
 당신은 e-커머스 리뷰 분석 AI입니다.
-아래 다수의 사용자 리뷰 데이터를 분석하여 장점(pros), 단점(cons), 그리고 공통적인 사이즈/핏 팁(sizeTip)을 **각각 매우 간결한 1줄(30자 내외)**로 요약해 주세요.
+아래 사용자 리뷰 데이터를 분석하여 장점(pros), 단점(cons), 그리고 공통적인 사이즈/핏 팁(sizeTip)을 **각각 매우 간결한 1줄(30자 내외)**로 요약해 주세요.
 말투는 "~합니다", "~편입니다" 와 같이 상품 상세페이지에 어울리는 정중하고 객관적인 쇼핑 가이드 톤으로 작성하세요.
 
-[사용자 리뷰 데이터]
-${reviewTexts}
+${wrapUntrustedBlock(reviewTexts, 'REVIEWS')}
 
 [출력 형식]
 반드시 아래 JSON 형식으로만 응답하세요 (백틱 묶음 없이 순수 JSON만 반환):
@@ -99,15 +99,16 @@ ${reviewTexts}
     try {
         const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
             body: JSON.stringify(requestBody),
             signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
 
         if (!response.ok) {
+            // Do not leak the upstream provider status to the client.
             return NextResponse.json(
                 { error: 'AI 리뷰 분석 중 오류가 발생했습니다.' },
-                { status: response.status, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+                { status: 502, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
             );
         }
 

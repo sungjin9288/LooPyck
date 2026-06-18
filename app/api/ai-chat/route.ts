@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { extractGeminiText, normalizeKeywordList, parseGeminiJson } from '@/lib/ai/geminiJson';
+import { sanitizePromptText } from '@/lib/ai/promptSafety';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
@@ -45,6 +46,8 @@ const ChatRequestSchema = z.object({
     message: z.string().trim().min(1, '메시지를 입력해주세요.').max(500, '메시지가 너무 깁니다.'),
     history: z.array(ChatHistorySchema).max(12).optional().default([]),
     locale: z.enum(['ko', 'en']).optional().default('ko'),
+    // Optional taste profile derived from the user's favorites — personalizes advice.
+    styleProfile: z.string().trim().max(200).optional(),
 });
 
 const ChatResponseSchema = z.object({
@@ -107,10 +110,17 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const { message, history, locale } = parsedBody.data;
+    const { message, history, locale, styleProfile } = parsedBody.data;
+
+    // Personalize the stylist with the user's taste, but keep their explicit
+    // request authoritative. styleProfile is sanitized (favorites-derived text).
+    const baseSystemPrompt = getSystemPrompt(locale);
+    const systemPrompt = styleProfile
+        ? `${baseSystemPrompt}\n\n[사용자 취향 참고]\n${sanitizePromptText(styleProfile, 200)}\n위 취향을 자연스럽게 반영하되, 사용자가 다른 요청을 하면 그 요청을 우선하세요.`
+        : baseSystemPrompt;
 
     const geminiContents = [
-        { role: 'user', parts: [{ text: getSystemPrompt(locale) }] },
+        { role: 'user', parts: [{ text: systemPrompt }] },
         { role: 'model', parts: [{ text: getStarterResponse(locale) }] },
         ...history.slice(-HISTORY_CONTEXT_LIMIT).map((item) => ({
             role: item.role,

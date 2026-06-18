@@ -50,6 +50,9 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
                         price: product.price,
                         brand: product.brand,
                         category: product.category1 || '패션',
+                        // identity lets the server ground the price judgment in real history
+                        source: product.source,
+                        productId: product.id,
                     })
                 });
 

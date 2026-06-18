@@ -1,4 +1,5 @@
 import type { ProductSource, UnifiedProduct } from '../api/types.ts';
+import { MoodEngine } from '../ai/moodEngine.ts';
 import { normalizeTitle } from '../core/dataNormalizer.ts';
 import { resolveSemanticFashionExpansion } from './fashionOntology.ts';
 import { buildSourceRewriteQueries } from './sourceRewriteRules.ts';
@@ -483,6 +484,9 @@ export function analyzeFashionQuery(query: string): FashionQueryAnalysis {
             }),
             ...semanticExpansion.queries,
             ...semanticExpansion.related,
+            // 추상 무드 쿼리("올드머니룩")일 때만 구체 아이템 키워드를 보강.
+            // 리터럴 쿼리에는 []를 반환하므로 기존 제안 순서에 영향이 없다.
+            ...MoodEngine.expandMoods(originalQuery),
         ]).slice(0, 8);
 
     return {

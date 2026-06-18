@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pushAppNotification } from '@/lib/core/notifications';
 import { useUser } from '@/contexts/UserContext';
+import { useCloudStorage } from '@/hooks/useCloudStorage';
+import { buildChatStyleContext } from '@/lib/ai/chatStyleContext';
+import { dedupeFavoritesForInsights } from '@/lib/favorites/favoriteProduct';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -73,6 +76,11 @@ const CHAT_HISTORY_MAX = 50;
 
 export default function StyleChat({ onSearch }: StyleChatProps) {
     const { user } = useUser();
+    const { favorites } = useCloudStorage();
+    const styleProfile = useMemo(
+        () => buildChatStyleContext(dedupeFavoritesForInsights(favorites)),
+        [favorites]
+    );
     const [isOpen, setIsOpen] = useState(false);
     const [locale, setLocale] = useState<ChatLocale>('ko');
     const [messages, setMessages] = useState<ChatMessage[]>([
@@ -141,7 +149,12 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
             const res = await fetch('/api/ai-chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: query, history, locale }),
+                body: JSON.stringify({
+                    message: query,
+                    history,
+                    locale,
+                    ...(styleProfile ? { styleProfile } : {}),
+                }),
             });
 
             const data = await res.json().catch(() => ({} as Record<string, unknown>));
@@ -179,7 +192,7 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
             setIsTyping(false);
             sendLockRef.current = false;
         }
-    }, [history, input, isTyping, isUploading, locale]);
+    }, [history, input, isTyping, isUploading, locale, styleProfile]);
 
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
