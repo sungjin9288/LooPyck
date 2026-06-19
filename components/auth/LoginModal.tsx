@@ -5,8 +5,14 @@ import { signInWithGoogle, signOut } from '@/lib/auth/firebase';
 import { getReadableAuthMessage } from '@/lib/auth/authErrorMessage';
 import { User } from 'firebase/auth';
 import StyleDashboard from '@/components/auth/StyleDashboard';
-import MyAsset from '@/components/profile/MyAsset'; // Portfolio Component
+import dynamic from 'next/dynamic';
 import { useUser } from '@/contexts/UserContext';
+
+// Lazy-load the portfolio pie chart so recharts/d3 isn't in the login modal's initial bundle.
+const MyAsset = dynamic(() => import('@/components/profile/MyAsset'), {
+    ssr: false,
+    loading: () => <div className="h-48 w-full animate-pulse rounded-xl bg-slate-100" />,
+});
 import { pushAppNotification } from '@/lib/core/notifications';
 import { isTossWebView } from '@/lib/native/tossWebView';
 import { useTdsMobile } from '@/lib/native/tdsMobile';

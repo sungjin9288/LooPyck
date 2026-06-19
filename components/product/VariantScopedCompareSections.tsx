@@ -8,8 +8,14 @@ import { comparePurchaseOffers } from '@/lib/product/purchasePricing';
 import { applyVariantSelectionToProducts, findSelectedVariantOption, getDefaultVariantSelectionKey, listVariantSelectionOptions } from '@/lib/product/variantSelection';
 import { buildVariantHistoryIdentity } from '@/lib/product/variantHistory';
 import { buildFavoriteProductFromUnified } from '@/lib/favorites/favoriteProduct';
-import PriceHistoryChart from './PriceHistoryChart';
+import dynamic from 'next/dynamic';
 import CompareShortlistButton from './CompareShortlistButton';
+
+// Lazy-load the chart so recharts/d3 stays out of this route's initial bundle.
+const PriceHistoryChart = dynamic(() => import('./PriceHistoryChart'), {
+    ssr: false,
+    loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-slate-100" />,
+});
 import PurchaseDecisionBlock from './PurchaseDecisionBlock';
 import PurchaseComparisonTable from './PurchaseComparisonTable';
 import VariantPicker from './VariantPicker';

@@ -8,7 +8,12 @@ import { buildProductDetailHref } from '@/lib/api/productSnapshot';
 import FutureValueInsight from './FutureValueInsight';
 import ProductReviews from './ProductReviews';
 import RichShare from '@/components/shared/RichShare';
-import PriceHistoryChart from './PriceHistoryChart';
+import dynamic from 'next/dynamic';
+// Lazy-load the chart so recharts/d3 stays out of the product route's initial bundle.
+const PriceHistoryChart = dynamic(() => import('./PriceHistoryChart'), {
+    ssr: false,
+    loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-slate-100" />,
+});
 import CompareShortlistButton from './CompareShortlistButton';
 import PurchaseDecisionBlock from './PurchaseDecisionBlock';
 import SizeFitGuide from './SizeFitGuide';
