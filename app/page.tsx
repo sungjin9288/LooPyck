@@ -10,11 +10,11 @@ import Navbar from '@/components/layout/Navbar';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import CompareShortlistSection from '@/components/product/CompareShortlistSection';
 import RecentlyViewedSection from '@/components/product/RecentlyViewedSection';
-import StyleRecommender from '@/components/recommend/StyleRecommender';
 import TrendDiscovery from '@/components/home/TrendDiscovery';
+import StyleRecommender from '@/components/recommend/StyleRecommender';
 import { normalizeSearchSort, SearchSort } from '@/types/searchSort';
 import { addRecentSearch } from '@/utils/recentSearches';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import { UnifiedProduct } from '@/lib/api/types';
 import dynamic from 'next/dynamic';
@@ -117,17 +117,17 @@ export default function Home() {
 
       {/* 메인 콘텐츠 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 min-h-[calc(100vh-300px)]">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentView}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.35, ease: 'easeOut' }}
-          >
-            {/* 🔍 검색 뷰 */}
-            {currentView === 'search' && (
-              <div className="space-y-8 md:space-y-12">
+        {/* 뷰 전환: key별 motion.div로 enter 애니메이션만 사용.
+            AnimatePresence(exit 대기)는 search 뷰의 무거운 자식 때문에 exit가 완료되지
+            않아 recommend 뷰가 마운트되지 못하는 deadlock을 유발해 제거함. */}
+        {currentView === 'search' && (
+            <motion.div
+              key="search"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="space-y-8 md:space-y-12"
+            >
                 <SearchBar query={searchQuery} sort={searchSort} onSearch={onSearch} />
 
                 {/* 트렌드 키워드 칩 */}
@@ -179,20 +179,23 @@ export default function Home() {
                 ) : (
                   <TrendDiscovery onSearch={onSearch} />
                 )}
-              </div>
-            )}
+            </motion.div>
+          )}
 
-            {/* 💜 스타일 추천 뷰 */}
-            {currentView === 'recommend' && (
+          {/* 💜 스타일 추천 뷰 */}
+          {currentView === 'recommend' && (
+            <motion.div
+              key="recommend"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+            >
               <StyleRecommender
                 onSearch={onSearch}
                 onSwitchToSearch={() => setCurrentView('search')}
               />
-            )}
-
-            {/* ❤️ 찜 뷰 */}
-          </motion.div>
-        </AnimatePresence>
+            </motion.div>
+          )}
       </main>
 
       {/* AI 스타일리스트 FloatingBot - 항상 표시, 검색 연동 */}
