@@ -160,13 +160,16 @@ export default function Home() {
                 {/* 트렌드 키워드 칩 */}
                 {!searchQuery && (
                   <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">이번 주 트렌드</h2>
+                    <div className="mb-4 flex items-end justify-between">
+                      <h2 className="font-serif text-2xl tracking-tight text-slate-900 sm:text-3xl">이번 주 트렌드</h2>
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">This week</span>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {TREND_KEYWORDS.map(kw => (
                         <button
                           key={kw.label}
                           onClick={() => onSearch(kw.label)}
-                          className="flex items-center gap-1.5 px-4 py-2 glass-panel rounded-2xl text-sm font-medium text-slate-700 hover:shadow-md hover:text-accent-dark transition-all"
+                          className="flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition-all hover:border-stone-900 hover:text-stone-900"
                         >
                           <span>{kw.emoji}</span><span>{kw.label}</span>
                         </button>
@@ -182,6 +185,38 @@ export default function Home() {
                       <span>체형에 맞는 스타일 추천받기 →</span>
                     </button>
                   </motion.section>
+                )}
+
+                {/* 카테고리 타일 (에디토리얼) */}
+                {!searchQuery && (
+                  <section>
+                    <div className="mb-4 flex items-end justify-between">
+                      <h2 className="font-serif text-2xl tracking-tight text-slate-900 sm:text-3xl">카테고리</h2>
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Shop by category</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 sm:gap-5">
+                      {[
+                        { slug: 'outer', label: '아우터', en: 'Outerwear', img: '/hero/cat-coat.webp' },
+                        { slug: 'denim', label: '데님', en: 'Denim', img: '/hero/cat-denim.webp' },
+                        { slug: 'sneakers', label: '스니커즈', en: 'Sneakers', img: '/hero/cat-sneakers.webp' },
+                      ].map((cat) => (
+                        <Link key={cat.slug} href={`/category/${cat.slug}`} className="group block">
+                          <div className="relative aspect-square overflow-hidden rounded-2xl bg-stone-100">
+                            <img
+                              src={cat.img}
+                              alt={cat.label}
+                              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/45 to-transparent px-4 pb-3 pt-10">
+                              <p className="font-serif text-base text-white sm:text-lg">{cat.label}</p>
+                              <p className="text-[10px] uppercase tracking-[0.18em] text-white/70">{cat.en}</p>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </section>
                 )}
 
                 {!searchQuery && <RecentSearches onSearch={onSearch} />}
