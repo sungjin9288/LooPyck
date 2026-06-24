@@ -128,6 +128,33 @@ export default function Home() {
               transition={{ duration: 0.35, ease: 'easeOut' }}
               className="space-y-8 md:space-y-12"
             >
+                {/* 에디토리얼 히어로 (검색 전에만) */}
+                {!searchQuery && (
+                  <section className="relative overflow-hidden rounded-3xl border border-black/5 bg-[#e7e1d8]">
+                    <div className="grid items-stretch md:grid-cols-[1.1fr_0.9fr]">
+                      <div className="flex flex-col justify-center px-7 py-10 sm:px-10 md:py-16 md:pl-14">
+                        <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.28em] text-stone-500">
+                          2026 S/S · Smart Shopping
+                        </p>
+                        <h2 className="font-serif text-[2.1rem] leading-[1.06] tracking-[-0.02em] text-stone-900 sm:text-5xl lg:text-[3.4rem]">
+                          좋은 옷을,<br />가장 좋은 가격에.
+                        </h2>
+                        <p className="mt-5 max-w-md text-sm leading-relaxed text-stone-600 sm:text-base">
+                          무신사 · 29CM · W컨셉을 한 번에 비교하고, AI가 지금이 살 때인지 알려드려요.
+                        </p>
+                      </div>
+                      <div className="relative min-h-[260px] md:min-h-[420px]">
+                        <img
+                          src="/hero/editorial-coat.webp"
+                          alt="에디토리얼 미니멀 코트 룩"
+                          className="absolute inset-0 h-full w-full object-cover object-top"
+                          loading="eager"
+                        />
+                      </div>
+                    </div>
+                  </section>
+                )}
+
                 <SearchBar query={searchQuery} sort={searchSort} onSearch={onSearch} />
 
                 {/* 트렌드 키워드 칩 */}

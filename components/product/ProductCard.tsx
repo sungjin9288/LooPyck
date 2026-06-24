@@ -38,49 +38,49 @@ const ProductCard = memo(function ProductCard({ product, relatedProducts }: Prod
                     event.preventDefault();
                 }
             }}
-            className="block bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden group h-full"
+            className="group block h-full overflow-hidden rounded-2xl bg-white ring-1 ring-black/[0.05] transition-all duration-300 hover:ring-black/15"
         >
-            <div className="relative h-64 bg-gray-100 overflow-hidden">
+            <div className="relative aspect-[4/5] overflow-hidden bg-stone-100">
                 <FavoriteButton product={product} />
                 <PriceAlertButton product={product} />
                 <Image
                     src={product.image}
                     alt={title}
                     fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     loading="lazy"
                 />
-                {/* Overlay effect on hover */}
-                <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-5 transition-opacity duration-300" />
             </div>
 
             <div className="p-4">
-                <h3 className="font-medium text-gray-900 mb-2 line-clamp-2 min-h-[48px] group-hover:text-blue-600 transition-colors">
+                {product.brand && (
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                        {product.brand}
+                    </p>
+                )}
+                <h3 className="mb-2 line-clamp-2 min-h-[40px] text-sm font-medium leading-snug text-slate-900 underline-offset-4 decoration-slate-300 group-hover:underline">
                     {title}
                 </h3>
 
                 <SocialCounter productId={product.productId} />
 
-                <div className="space-y-1">
-                    <p className="text-xl font-bold text-blue-600">{price}</p>
+                <div className="mt-1 space-y-1">
+                    <p className="text-lg font-bold tracking-tight text-slate-900">{price}</p>
 
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                         {product.mallName && (
-                            <p>{product.mallName}</p>
+                            <span>{product.mallName}</span>
                         )}
                         {product.source && (
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                                 {product.source}
                             </span>
                         )}
                     </div>
 
-                    {product.brand && (
-                        <p className="text-sm text-gray-500">브랜드: {product.brand}</p>
-                    )}
                     {product.variantLabel && (
-                        <p className="text-sm font-medium text-fuchsia-700">
+                        <p className="text-xs font-medium text-violet-700">
                             선택 variant: {product.variantLabel}
                         </p>
                     )}
@@ -90,17 +90,15 @@ const ProductCard = memo(function ProductCard({ product, relatedProducts }: Prod
                         </p>
                     )}
                     {variantMeta && (
-                        <p className="text-xs text-gray-400">{variantMeta}</p>
+                        <p className="text-[11px] text-slate-400">{variantMeta}</p>
                     )}
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-gray-200 flex flex-col gap-2">
+                <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3">
                     <PriceInsight product={product} relatedProducts={relatedProducts} />
-                    <div className="flex justify-between items-center mt-2">
-                        <span className="text-xs text-blue-600 font-medium group-hover:underline">
-                            {internalHref ? '비교 페이지 →' : '상세보기 →'}
-                        </span>
-                    </div>
+                    <span className="mt-1 text-xs font-medium text-slate-500 transition-colors group-hover:text-slate-900">
+                        {internalHref ? '비교 페이지 →' : '상세보기 →'}
+                    </span>
                 </div>
             </div>
         </a>
