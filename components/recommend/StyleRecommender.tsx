@@ -80,11 +80,11 @@ export default function StyleRecommender({ onSearch, onSwitchToSearch }: StyleRe
         <div className="max-w-2xl mx-auto px-4 py-8">
             {/* Header */}
             <div className="text-center mb-8">
-                <div className="text-5xl mb-3">🪞</div>
-                <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tighter">
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">AI Stylist</p>
+                <h1 className="font-serif text-4xl tracking-tight text-slate-900">
                     나만의 스타일 추천
                 </h1>
-                <p className="text-slate-500">체형과 취향을 입력하면 AI가 딱 맞는 룩을 추천해드려요</p>
+                <p className="mt-3 text-sm text-slate-500">체형과 취향을 입력하면 AI가 딱 맞는 룩을 추천해드려요</p>
             </div>
 
             <AnimatePresence mode="wait">
@@ -95,7 +95,7 @@ export default function StyleRecommender({ onSearch, onSwitchToSearch }: StyleRe
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -16 }}
-                        className="glass-panel rounded-3xl p-6 space-y-6"
+                        className="rounded-3xl border border-stone-200/70 bg-white p-6 sm:p-8 space-y-6"
                     >
                         {/* 성별 */}
                         <div>
@@ -153,8 +153,8 @@ export default function StyleRecommender({ onSearch, onSwitchToSearch }: StyleRe
                                         key={style}
                                         onClick={() => toggleStyle(style)}
                                         className={`px-4 py-2 rounded-full border text-sm font-medium transition-all ${selectedStyles.includes(style)
-                                                ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-transparent'
-                                                : 'border-slate-200 text-slate-600 hover:border-violet-400'
+                                                ? 'bg-slate-900 text-white border-slate-900'
+                                                : 'border-slate-200 text-slate-600 hover:border-slate-900 hover:text-slate-900'
                                             }`}
                                     >
                                         {style}
@@ -187,7 +187,7 @@ export default function StyleRecommender({ onSearch, onSwitchToSearch }: StyleRe
                         <button
                             onClick={handleSubmit}
                             disabled={!height || !weight || selectedStyles.length === 0}
-                            className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-2xl hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-base"
+                            className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-base"
                         >
                             AI 스타일 추천 받기 ✨
                         </button>
@@ -238,7 +238,7 @@ export default function StyleRecommender({ onSearch, onSwitchToSearch }: StyleRe
                                 className="glass-panel rounded-2xl p-5"
                             >
                                 <div className="flex items-center gap-2 mb-2">
-                                    <span className="w-6 h-6 bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                    <span className="w-6 h-6 bg-slate-900 text-white rounded-full flex items-center justify-center text-xs font-bold">
                                         {i + 1}
                                     </span>
                                     <h3 className="font-bold text-slate-900">{look.lookName}</h3>
