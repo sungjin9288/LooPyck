@@ -178,7 +178,7 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                         {/* Image */}
-                        <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gray-100">
+                        <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-stone-100">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={activeProduct.image}
@@ -189,13 +189,13 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
 
                         {/* Info */}
                         <div>
-                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block">
+                            <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                                 {activeProduct.mallName}
                             </span>
-                            <h2 className="text-2xl font-black text-gray-900 mb-2 leading-tight">
+                            <h2 className="mb-2 text-2xl font-semibold leading-tight tracking-tight text-slate-900">
                                 {activeProduct.title}
                             </h2>
-                            <div className="text-3xl font-bold text-black mb-6">
+                            <div className="mb-6 text-3xl font-bold tracking-tight text-slate-900">
                                 {activeProduct.price.toLocaleString()}원
                             </div>
                             <div className="mb-5 flex flex-wrap items-center gap-2">
