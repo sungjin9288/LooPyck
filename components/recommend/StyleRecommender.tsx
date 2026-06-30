@@ -223,7 +223,7 @@ export default function StyleRecommender({ onSearch, onSwitchToSearch }: StyleRe
                         className="space-y-4"
                     >
                         {/* Body Note */}
-                        <div className="glass-panel rounded-2xl p-4 flex items-start gap-3">
+                        <div className="rounded-2xl border border-stone-200 bg-white p-4 flex items-start gap-3">
                             <span className="text-2xl">💡</span>
                             <p className="text-sm text-slate-700">{bodyNote}</p>
                         </div>
@@ -235,7 +235,7 @@ export default function StyleRecommender({ onSearch, onSwitchToSearch }: StyleRe
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.12 }}
-                                className="glass-panel rounded-2xl p-5"
+                                className="rounded-2xl border border-stone-200 bg-white p-5"
                             >
                                 <div className="flex items-center gap-2 mb-2">
                                     <span className="w-6 h-6 bg-slate-900 text-white rounded-full flex items-center justify-center text-xs font-bold">

@@ -14,7 +14,7 @@ export default function Error({ error, reset }: ErrorProps) {
 
     return (
         <div className="min-h-screen mesh-bg flex items-center justify-center px-4">
-            <div className="glass-panel max-w-md w-full rounded-3xl p-8 text-center">
+            <div className="max-w-md w-full rounded-3xl border border-stone-200 bg-white p-8 text-center">
                 {/* Icon */}
                 <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg

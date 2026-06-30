@@ -169,7 +169,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
             </AnimatePresence>
 
             {/* Write Review Form */}
-            <form onSubmit={handleSubmit} className="glass-panel rounded-2xl p-5 space-y-4">
+            <form onSubmit={handleSubmit} className="rounded-2xl border border-stone-200 bg-white p-5 space-y-4">
                 <h4 className="font-bold text-sm text-slate-900">리뷰 작성</h4>
 
                 {/* Star Rating */}
