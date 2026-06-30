@@ -51,7 +51,7 @@ export default function MobileBottomNav({ currentView, setCurrentView }: MobileB
                 <nav className="flex items-center justify-around h-16 px-4">
                     <button
                         onClick={() => handleSelect('search')}
-                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'search' ? 'text-accent-dark' : 'text-slate-400 hover:text-slate-600'
+                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'search' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'
                             }`}
                     >
                         <SearchIcon active={currentView === 'search'} />
@@ -60,7 +60,7 @@ export default function MobileBottomNav({ currentView, setCurrentView }: MobileB
 
                     <button
                         onClick={() => handleSelect('recommend')}
-                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'recommend' ? 'text-violet-600' : 'text-slate-400 hover:text-slate-600'
+                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'recommend' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'
                             }`}
                     >
                         <SparklesIcon active={currentView === 'recommend'} />
@@ -69,7 +69,7 @@ export default function MobileBottomNav({ currentView, setCurrentView }: MobileB
 
                     <button
                         onClick={() => handleSelect('favorites')}
-                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'favorites' ? 'text-rose-500' : 'text-slate-400 hover:text-slate-600'
+                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${currentView === 'favorites' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'
                             }`}
                     >
                         <HeartIcon active={currentView === 'favorites'} />
@@ -109,7 +109,7 @@ function SparklesIcon({ active }: { active: boolean }) {
             strokeWidth={active ? "2.5" : "2"}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className={`w-6 h-6 ${active ? 'text-violet-600' : ''}`}
+            className={`w-6 h-6 ${active ? 'text-slate-900' : ''}`}
         >
             <path d="m12 3-1.9 4.7L5 9.6l4.1 3.4L7.8 18 12 15.3 16.2 18l-1.3-5 4.1-3.4-5.1-1.9L12 3Z"></path>
         </svg>
@@ -126,7 +126,7 @@ function HeartIcon({ active }: { active: boolean }) {
             strokeWidth={active ? "2.5" : "2"}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className={`w-6 h-6 ${active ? 'text-rose-500' : ''}`}
+            className={`w-6 h-6 ${active ? 'text-slate-900' : ''}`}
         >
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
         </svg>

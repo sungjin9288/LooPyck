@@ -95,7 +95,7 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
             {/* Header */}
             <div className="flex justify-between items-start mb-6">
                 <div>
-                    <h3 className="text-sm font-bold text-violet-600 uppercase tracking-wider mb-1">
+                    <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.18em] mb-1">
                         LooPyck AI 구매 인사이트
                     </h3>
                     <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 flex-wrap">
@@ -132,7 +132,7 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
                 <div className="mt-4">
                     <button
                         onClick={() => setShowReasoning(v => !v)}
-                        className="flex items-center gap-1.5 text-xs text-violet-600 font-semibold hover:text-violet-700 transition-colors"
+                        className="flex items-center gap-1.5 text-xs text-slate-600 font-semibold hover:text-slate-900 transition-colors"
                     >
                         <svg
                             className={`w-3.5 h-3.5 transition-transform duration-200 ${showReasoning ? 'rotate-90' : ''}`}
@@ -162,11 +162,11 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
                                         >
                                             <div className="flex justify-between items-center mb-1">
                                                 <span className="text-xs font-semibold text-slate-700">{item.factor}</span>
-                                                <span className="text-xs font-bold text-violet-600">{item.score}pt</span>
+                                                <span className="text-xs font-bold text-slate-900">{item.score}pt</span>
                                             </div>
                                             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1">
                                                 <motion.div
-                                                    className="h-full rounded-full bg-gradient-to-r from-violet-400 to-violet-600"
+                                                    className="h-full rounded-full bg-gradient-to-r from-slate-700 to-slate-900"
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${item.score}%` }}
                                                     transition={{ duration: 0.5, delay: i * 0.06 }}

@@ -106,7 +106,7 @@ export function SearchResultCard({
                         {getRetailerTrustLabel(retailerTrust)}
                     </span>
                     {group.variants.some((variant) => hasPdpDetailData(variant)) && (
-                        <span className="bg-violet-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <span className="bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                             PDP 확인
                         </span>
                     )}

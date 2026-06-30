@@ -134,7 +134,7 @@ export function CompareHighlightCard({
                         매칭 {confidence}%
                     </span>
                     {verifiedCount > 0 && (
-                        <span className="rounded-full bg-violet-50 text-violet-700 px-2.5 py-1 text-[11px] font-bold">
+                        <span className="rounded-full bg-slate-100 text-slate-700 px-2.5 py-1 text-[11px] font-bold">
                             PDP {verifiedCount}/{totalVariantCount}
                         </span>
                     )}
@@ -265,7 +265,7 @@ export function CompareShortlistItemCard({
                         {title}
                     </h3>
                     {variantLabel ? (
-                        <p className="mt-2 text-xs font-semibold text-fuchsia-700">
+                        <p className="mt-2 text-xs font-semibold text-slate-500">
                             {variantLabel}
                         </p>
                     ) : null}

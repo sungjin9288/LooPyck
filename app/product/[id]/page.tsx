@@ -220,14 +220,14 @@ export default async function ProductPage({ params, searchParams }: Props) {
                                     )}
                                 </div>
 
-                                <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+                                <h1 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-slate-900 sm:text-4xl">
                                     {resolvedProduct.title}
                                 </h1>
 
                                 <div className="mt-5 flex flex-wrap items-center gap-3">
                                     <div className="rounded-full bg-slate-950 px-4 py-2 text-white">
                                         <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/60">Current</span>
-                                        <p className="text-2xl font-black">{resolvedProduct.price.toLocaleString()}원</p>
+                                        <p className="text-2xl font-bold tracking-tight">{resolvedProduct.price.toLocaleString()}원</p>
                                     </div>
                                     {compareMallCount > 1 && comparableGroup && (
                                         <div className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-emerald-800">
@@ -284,24 +284,24 @@ export default async function ProductPage({ params, searchParams }: Props) {
                                 <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                     <div className="rounded-2xl bg-[#f5f1ea] p-4">
                                         <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Compare Malls</p>
-                                        <p className="mt-2 text-2xl font-black text-slate-950">{compareMallCount}</p>
+                                        <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{compareMallCount}</p>
                                         <p className="mt-1 text-xs text-slate-500">비교 가능한 쇼핑몰 수</p>
                                     </div>
                                     <div className="rounded-2xl bg-[#f5f1ea] p-4">
                                         <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Lowest Best Case</p>
-                                        <p className="mt-2 text-2xl font-black text-slate-950">
+                                        <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
                                             {compareMetrics.lowestBestCasePrice.toLocaleString()}원
                                         </p>
                                         <p className="mt-1 text-xs text-slate-500">혜택 적용 기준 최저가</p>
                                     </div>
                                     <div className="rounded-2xl bg-[#f5f1ea] p-4">
                                         <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Actual Data</p>
-                                        <p className="mt-2 text-2xl font-black text-slate-950">{actualDataCount}</p>
+                                        <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{actualDataCount}</p>
                                         <p className="mt-1 text-xs text-slate-500">배송/혜택/재고 실데이터 보유</p>
                                     </div>
                                     <div className="rounded-2xl bg-[#f5f1ea] p-4">
                                         <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Variant Risk</p>
-                                        <p className="mt-2 text-2xl font-black text-slate-950">
+                                        <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
                                             {optionAlignment.riskLevel === 'high'
                                                 ? '높음'
                                                 : optionAlignment.riskLevel === 'medium'
@@ -353,36 +353,36 @@ export default async function ProductPage({ params, searchParams }: Props) {
                     <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start">
                         <section className="rounded-[2rem] border border-black/5 bg-[#111827] p-6 text-white shadow-[0_20px_80px_rgba(15,23,42,0.18)]">
                             <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/55">Intelligence</p>
-                            <h2 className="mt-3 text-2xl font-black">비교 인사이트</h2>
+                            <h2 className="mt-3 font-serif text-2xl tracking-tight">비교 인사이트</h2>
                             <div className="mt-6 space-y-4">
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.18em] text-white/55">Lowest Checkout</p>
-                                    <p className="mt-1 text-2xl font-black">{compareMetrics.lowestCheckoutPrice.toLocaleString()}원</p>
+                                    <p className="mt-1 text-2xl font-semibold tracking-tight">{compareMetrics.lowestCheckoutPrice.toLocaleString()}원</p>
                                 </div>
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.18em] text-white/55">Lowest Best Case</p>
-                                    <p className="mt-1 text-2xl font-black">{compareMetrics.lowestBestCasePrice.toLocaleString()}원</p>
+                                    <p className="mt-1 text-2xl font-semibold tracking-tight">{compareMetrics.lowestBestCasePrice.toLocaleString()}원</p>
                                 </div>
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.18em] text-white/55">Max Checkout Spread</p>
-                                    <p className="mt-1 text-2xl font-black">{maxCheckoutSpread.toLocaleString()}원</p>
+                                    <p className="mt-1 text-2xl font-semibold tracking-tight">{maxCheckoutSpread.toLocaleString()}원</p>
                                 </div>
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.18em] text-white/55">Actual Data Coverage</p>
-                                    <p className="mt-1 text-2xl font-black">{actualDataCount}/{compareOffers.length}</p>
+                                    <p className="mt-1 text-2xl font-semibold tracking-tight">{actualDataCount}/{compareOffers.length}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.18em] text-white/55">PDP Verified</p>
-                                    <p className="mt-1 text-2xl font-black">{detailVerifiedCount}/{comparedProducts.length}</p>
+                                    <p className="mt-1 text-2xl font-semibold tracking-tight">{detailVerifiedCount}/{comparedProducts.length}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.18em] text-white/55">Variant Risk</p>
-                                    <p className="mt-1 text-2xl font-black">{optionAlignment.summaryLabel}</p>
+                                    <p className="mt-1 text-2xl font-semibold tracking-tight">{optionAlignment.summaryLabel}</p>
                                 </div>
                                 {optionAlignment.verifiedOptionCount >= 2 && (
                                     <div>
                                         <p className="text-xs uppercase tracking-[0.18em] text-white/55">Shared Options</p>
-                                        <p className="mt-1 text-2xl font-black">{optionAlignment.overlapLabel}</p>
+                                        <p className="mt-1 text-2xl font-semibold tracking-tight">{optionAlignment.overlapLabel}</p>
                                     </div>
                                 )}
                             </div>
@@ -390,7 +390,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
 
                         <section className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)]">
                             <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Recovery Source</p>
-                            <h2 className="mt-2 text-xl font-black text-slate-950">비교 복원 상태</h2>
+                            <h2 className="mt-2 font-serif text-xl tracking-tight text-slate-900">비교 복원 상태</h2>
                             <p className="mt-3 text-sm leading-6 text-slate-600">
                                 snapshot이 없어도 추적된 Firestore 상품 문서에서 배송, 혜택, 재고 필드를 읽어 비교표를 복원합니다.
                             </p>

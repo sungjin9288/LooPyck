@@ -16,9 +16,9 @@ const config: Config = {
         foreground: "var(--foreground)",
         primary: '#0F172A', // Slate 900
         accent: {
-          DEFAULT: '#6366F1', // Indigo 500
-          light: '#818CF8', // Indigo 400
-          dark: '#4F46E5',  // Indigo 600
+          DEFAULT: '#0F172A', // Slate 900 — editorial ink (primary interaction)
+          light: '#475569', // Slate 600 — focus rings / subtle borders
+          dark: '#020617',  // Slate 950 — hover / emphasis
         },
         surface: {
           light: '#FFFFFF',

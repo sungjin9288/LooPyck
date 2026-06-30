@@ -93,7 +93,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
                             <button
                                 onClick={() => setCurrentView('recommend')}
                                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'recommend'
-                                    ? 'bg-white text-violet-700 shadow-sm border border-slate-200/50'
+                                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50'
                                     : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
                                     }`}
                             >

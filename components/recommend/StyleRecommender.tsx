@@ -126,7 +126,7 @@ export default function StyleRecommender({ onSearch, onSwitchToSearch }: StyleRe
                                     onChange={e => setHeight(e.target.value)}
                                     placeholder="예: 175"
                                     min="100" max="230"
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/50"
+                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-400/50"
                                 />
                             </div>
                             <div>
@@ -137,7 +137,7 @@ export default function StyleRecommender({ onSearch, onSwitchToSearch }: StyleRe
                                     onChange={e => setWeight(e.target.value)}
                                     placeholder="예: 68"
                                     min="30" max="200"
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/50"
+                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-400/50"
                                 />
                             </div>
                         </div>
@@ -204,8 +204,8 @@ export default function StyleRecommender({ onSearch, onSwitchToSearch }: StyleRe
                         className="flex flex-col items-center justify-center py-24 gap-5"
                     >
                         <div className="relative w-16 h-16">
-                            <div className="absolute inset-0 border-4 border-violet-200 rounded-full" />
-                            <div className="absolute inset-0 border-4 border-violet-600 border-t-transparent rounded-full animate-spin" />
+                            <div className="absolute inset-0 border-4 border-slate-200 rounded-full" />
+                            <div className="absolute inset-0 border-4 border-slate-900 border-t-transparent rounded-full animate-spin" />
                         </div>
                         <div className="text-center">
                             <p className="font-bold text-slate-900 mb-1">AI가 체형을 분석하고 있어요</p>
@@ -252,7 +252,7 @@ export default function StyleRecommender({ onSearch, onSwitchToSearch }: StyleRe
                                         <button
                                             key={item}
                                             onClick={() => handleSearchItem(item)}
-                                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-violet-50 border border-violet-200 text-violet-700 rounded-full hover:bg-violet-100 transition-all font-medium"
+                                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-slate-100 border border-slate-200 text-slate-700 rounded-full hover:bg-slate-200 transition-all font-medium"
                                         >
                                             <span>🛍️</span> {item}
                                         </button>

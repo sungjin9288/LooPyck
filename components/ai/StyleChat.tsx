@@ -278,7 +278,7 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                 onClick={() => setIsOpen(true)}
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.92 }}
-                className={`fixed bottom-6 right-6 z-[8000] w-14 h-14 bg-gradient-to-br from-violet-600 to-indigo-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-all ${isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                className={`fixed bottom-6 right-6 z-[8000] w-14 h-14 bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center transition-all ${isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
             >
                 <span className="text-2xl">✨</span>
             </motion.button>
@@ -292,7 +292,7 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                         transition={{ type: 'spring', damping: 26, stiffness: 300 }}
                         className="fixed bottom-6 right-6 z-[8001] w-[360px] h-[560px] bg-white rounded-3xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden"
                     >
-                        <div className="px-4 py-3 bg-gradient-to-r from-violet-600 to-indigo-700 text-white flex justify-between items-center flex-shrink-0">
+                        <div className="px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white flex justify-between items-center flex-shrink-0">
                             <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                                 <span className="font-bold text-sm">{COPY[locale].title}</span>
@@ -314,7 +314,7 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                                     key={prompt}
                                     onClick={() => void handleSend(prompt)}
                                     disabled={isTyping || isUploading}
-                                    className="flex-shrink-0 text-[11px] px-2.5 py-1 bg-white border border-slate-200 rounded-full text-slate-600 hover:border-violet-400 hover:text-violet-700 transition-all disabled:opacity-50"
+                                    className="flex-shrink-0 text-[11px] px-2.5 py-1 bg-white border border-slate-200 rounded-full text-slate-600 hover:border-slate-400 hover:text-slate-900 transition-all disabled:opacity-50"
                                 >
                                     {prompt}
                                 </button>
@@ -328,7 +328,7 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                                         <div
                                             className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.isBot
                                                 ? 'bg-slate-100 text-slate-800 rounded-tl-none'
-                                                : 'bg-gradient-to-br from-violet-600 to-indigo-700 text-white rounded-tr-none'
+                                                : 'bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-tr-none'
                                                 }`}
                                         >
                                             {msg.text}
@@ -340,7 +340,7 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                                                     <button
                                                         key={keyword}
                                                         onClick={() => handleSearchKeyword(keyword)}
-                                                        className="flex items-center gap-1 text-[11px] px-2.5 py-1 bg-violet-50 border border-violet-200 text-violet-700 rounded-full hover:bg-violet-100 transition-all font-medium"
+                                                        className="flex items-center gap-1 text-[11px] px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 rounded-full hover:bg-slate-200 transition-all font-medium"
                                                     >
                                                         <span>🔍</span>
                                                         {keyword}
@@ -409,12 +409,12 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                                 }}
                                 placeholder={isUploading ? '이미지 분석 중...' : COPY[locale].placeholder}
                                 disabled={isTyping || isUploading}
-                                className="flex-1 px-4 py-2 bg-slate-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/50 disabled:opacity-60"
+                                className="flex-1 px-4 py-2 bg-slate-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-slate-400/50 disabled:opacity-60"
                             />
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isTyping || isUploading}
-                                className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-violet-600 to-indigo-700 text-white rounded-full flex items-center justify-center hover:opacity-90 disabled:opacity-40 transition-all"
+                                className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-full flex items-center justify-center hover:opacity-90 disabled:opacity-40 transition-all"
                             >
                                 ↑
                             </button>

@@ -216,7 +216,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
                     value={reviewText}
                     onChange={e => setReviewText(e.target.value)}
                     placeholder="이 상품에 대한 솔직한 리뷰를 남겨주세요..."
-                    className="w-full p-3 bg-slate-50 rounded-xl text-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400/50 resize-none h-24"
+                    className="w-full p-3 bg-slate-50 rounded-xl text-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400/50 resize-none h-24"
                 />
 
                 <button

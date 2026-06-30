@@ -80,7 +80,7 @@ const ProductCard = memo(function ProductCard({ product, relatedProducts }: Prod
                     </div>
 
                     {product.variantLabel && (
-                        <p className="text-xs font-medium text-violet-700">
+                        <p className="text-xs font-medium text-slate-500">
                             선택 variant: {product.variantLabel}
                         </p>
                     )}

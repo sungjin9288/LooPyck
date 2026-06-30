@@ -153,8 +153,8 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                     setShowModal(true);
                 }}
                 className={`absolute top-16 right-3 w-10 h-10 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all flex items-center justify-center z-10 hover:scale-110 active:scale-95 ${hasAlert
-                    ? (isInactiveAlert ? 'bg-gray-100 text-gray-400' : 'bg-blue-50 border border-blue-200 text-blue-600')
-                    : 'bg-white/90 text-gray-600 hover:text-blue-600'
+                    ? (isInactiveAlert ? 'bg-gray-100 text-gray-400' : 'bg-slate-900 border border-slate-900 text-white')
+                    : 'bg-white/90 text-gray-600 hover:text-slate-900'
                     }`}
                 aria-label="가격 알림 설정"
             >
@@ -279,7 +279,7 @@ export default function PriceAlertButton({ product }: PriceAlertButtonProps) {
                                     <div className="flex gap-3">
                                         <button
                                             type="submit"
-                                            className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-blue-600 transition-colors font-medium shadow-md hover:shadow-lg"
+                                            className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-md hover:shadow-lg"
                                         >
                                             {hasAlert ? '알림 수정' : '알림 설정'}
                                         </button>

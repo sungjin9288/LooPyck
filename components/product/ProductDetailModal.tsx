@@ -254,7 +254,7 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                                     </p>
                                 )}
                                 {selectedVariant && (
-                                    <p className="mt-2 text-xs text-fuchsia-700">
+                                    <p className="mt-2 text-xs text-slate-500">
                                         선택 variant: {selectedVariant.label} · {selectedVariant.matchedMallCount}개 쇼핑몰 확인
                                     </p>
                                 )}
@@ -275,7 +275,7 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                                     </p>
                                 )}
                                 {isRefreshingDetails && (
-                                    <p className="mt-2 text-xs text-violet-700">
+                                    <p className="mt-2 text-xs text-slate-500">
                                         상세 페이지를 다시 확인해 옵션/재고/배송 정보를 보강하는 중입니다.
                                     </p>
                                 )}

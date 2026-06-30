@@ -81,9 +81,9 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             {/* Modal Content - Glassmorphism */}
             <div className="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-full max-w-sm shadow-2xl transform transition-all scale-100 opacity-100 overflow-hidden">
                 {/* Decorative Elements */}
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500" />
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/30 rounded-full blur-2xl" />
-                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-pink-500/30 rounded-full blur-2xl" />
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-white/10 via-white/50 to-white/10" />
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
 
                 <button
                     onClick={onClose}

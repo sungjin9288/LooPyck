@@ -179,7 +179,7 @@ export default function Home() {
                     {/* 스타일 추천 CTA */}
                     <button
                       onClick={() => setCurrentView('recommend')}
-                      className="mt-3 flex items-center gap-2 text-sm text-violet-600 hover:text-violet-800 font-medium transition-colors"
+                      className="mt-3 flex items-center gap-2 text-sm text-slate-900 hover:text-slate-600 font-medium transition-colors"
                     >
                       <span>🪞</span>
                       <span>체형에 맞는 스타일 추천받기 →</span>

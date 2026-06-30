@@ -62,15 +62,15 @@ export default function AIReviewSummary({ reviews }: AIReviewSummaryProps) {
 
     if (loading) {
         return (
-            <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-100 rounded-xl p-4 mb-6 animate-pulse">
+            <div className="bg-gradient-to-br from-[#f5f1ea] to-white border border-stone-200 rounded-xl p-4 mb-6 animate-pulse">
                 <div className="flex gap-2 mb-3">
-                    <div className="w-5 h-5 bg-violet-200 rounded-full" />
-                    <div className="h-5 bg-violet-200 rounded w-1/4" />
+                    <div className="w-5 h-5 bg-stone-200 rounded-full" />
+                    <div className="h-5 bg-stone-200 rounded w-1/4" />
                 </div>
                 <div className="space-y-2">
-                    <div className="h-4 bg-violet-100 rounded w-full" />
-                    <div className="h-4 bg-violet-100 rounded w-5/6" />
-                    <div className="h-4 bg-violet-100 rounded w-4/6" />
+                    <div className="h-4 bg-stone-100 rounded w-full" />
+                    <div className="h-4 bg-stone-100 rounded w-5/6" />
+                    <div className="h-4 bg-stone-100 rounded w-4/6" />
                 </div>
             </div>
         );
@@ -82,16 +82,16 @@ export default function AIReviewSummary({ reviews }: AIReviewSummaryProps) {
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200 rounded-xl p-4 mb-6 relative overflow-hidden"
+            className="bg-gradient-to-br from-[#f5f1ea] to-white border border-stone-200 rounded-xl p-4 mb-6 relative overflow-hidden"
         >
             <div className="absolute top-0 right-0 p-3 opacity-10 blur-[1px]">
-                <span className="text-4xl text-violet-600">✨</span>
+                <span className="text-4xl text-slate-900">✨</span>
             </div>
 
             <div className="flex items-center gap-1.5 mb-3 relative z-10">
-                <span className="text-violet-600 text-sm">✨</span>
-                <h4 className="font-bold text-sm text-violet-900">AI가 리뷰를 요약했어요</h4>
-                <span className="text-[10px] bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded ml-2">Beta</span>
+                <span className="text-slate-900 text-sm">✨</span>
+                <h4 className="font-semibold text-sm text-slate-900">AI가 리뷰를 요약했어요</h4>
+                <span className="text-[10px] bg-slate-900 text-white px-1.5 py-0.5 rounded ml-2 uppercase tracking-[0.12em]">Beta</span>
             </div>
 
             <ul className="space-y-2 relative z-10">

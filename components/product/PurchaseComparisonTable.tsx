@@ -138,7 +138,7 @@ export default function PurchaseComparisonTable({
                             pill === '공통 옵션 미확인'
                                 ? 'border-amber-200 bg-amber-50 text-amber-700'
                                 : pill === '검증 옵션'
-                                    ? 'border-violet-200 bg-violet-50 text-violet-700'
+                                    ? 'border-slate-200 bg-slate-50 text-slate-700'
                                     : 'border-emerald-200 bg-emerald-50 text-emerald-700'
                         }`}
                     >
@@ -179,11 +179,11 @@ export default function PurchaseComparisonTable({
                 </div>
             )}
             {selectedVariantLabel && (
-                <div className="rounded-2xl border border-fuchsia-200 bg-fuchsia-50 px-4 py-3">
-                    <p className="text-sm font-bold text-fuchsia-900">
+                <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+                    <p className="text-sm font-bold text-slate-900">
                         선택 variant 기준 비교: {selectedVariantLabel}
                     </p>
-                    <p className="mt-1 text-xs text-fuchsia-700">
+                    <p className="mt-1 text-xs text-slate-600">
                         지원하는 쇼핑몰은 해당 variant 가격과 재고를 반영하고, 미지원 쇼핑몰은 분리해서 표시합니다.
                     </p>
                 </div>
@@ -281,17 +281,17 @@ export default function PurchaseComparisonTable({
                                     </span>
                                 )}
                                 {hasDetailData && (
-                                    <span className="rounded-full bg-violet-50 px-2 py-1 text-[10px] font-bold text-violet-700">
+                                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700">
                                         PDP 실데이터
                                     </span>
                                 )}
                                 {(product.variantSku || product.variantId) && (
-                                    <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700">
+                                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700">
                                         실제 SKU
                                     </span>
                                 )}
                                 {product.variantCandidates && product.variantCandidates.length > 0 && (
-                                    <span className="rounded-full bg-fuchsia-50 px-2 py-1 text-[10px] font-bold text-fuchsia-700">
+                                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700">
                                         선택 variant {product.variantCandidates.length}개
                                     </span>
                                 )}
