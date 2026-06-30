@@ -245,9 +245,9 @@ export default function AlertDetailView({ alertId }: AlertDetailViewProps) {
                     <Spinner size="md" />
                 </div>
             ) : !alert ? (
-                <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Alert Detail</p>
-                    <h1 className="mt-3 text-2xl font-black text-slate-950">알림을 찾을 수 없습니다</h1>
+                <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Alert Detail</p>
+                    <h1 className="mt-3 font-serif text-2xl tracking-tight text-slate-900">알림을 찾을 수 없습니다</h1>
                     <p className="mt-3 text-sm text-slate-500">이미 정리되었거나 현재 계정에서 접근할 수 없는 알림입니다.</p>
                     <button
                         type="button"
@@ -262,7 +262,7 @@ export default function AlertDetailView({ alertId }: AlertDetailViewProps) {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Alert Detail</p>
-                            <h1 className="mt-2 text-3xl font-black text-slate-950">{alert.title}</h1>
+                            <h1 className="mt-2 font-serif text-3xl tracking-tight text-slate-900">{alert.title}</h1>
                             <p className="mt-2 text-sm text-slate-500">
                                 {new Date(alert.createdAt).toLocaleString('ko-KR')}
                                 {alert.variantLabel ? ` · ${alert.variantLabel}` : ''}
@@ -322,11 +322,11 @@ export default function AlertDetailView({ alertId }: AlertDetailViewProps) {
                         </div>
                     </div>
 
-                    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <section className="rounded-3xl border border-slate-200 bg-white p-6">
                         <p className="text-sm leading-7 text-slate-700">{alert.message}</p>
 
                         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Alert Persona</p>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Alert Persona</p>
                             <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                     <p className="text-sm font-bold text-slate-950">{effectiveAlertProfile.summary}</p>
@@ -356,40 +356,40 @@ export default function AlertDetailView({ alertId }: AlertDetailViewProps) {
 
                         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                             <div className="rounded-2xl bg-slate-50 p-4">
-                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Current</p>
-                                <p className="mt-2 text-2xl font-black text-slate-950">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Current</p>
+                                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
                                     {typeof alert.currentPrice === 'number' ? formatPrice(alert.currentPrice) : '정보 없음'}
                                 </p>
                             </div>
                             <div className="rounded-2xl bg-slate-50 p-4">
-                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Target</p>
-                                <p className="mt-2 text-2xl font-black text-slate-950">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Target</p>
+                                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
                                     {typeof alert.targetPrice === 'number' ? formatPrice(alert.targetPrice) : '정보 없음'}
                                 </p>
                             </div>
                             <div className="rounded-2xl bg-slate-50 p-4">
-                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Status</p>
-                                <p className="mt-2 text-2xl font-black text-slate-950">{alert.read ? '확인됨' : '미확인'}</p>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Status</p>
+                                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{alert.read ? '확인됨' : '미확인'}</p>
                             </div>
                             <div className="rounded-2xl bg-slate-50 p-4">
-                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Archive</p>
-                                <p className="mt-2 text-2xl font-black text-slate-950">{alert.archivedAt ? '보관됨' : '활성'}</p>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Archive</p>
+                                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{alert.archivedAt ? '보관됨' : '활성'}</p>
                             </div>
                             <div className="rounded-2xl bg-slate-50 p-4">
-                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Priority</p>
-                                <p className="mt-2 text-2xl font-black text-slate-950">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Priority</p>
+                                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
                                     {alert.priority ? alertPriorityLabel(alert.priority) : '기본'}
                                 </p>
                             </div>
                             <div className="rounded-2xl bg-slate-50 p-4">
-                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Route</p>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Route</p>
                                 <p className="mt-2 break-all text-sm font-bold text-slate-950">{buildAlertDetailHref(alert.id)}</p>
                             </div>
                         </div>
 
                         {(alert.cheapestMall || typeof alert.cheapestPrice === 'number') && (
                             <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Cheapest Alternative</p>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Cheapest Alternative</p>
                                 <p className="mt-2 text-sm font-semibold text-emerald-900">
                                     {alert.cheapestMall || '다른 쇼핑몰'}
                                     {typeof alert.cheapestPrice === 'number' ? ` · ${formatPrice(alert.cheapestPrice)}` : ''}
@@ -408,11 +408,11 @@ export default function AlertDetailView({ alertId }: AlertDetailViewProps) {
                         )}
                     </section>
 
-                    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <section className="rounded-3xl border border-slate-200 bg-white p-6">
                         <div className="flex flex-wrap items-end justify-between gap-3">
                             <div>
-                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Retarget</p>
-                                <h2 className="mt-2 text-2xl font-black text-slate-950">알림 재설정</h2>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Retarget</p>
+                                <h2 className="mt-2 font-serif text-2xl tracking-tight text-slate-900">알림 재설정</h2>
                             </div>
                             <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700">
                                 {linkedFavorite ? '활성 추적 중' : '연결된 favorite 없음'}
@@ -427,25 +427,25 @@ export default function AlertDetailView({ alertId }: AlertDetailViewProps) {
                             <div className="mt-6 space-y-4">
                                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                                     <div className="rounded-2xl bg-slate-50 p-4">
-                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Linked Favorite</p>
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Linked Favorite</p>
                                         <p className="mt-2 text-sm font-bold text-slate-950">
                                             {linkedFavorite.variantLabel || linkedFavorite.mallName}
                                         </p>
                                     </div>
                                     <div className="rounded-2xl bg-slate-50 p-4">
-                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Current Tracking</p>
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Current Tracking</p>
                                         <p className="mt-2 text-sm font-bold text-slate-950">
                                             {typeof linkedFavorite.targetPrice === 'number' ? formatPrice(linkedFavorite.targetPrice) : '미설정'}
                                         </p>
                                     </div>
                                     <div className="rounded-2xl bg-slate-50 p-4">
-                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Suggested Next</p>
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Suggested Next</p>
                                         <p className="mt-2 text-sm font-bold text-slate-950">
                                             {targetSuggestion.suggestedPrice ? formatPrice(targetSuggestion.suggestedPrice) : '정보 없음'}
                                         </p>
                                     </div>
                                     <div className="rounded-2xl bg-slate-50 p-4">
-                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Snooze</p>
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Snooze</p>
                                         <p className="mt-2 text-sm font-bold text-slate-950">
                                             {isFavoriteAlertSnoozed(linkedFavorite)
                                                 ? formatAlertSnoozeUntil(linkedFavorite.alertSnoozedUntil)
@@ -458,7 +458,7 @@ export default function AlertDetailView({ alertId }: AlertDetailViewProps) {
                                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                         <div className="flex flex-wrap items-start justify-between gap-3">
                                             <div>
-                                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Recommended Target</p>
+                                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Recommended Target</p>
                                                 <p className="mt-2 text-sm font-bold text-slate-950">
                                                     {targetSuggestion.label} · {formatPrice(targetSuggestion.suggestedPrice)}
                                                 </p>
@@ -477,7 +477,7 @@ export default function AlertDetailView({ alertId }: AlertDetailViewProps) {
 
                                 {recommendedSnoozes.length > 0 && (
                                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Recommended Snooze</p>
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Recommended Snooze</p>
                                         <div className="mt-3 flex flex-wrap gap-2">
                                             {recommendedSnoozes.map((preset) => (
                                                 <button

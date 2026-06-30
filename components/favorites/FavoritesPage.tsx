@@ -166,10 +166,11 @@ export default function FavoritesPage({ initialFilter = 'all', onFilterChange }:
         <div className="animate-fade-in-up">
             {/* Header */}
             <div className="mb-6">
-                <h2 className="text-2xl font-bold text-slate-900 mb-1">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Favorites</p>
+                <h2 className="font-serif text-3xl tracking-tight text-slate-900">
                     My Lookbook
                 </h2>
-                <p className="text-slate-500 text-sm">
+                <p className="mt-2 text-slate-500 text-sm">
                     찜과 가격 알림이 상품/variant 단위로 저장됩니다. 비교 페이지와 목표가 상태를 여기서 바로 관리하세요.
                 </p>
             </div>
@@ -177,22 +178,22 @@ export default function FavoritesPage({ initialFilter = 'all', onFilterChange }:
             <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Saved</p>
-                    <p className="mt-2 text-2xl font-black text-slate-950">{summary.total}</p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{summary.total}</p>
                     <p className="mt-1 text-xs text-slate-500">전체 저장 항목</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Alerts</p>
-                    <p className="mt-2 text-2xl font-black text-slate-950">{summary.alerts}</p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{summary.alerts}</p>
                     <p className="mt-1 text-xs text-slate-500">목표가 알림 설정</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Variants</p>
-                    <p className="mt-2 text-2xl font-black text-slate-950">{summary.variants}</p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{summary.variants}</p>
                     <p className="mt-1 text-xs text-slate-500">선택 variant 저장</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Compare Ready</p>
-                    <p className="mt-2 text-2xl font-black text-slate-950">{summary.compareReady}</p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{summary.compareReady}</p>
                     <p className="mt-1 text-xs text-slate-500">내부 비교 링크 보유</p>
                 </div>
             </div>

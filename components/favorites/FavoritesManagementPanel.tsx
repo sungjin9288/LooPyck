@@ -264,11 +264,11 @@ export default function FavoritesManagementPanel({
 
     return (
         <div className="mb-8 space-y-6">
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section className="rounded-3xl border border-slate-200 bg-white p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Alert Persona</p>
-                        <h3 className="mt-2 text-xl font-black text-slate-950">{alertProfile.summary}</h3>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Alert Persona</p>
+                        <h3 className="mt-2 font-serif text-xl tracking-tight text-slate-900">{alertProfile.summary}</h3>
                         <p className="mt-2 text-sm text-slate-500">{alertProfile.detail}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -294,30 +294,30 @@ export default function FavoritesManagementPanel({
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-2xl bg-slate-50 p-4">
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Unread Rate</p>
-                        <p className="mt-2 text-2xl font-black text-slate-950">{alertProfile.unreadRate}%</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Unread Rate</p>
+                        <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{alertProfile.unreadRate}%</p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-4">
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Snooze Share</p>
-                        <p className="mt-2 text-2xl font-black text-slate-950">{alertProfile.snoozeShare}%</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Snooze Share</p>
+                        <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{alertProfile.snoozeShare}%</p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-4">
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Read Latency</p>
-                        <p className="mt-2 text-2xl font-black text-slate-950">{alertProfile.avgReadLatencyMinutes}m</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Read Latency</p>
+                        <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{alertProfile.avgReadLatencyMinutes}m</p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-4">
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Tracked Targets</p>
-                        <p className="mt-2 text-2xl font-black text-slate-950">{alertProfile.activeTargets}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Tracked Targets</p>
+                        <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{alertProfile.activeTargets}</p>
                     </div>
                 </div>
             </section>
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-                <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <section className="rounded-3xl border border-slate-200 bg-white p-5">
                     <div className="flex flex-wrap items-end justify-between gap-3">
                         <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Alert Manager</p>
-                            <h3 className="mt-2 text-xl font-black text-slate-950">가격 알림 관리</h3>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Alert Manager</p>
+                            <h3 className="mt-2 font-serif text-xl tracking-tight text-slate-900">가격 알림 관리</h3>
                         </div>
                         <div className="flex items-center gap-2">
                             <button
@@ -507,11 +507,11 @@ export default function FavoritesManagementPanel({
                     )}
                 </section>
 
-                <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <section className="rounded-3xl border border-slate-200 bg-white p-5">
                     <div className="flex items-end justify-between gap-3">
                         <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Saved Groups</p>
-                            <h3 className="mt-2 text-xl font-black text-slate-950">상품 묶음 관리</h3>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Saved Groups</p>
+                            <h3 className="mt-2 font-serif text-xl tracking-tight text-slate-900">상품 묶음 관리</h3>
                         </div>
                         <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700">
                             {groups.length}개 묶음
@@ -573,11 +573,11 @@ export default function FavoritesManagementPanel({
                 </section>
             </div>
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section className="rounded-3xl border border-slate-200 bg-white p-5">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                     <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Alert Inbox</p>
-                        <h3 className="mt-2 text-xl font-black text-slate-950">도착한 가격 알림 인박스</h3>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Alert Inbox</p>
+                        <h3 className="mt-2 font-serif text-xl tracking-tight text-slate-900">도착한 가격 알림 인박스</h3>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <button
