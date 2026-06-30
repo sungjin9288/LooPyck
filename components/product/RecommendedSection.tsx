@@ -53,7 +53,7 @@ export default function RecommendedSection({ products, onProductClick }: Recomme
                             <img
                                 src={product.image}
                                 alt={product.title}
-                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                             />
 
                             {/* Quick View Overlay */}

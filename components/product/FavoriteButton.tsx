@@ -41,7 +41,7 @@ export default function FavoriteButton({ product }: FavoriteButtonProps) {
     return (
         <button
             onClick={toggleFavorite}
-            className="absolute top-3 right-3 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all flex items-center justify-center z-10 hover:scale-110 active:scale-125"
+            className="absolute top-3 right-3 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center z-10 hover:scale-105 active:scale-110"
             aria-label={favorite ? '찜 해제' : '찜하기'}
         >
             <svg

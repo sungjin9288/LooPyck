@@ -92,7 +92,7 @@ export default function AffordableAlternatives({ baseProduct }: AffordableAltern
                                 <img
                                     src={alt.image}
                                     alt={alt.title.replace(/<[^>]*>/g, '')}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                                     loading="lazy"
                                 />
                                 {savePct > 0 && (
