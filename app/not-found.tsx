@@ -23,7 +23,7 @@ export default function NotFound() {
                     </div>
                 </div>
 
-                <h1 className="text-2xl font-black text-slate-900 mb-2">
+                <h1 className="font-serif text-2xl tracking-tight text-slate-900 mb-2">
                     페이지를 찾을 수 없어요
                 </h1>
                 <p className="text-slate-500 text-sm mb-8 leading-relaxed">

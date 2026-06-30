@@ -115,7 +115,7 @@ export default async function BrandPage({ params }: BrandPageProps) {
         return (
             <main className="min-h-screen mesh-bg flex items-center justify-center">
                 <div className="text-center">
-                    <h1 className="text-3xl font-bold text-slate-900 mb-4">브랜드를 찾을 수 없습니다</h1>
+                    <h1 className="font-serif text-3xl tracking-tight text-slate-900 mb-4">브랜드를 찾을 수 없습니다</h1>
                     <Link href="/" className="text-accent-dark hover:underline">홈으로 돌아가기</Link>
                 </div>
             </main>

@@ -131,7 +131,7 @@ export default function LoginPage() {
         <main className="min-h-screen mesh-bg flex items-center justify-center px-4">
             <section className="w-full max-w-lg rounded-[32px] border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur-xl">
                 <p className="text-xs font-bold tracking-[0.3em] text-slate-400 uppercase">LooPyck Auth</p>
-                <h1 className="mt-3 text-3xl font-black text-slate-950">
+                <h1 className="mt-3 font-serif text-3xl tracking-tight text-slate-900">
                     {status === 'failed' ? 'Sign In Failed' : 'Google Sign-In'}
                 </h1>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
