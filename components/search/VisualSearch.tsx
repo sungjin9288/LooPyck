@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { pushAppNotification } from '@/lib/core/notifications';
-import { analyzeFashionQuery } from '@/lib/search/fashionQueryAssistant';
+import { resolveItemQueries, groupResolvedItems, type ResolvedVisionItemGroup } from '@/lib/search/visionItemResolver';
+import type { VisionItem } from '@/lib/ai/visionItemNormalizer';
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
@@ -21,34 +22,29 @@ function readFileAsDataUrl(file: File): Promise<string> {
     });
 }
 
-function resolveFashionQuery(payload: { description?: unknown; searchKeywords?: unknown }): string | null {
-    const keywordCandidates = Array.isArray(payload.searchKeywords)
-        ? payload.searchKeywords.filter((value): value is string => typeof value === 'string')
-        : [];
-
-    for (const candidate of keywordCandidates) {
-        const analysis = analyzeFashionQuery(candidate);
-        if (analysis.allowed) {
-            return analysis.normalizedQuery;
-        }
-    }
-
-    if (typeof payload.description === 'string') {
-        const description = payload.description.split(/[.!?]/)[0]?.trim() || '';
-        if (description) {
-            const analysis = analyzeFashionQuery(description);
-            if (analysis.allowed) {
-                return analysis.normalizedQuery;
-            }
-        }
-    }
-
-    return keywordCandidates[0] || null;
+interface ItemPicker {
+    summary: string;
+    groups: ResolvedVisionItemGroup[];
 }
 
 export default function VisualSearch({ onSearch }: { onSearch: (term: string) => void }) {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [picker, setPicker] = useState<ItemPicker | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const popoverRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!picker) return;
+
+        function handleClickOutside(event: MouseEvent) {
+            if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+                setPicker(null);
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [picker]);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -60,6 +56,7 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
         }
 
         setIsAnalyzing(true);
+        setPicker(null);
 
         try {
             const dataUrl = await readFileAsDataUrl(file);
@@ -84,21 +81,25 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
                 throw new Error(typeof payload.error === 'string' ? payload.error : '이미지 분석에 실패했습니다.');
             }
 
-            const resolvedQuery = resolveFashionQuery(payload);
+            const items = Array.isArray(payload.items) ? (payload.items as VisionItem[]) : [];
+            const summary = typeof payload.summary === 'string' ? payload.summary : '';
+            const resolvedItems = resolveItemQueries(items);
 
-            if (resolvedQuery) {
-                onSearch(resolvedQuery);
-                pushAppNotification({
-                    title: 'AI 이미지 분석 완료',
-                    message: `분석 결과를 바탕으로 "${resolvedQuery}" 가격 비교를 시작합니다.`,
-                    type: 'success'
-                });
-            } else {
+            if (resolvedItems.length === 0) {
                 pushAppNotification({
                     title: '패션 아이템 인식 실패',
                     message: '의류, 신발, 가방 중심의 이미지를 다시 시도해주세요.',
                     type: 'alert'
                 });
+            } else if (resolvedItems.length === 1) {
+                onSearch(resolvedItems[0].query);
+                pushAppNotification({
+                    title: 'AI 이미지 분석 완료',
+                    message: `분석 결과를 바탕으로 "${resolvedItems[0].query}" 가격 비교를 시작합니다.`,
+                    type: 'success'
+                });
+            } else {
+                setPicker({ summary, groups: groupResolvedItems(resolvedItems) });
             }
         } catch (error) {
             console.error('Visual Search Failed', error);
@@ -122,6 +123,16 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
             }
         };
     }, []);
+
+    const handlePickItem = (query: string, label: string) => {
+        onSearch(query);
+        pushAppNotification({
+            title: 'AI 이미지 분석 완료',
+            message: `"${label}" 기준으로 가격 비교를 시작합니다.`,
+            type: 'success',
+        });
+        setPicker(null);
+    };
 
     return (
         <div className="relative">
@@ -150,6 +161,38 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
                     </div>
                 )}
             </button>
+
+            {picker && (
+                <div
+                    ref={popoverRef}
+                    className="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-stone-200 bg-white p-3 shadow-xl"
+                >
+                    {picker.summary && (
+                        <p className="mb-2 px-1 text-xs leading-5 text-slate-500">{picker.summary}</p>
+                    )}
+                    <div className="max-h-72 space-y-3 overflow-y-auto">
+                        {picker.groups.map((group) => (
+                            <div key={group.category}>
+                                <p className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                    {group.category}
+                                </p>
+                                <div className="space-y-1">
+                                    {group.items.map((resolvedItem) => (
+                                        <button
+                                            key={resolvedItem.query}
+                                            type="button"
+                                            onClick={() => handlePickItem(resolvedItem.query, resolvedItem.label)}
+                                            className="block w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                                        >
+                                            {resolvedItem.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

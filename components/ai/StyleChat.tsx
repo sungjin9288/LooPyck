@@ -9,6 +9,8 @@ import { buildChatStyleContext } from '@/lib/ai/chatStyleContext';
 import { dedupeFavoritesForInsights } from '@/lib/favorites/favoriteProduct';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { resolveItemQueries, groupResolvedItems, type ResolvedVisionItemGroup } from '@/lib/search/visionItemResolver';
+import type { VisionItem } from '@/lib/ai/visionItemNormalizer';
 
 type ChatLocale = 'ko' | 'en';
 
@@ -16,6 +18,7 @@ interface ChatMessage {
     text: string;
     isBot: boolean;
     searchKeywords?: string[];
+    itemGroups?: ResolvedVisionItemGroup[];
 }
 
 interface StyleChatProps {
@@ -228,24 +231,36 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                 return;
             }
 
-            const description = typeof data.description === 'string'
-                ? data.description
-                : '이미지를 분석했습니다. 아래 키워드로 검색해보세요!';
-            const keywords = dedupeKeywords(data.searchKeywords);
+            const items = Array.isArray(data.items) ? (data.items as VisionItem[]) : [];
+            const resolvedItems = resolveItemQueries(items);
+            const itemGroups = resolvedItems.length > 0 ? groupResolvedItems(resolvedItems) : undefined;
+            const summary = typeof data.summary === 'string'
+                ? data.summary
+                : (typeof data.description === 'string'
+                    ? data.description
+                    : '이미지를 분석했습니다. 아래 항목으로 검색해보세요!');
+            const legacyKeywords = itemGroups ? undefined : dedupeKeywords(data.searchKeywords);
 
             setMessages((prev) => [
                 ...prev.slice(0, -1),
                 {
-                    text: description,
+                    text: summary,
                     isBot: true,
-                    searchKeywords: keywords,
+                    searchKeywords: legacyKeywords,
+                    itemGroups,
                 },
             ]);
 
             setHistory((prev) => [
                 ...prev,
                 { role: 'user', text: '[이미지 분석 요청]' },
-                { role: 'model', text: JSON.stringify({ description, searchKeywords: keywords }) },
+                {
+                    role: 'model',
+                    text: JSON.stringify({
+                        summary,
+                        items: resolvedItems.map((resolvedItem) => ({ category: resolvedItem.category, label: resolvedItem.label })),
+                    }),
+                },
             ]);
         } catch {
             setMessages((prev) => [...prev.slice(0, -1), { text: '오류가 발생했습니다.', isBot: true }]);
@@ -334,7 +349,29 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                                             {msg.text}
                                         </div>
 
-                                        {msg.isBot && msg.searchKeywords && msg.searchKeywords.length > 0 && onSearch && (
+                                        {msg.isBot && msg.itemGroups && msg.itemGroups.length > 0 && onSearch && (
+                                            <div className="space-y-1.5 pl-1">
+                                                {msg.itemGroups.map((group) => (
+                                                    <div key={group.category} className="flex flex-wrap items-center gap-1.5">
+                                                        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                                            {group.category}
+                                                        </span>
+                                                        {group.items.map((resolvedItem) => (
+                                                            <button
+                                                                key={resolvedItem.query}
+                                                                onClick={() => handleSearchKeyword(resolvedItem.query)}
+                                                                className="flex items-center gap-1 text-[11px] px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 rounded-full hover:bg-slate-200 transition-all font-medium"
+                                                            >
+                                                                <span>🔍</span>
+                                                                {resolvedItem.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {msg.isBot && !msg.itemGroups && msg.searchKeywords && msg.searchKeywords.length > 0 && onSearch && (
                                             <div className="flex flex-wrap gap-1.5 pl-1">
                                                 {msg.searchKeywords.map((keyword) => (
                                                     <button
