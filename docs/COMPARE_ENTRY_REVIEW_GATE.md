@@ -1,20 +1,22 @@
 # Compare Entry Review Gate — Operator Manual
 
 
-Compare Entry redesign work is gated before `SUN-11` / `SUN-12` implementation. Use the
-ready-check command to refresh the review bundle and run the strict gate:
+Compare Entry redesign work is gated before implementation. Use the ready-check command to
+refresh the review bundle and run the strict gate:
 
 ```bash
 npm run ntl:compare-entry-review-ready-check
 ```
 
-Current completion direction:
+Current status:
 
-- Completion standard is `Design+Code`, not code-only. `SUN-10` must produce reviewable Figma evidence before `SUN-11` landing implementation and `SUN-12` search-result hierarchy implementation proceed.
-- Current `SUN-10` blocker is `figma-mcp-rate-limit`. Figma MCP writes have repeatedly hit the Starter plan quota, so the active unblock path is manual Figma node creation plus guarded URL application.
-- The immediate manual target is `Brand-Musinsa -> CompareEntry/Mobile/Brand-Musinsa -> TopNav/Context` in Figma file `Oj35jzmgbwnxzpTTqTcxLi` on page `SUN-10 Compare Entry`.
-- The intended sequence remains `SUN-10 -> SUN-11 -> SUN-12 -> SUN-13`: finish the Figma review gate, implement the landing entry UI, implement search-result compare hierarchy, then refresh release evidence and docs.
-- Public API, route contracts, search ranking, compare data semantics, Firebase, and AI/search logic are intentionally out of scope for this gate. If those appear necessary, split them into a follow-up rather than changing this flow.
+- Completion standard is `Design+Code`, not code-only.
+- `SUN-10` is `READY`: build `84/84`, review `35/35`, decision `Approved With Follow-up`, artifact audit `READY`, active blocker `none`.
+- The Figma quota blocker was resolved by manual Figma evidence and guarded worksheet application. The protected manual node evidence is `CompareEntry/Mobile/Brand-Musinsa` frame `14:2` and `TopNav/Context` section `14:3`.
+- `SUN-11`, `SUN-12`, and `SUN-13` are complete. Future comparable redesign work should follow the same order: design gate first, implementation second, release evidence last.
+- Public API, route contracts, search ranking, compare data semantics, Firebase, and AI/search logic remain outside the Compare Entry gate unless explicitly split into follow-up scope.
+
+Historical manual unblock path:
 
 Manual unblock checklist:
 
@@ -106,4 +108,3 @@ Only when the ready-check exits `0` should implementation move to `SUN-11` and `
 route behavior. `SUN-12` should update search-result compare hierarchy and shortlist visual
 continuity while preserving grouping, favorite payload, shortlist persistence, and detail
 modal entry behavior.
-

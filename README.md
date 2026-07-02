@@ -256,17 +256,26 @@ report generation, the last execution result is preserved separately as
 
 ### Compare Entry Review Gate
 
-Compare Entry redesign work (`SUN-11` / `SUN-12`) is gated behind a `SUN-10` design review.
-Completion standard is `Design+Code`: reviewable Figma evidence must exist before implementation.
+Compare Entry redesign work uses a `Design+Code` gate: `SUN-10` design review must be
+`READY` before `SUN-11` / `SUN-12` implementation is treated as valid.
+
+Current status:
+
+- `SUN-10` gate: `READY`, artifact audit `READY`, active blocker `none`.
+- `SUN-11`: landing entry implementation completed against the approved dark Figma direction.
+- `SUN-12`: search-result compare hierarchy and shortlist visual continuity completed.
+- `SUN-13`: release evidence and QA closure completed.
+- Next comparable redesign work should reuse the same order: design gate first, implementation second, release evidence last.
 
 ```bash
-# refresh the review bundle and run the strict gate
+# refresh the review bundle and confirm the strict gate
 npm run ntl:compare-entry-review-ready-check
 ```
 
-Implementation may move to `SUN-11` / `SUN-12` only when the ready-check exits `0`.
-The full operator manual (manual Figma unblock path, guarded apply commands, artifact list)
-lives in [docs/COMPARE_ENTRY_REVIEW_GATE.md](./docs/COMPARE_ENTRY_REVIEW_GATE.md).
+If this command stops exiting `0`, do not reopen implementation scope first. Inspect the
+gate artifacts, restore `SUN-10` evidence integrity, and only then touch code. The full
+operator manual, including the historical Figma quota unblock path and guarded apply
+commands, lives in [docs/COMPARE_ENTRY_REVIEW_GATE.md](./docs/COMPARE_ENTRY_REVIEW_GATE.md).
 
 Detailed guides:
 - [docs/NETLIFY_DEPLOY.md](./docs/NETLIFY_DEPLOY.md)
