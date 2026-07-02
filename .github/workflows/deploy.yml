@@ -38,6 +38,7 @@ jobs:
         with:
           name: build-output
           path: .next/
+          include-hidden-files: true
           retention-days: 1
 
   # 타입 검사 + 단위 테스트 (순수 함수 282 스펙)

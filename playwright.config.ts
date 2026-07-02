@@ -18,7 +18,9 @@ export default defineConfig({
     fullyParallel: false,
     workers: 1,
     retries: process.env.CI ? 1 : 0,
-    reporter: 'list',
+    // CI additionally emits an HTML report so a failure is debuggable from the
+    // uploaded artifact; local runs stay lightweight with console-only output.
+    reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
     use: {
         baseURL: 'http://localhost:3210',
         trace: 'on-first-retry',
