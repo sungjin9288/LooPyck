@@ -58,3 +58,6 @@ next-env.d.ts
 /.ai/
 /.agents/
 DEV_LOG.md
+
+# claude code local session settings (machine/session-specific, not shared)
+.claude/settings.local.json
