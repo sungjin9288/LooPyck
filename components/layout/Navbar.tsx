@@ -83,7 +83,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
                         <nav className="hidden sm:flex gap-2 sm:gap-4 p-1 bg-slate-100/50 rounded-xl">
                             <button
                                 onClick={() => setCurrentView('search')}
-                                className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'search'
+                                className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'search'
                                     ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50'
                                     : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
                                     }`}
@@ -92,7 +92,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
                             </button>
                             <button
                                 onClick={() => setCurrentView('recommend')}
-                                className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'recommend'
+                                className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'recommend'
                                     ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50'
                                     : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
                                     }`}
@@ -101,7 +101,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
                             </button>
                             <button
                                 onClick={() => setCurrentView('favorites')}
-                                className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'favorites'
+                                className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${currentView === 'favorites'
                                     ? 'bg-white text-rose-500 shadow-sm border border-slate-200/50'
                                     : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
                                     }`}
@@ -130,7 +130,7 @@ export default function Navbar({ currentView, setCurrentView, onLogoClick, onNot
                                 type="button"
                                 onClick={handleLogin}
                                 disabled={isLoggingIn}
-                                className="px-4 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 transition-colors"
+                                className="whitespace-nowrap px-4 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 transition-colors"
                             >
                                 {isLoggingIn ? '로그인 중...' : t('nav.login')}
                             </button>
