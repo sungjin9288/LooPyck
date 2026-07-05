@@ -2,44 +2,9 @@ import * as cheerio from 'cheerio';
 import { type ProductSource, type ProductStockStatus, type UnifiedProduct } from './types.ts';
 import { normalizeBrand, normalizePrice, normalizeTitle } from '../core/dataNormalizer.ts';
 import { sanitizeExternalUrl } from '../security/urlSafety.ts';
+import { getSourceIdPrefix, getSourceMetadata } from './sourceCatalog.ts';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-
-const SOURCE_PREFIXES: Record<ProductSource, string> = {
-    NAVER: 'naver',
-    MUSINSA: 'musinsa',
-    '29CM': '29cm',
-    W_CONCEPT: 'wconcept',
-    ZIGZAG: 'zigzag',
-    ABLY: 'ably',
-    SSF: 'ssf',
-    HANDSOME: 'handsome',
-    FARFETCH: 'farfetch',
-    COUPANG: 'coupang',
-    SSENSE: 'ssense',
-    HAGO: 'hago',
-    EQL: 'eql',
-    LFMALL: 'lfmall',
-    SIVILLAGE: 'sivillage',
-};
-
-const SOURCE_LABELS: Record<ProductSource, string> = {
-    NAVER: '네이버쇼핑',
-    MUSINSA: '무신사',
-    '29CM': '29CM',
-    W_CONCEPT: 'W컨셉',
-    ZIGZAG: '지그재그',
-    ABLY: '에이블리',
-    SSF: 'SSF샵',
-    HANDSOME: '한섬',
-    FARFETCH: 'Farfetch',
-    COUPANG: '쿠팡',
-    SSENSE: 'SSENSE',
-    HAGO: 'HAGO',
-    EQL: 'EQL',
-    LFMALL: 'LF몰',
-    SIVILLAGE: 'S.I.VILLAGE',
-};
 
 type MarketplaceAdapterConfig = {
     source: ProductSource;
@@ -215,7 +180,7 @@ function firstAttr(
 }
 
 function extractIdFromLink(source: ProductSource, link: string, fallbackTitle: string, index: number): string {
-    const prefix = SOURCE_PREFIXES[source];
+    const prefix = getSourceIdPrefix(source);
     const parsedUrl = (() => {
         try {
             return new URL(link);
@@ -264,7 +229,7 @@ function buildProduct(
         price,
         image,
         link,
-        mallName: SOURCE_LABELS[config.source],
+        mallName: getSourceMetadata(config.source).label,
         brand: brand ? normalizeBrand(brand) : undefined,
         source: config.source,
         shippingFee: commerceData.shippingFee,
