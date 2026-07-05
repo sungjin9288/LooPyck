@@ -51,6 +51,10 @@ export type { UnifiedProduct };
 export type { SearchSourceStrategy, SearchSourceDiagnostic, SearchAggregationDiagnostics, AggregateRealtimeSearchResult } from '@/lib/api/aggregationCore';
 
 const NAVER_SEARCH_BUDGET_MS = 3_500;
+// Retry deadline must sit INSIDE the per-source withTimedSearchBudget race (3.5s):
+// a retry that cannot finish before the race loses is wasted work and starves the
+// candidate-query iteration in runTimedSearchWithCandidates.
+const RETRY_DEADLINE_MS = 3_200;
 const NAVER_API_HOST = 'openapi.naver.com';
 const TWENTY_NINE_CM_API_HOST = 'search-api.29cm.co.kr';
 
@@ -140,7 +144,7 @@ async function fetchHtml(url: string): Promise<string> {
                 return await response.text();
             },
             (html) => html.length === 0,
-            Date.now() + 8000
+            Date.now() + RETRY_DEADLINE_MS
         ));
     } catch (e) {
         console.warn(`[RealtimeSearch] fetchHtml gave up for ${url}:`, e);
@@ -180,7 +184,7 @@ async function fetchNaverRealtime(
                 return response;
             },
             () => false,
-            Date.now() + 8000
+            Date.now() + RETRY_DEADLINE_MS
         ));
         if (!res.ok) return [];
         const data = await res.json();
@@ -307,7 +311,7 @@ async function scrape29CM(query: string, page: number = 1): Promise<UnifiedProdu
                 return response;
             },
             () => false,
-            Date.now() + 8000
+            Date.now() + RETRY_DEADLINE_MS
         ));
         const data = await res.json();
 
