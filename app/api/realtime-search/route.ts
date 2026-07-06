@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { aggregateRealtimeSearchDetailed, aggregateRealtimeSearchNaverOnly, type SearchAggregationDiagnostics, type SearchSourceDiagnostic, type UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import { buildSearchComparisonSnapshot, persistSearchDiagnostics, recordSearchDiagnostics } from '@/lib/api/searchDiagnostics';
 import { analyzeFashionQuery, buildSourceAwareSearchPlan, rerankProductsByFashionRelevance } from '@/lib/search/fashionQueryAssistant';
+import { diversifyProductsBySource } from '@/lib/search/sourceDiversity';
 import { loadApprovedSearchLearningQueries, loadApprovedSearchLearningRewritePlan, mergeLearnedQueriesIntoPlan, persistSearchLearningCandidate, recordSearchLearningCandidate } from '@/lib/search/searchLearningRealtime';
 import { mergeSourceQueryPlans } from '@/lib/search/searchLearningRewritePacks';
 import { normalizeSearchSort, type SearchSort } from '@/types/searchSort';
@@ -208,7 +209,11 @@ export async function GET(request: NextRequest) {
 
         const { products, diagnostics } = aggregation;
         const reranked = rerankProductsByFashionRelevance(products, queryAnalysis, sort);
-        const comparisonSnapshot = buildSearchComparisonSnapshot(reranked.products);
+        // 관련도(sim) 정렬에서만 같은 소스 연속 점유를 끊는다 — 가격 정렬은 순서 보존.
+        const orderedProducts = sort === 'sim'
+            ? diversifyProductsBySource(reranked.products)
+            : reranked.products;
+        const comparisonSnapshot = buildSearchComparisonSnapshot(orderedProducts);
         const diagnosticsPayload = {
             ...diagnostics,
             effectiveQuery,
@@ -277,8 +282,8 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(
             debug
-                ? { products: reranked.products, diagnostics: diagnosticsPayload, searchMeta: reranked.meta }
-                : { products: reranked.products, searchMeta: reranked.meta },
+                ? { products: orderedProducts, diagnostics: diagnosticsPayload, searchMeta: reranked.meta }
+                : { products: orderedProducts, searchMeta: reranked.meta },
             {
                 headers: {
                     'Cache-Control': 'no-store, max-age=0',
