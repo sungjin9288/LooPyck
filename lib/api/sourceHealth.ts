@@ -9,6 +9,9 @@ export interface SourceHealthInput {
     source: ProductSource | string;
     searches: number;
     directHits: number;
+    /** 상품을 반환한 검색 횟수 — NAVER처럼 strategy=api인 소스는 directHits가
+     *  영원히 0이므로, "과거에 작동했는가" 판정에 successCount를 함께 본다 */
+    successCount?: number;
     consecutiveEmptyHits?: number;
     lastDirectHitAt?: string;
 }
@@ -50,11 +53,12 @@ export function assessSourceHealth(rows: SourceHealthInput[]): SourceHealth[] {
             return { ...base, status: 'no_data' as const, reason: '검색 기록 없음' };
         }
 
-        if (!rowInput.directHits || rowInput.directHits <= 0) {
+        const hasEverProduced = (rowInput.directHits ?? 0) > 0 || (rowInput.successCount ?? 0) > 0;
+        if (!hasEverProduced) {
             return {
                 ...base,
                 status: 'never_direct' as const,
-                reason: 'direct 성공 이력 없음 — 봇차단/미지원 소스로 기대 무수확',
+                reason: '수확 이력 없음 — 봇차단/미지원 소스로 기대 무수확',
             };
         }
 

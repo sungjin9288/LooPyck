@@ -7,10 +7,28 @@ function row(overrides: Partial<SourceHealthInput>): SourceHealthInput {
         source: overrides.source || 'MUSINSA',
         searches: overrides.searches ?? 100,
         directHits: overrides.directHits ?? 50,
+        successCount: overrides.successCount ?? 50,
         consecutiveEmptyHits: overrides.consecutiveEmptyHits ?? 0,
         lastDirectHitAt: overrides.lastDirectHitAt,
     };
 }
+
+test('NAVER처럼 strategy=api라 directHits는 0이지만 successCount가 있으면 healthy', () => {
+    // 프로덕션 실측에서 발견된 오분류: API 소스의 성공은 direct로 안 잡힘
+    const [health] = assessSourceHealth([
+        row({ source: 'NAVER', directHits: 0, successCount: 120, consecutiveEmptyHits: 0 }),
+    ]);
+
+    assert.equal(health.status, 'healthy');
+});
+
+test('API 소스가 연속 무수확이면 failing으로 승격된다', () => {
+    const [health] = assessSourceHealth([
+        row({ source: 'NAVER', directHits: 0, successCount: 120, consecutiveEmptyHits: 12 }),
+    ]);
+
+    assert.equal(health.status, 'failing');
+});
 
 test('최근 direct 성공이 있는 소스는 healthy', () => {
     const [health] = assessSourceHealth([row({ consecutiveEmptyHits: 0 })]);
@@ -31,10 +49,10 @@ test('연속 empty 10회 이상이면 failing — 되다가 죽은 소스 경보
     assert.ok(health.reason.length > 0);
 });
 
-test('한 번도 direct 성공이 없는 소스는 never_direct — failing과 구분', () => {
+test('한 번도 수확이 없는 소스는 never_direct — failing과 구분', () => {
     // WAF/봇차단으로 기대 무수확인 스크레이퍼 — "깨졌다" 경보 대상이 아님
     const [health] = assessSourceHealth([
-        row({ source: 'SSF', directHits: 0, consecutiveEmptyHits: 80 }),
+        row({ source: 'SSF', directHits: 0, successCount: 0, consecutiveEmptyHits: 80 }),
     ]);
 
     assert.equal(health.status, 'never_direct');
@@ -42,7 +60,7 @@ test('한 번도 direct 성공이 없는 소스는 never_direct — failing과 �
 
 test('검색 기록이 없으면 no_data', () => {
     const [health] = assessSourceHealth([
-        row({ searches: 0, directHits: 0, consecutiveEmptyHits: 0 }),
+        row({ searches: 0, directHits: 0, successCount: 0, consecutiveEmptyHits: 0 }),
     ]);
 
     assert.equal(health.status, 'no_data');
@@ -50,7 +68,7 @@ test('검색 기록이 없으면 no_data', () => {
 
 test('consecutiveEmptyHits 필드가 없는 과거 데이터는 0으로 간주 (하위호환)', () => {
     const [health] = assessSourceHealth([
-        { source: 'MUSINSA', searches: 40, directHits: 20 },
+        { source: 'MUSINSA', searches: 40, directHits: 20, successCount: 20 },
     ]);
 
     assert.equal(health.status, 'healthy');
