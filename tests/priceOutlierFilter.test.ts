@@ -86,3 +86,35 @@ test('보존 아이템의 상대 순서와 입력 불변성을 유지한다', ()
     assert.deepEqual(result.map((p) => p.id), garments.map((p) => p.id));
     assert.deepEqual(input.map((p) => p.id), snapshot);
 });
+
+// --- isPlausibleCrossMallPrice: 기준가 기반 상품별 하한 (알림 스캐너·대안 추천용) ---
+
+test('기준가의 10% 미만 후보는 부자재/오매칭으로 판정한다', async () => {
+    const { isPlausibleCrossMallPrice } = await import('../lib/search/priceOutlierFilter.ts');
+
+    // 39,000원 후드집업의 크로스몰 후보가 20원 → 거짓 알림 차단
+    assert.equal(isPlausibleCrossMallPrice(20, 39000), false);
+    assert.equal(isPlausibleCrossMallPrice(3800, 39000), false);
+});
+
+test('기준가의 10% 이상이면 정상 후보 (대폭 세일 보존)', async () => {
+    const { isPlausibleCrossMallPrice } = await import('../lib/search/priceOutlierFilter.ts');
+
+    assert.equal(isPlausibleCrossMallPrice(3900, 39000), true);
+    assert.equal(isPlausibleCrossMallPrice(11700, 39000), true); // 70% 세일
+});
+
+test('기준가를 모르면 통과시킨다 (판단 불가 시 차단하지 않음)', async () => {
+    const { isPlausibleCrossMallPrice } = await import('../lib/search/priceOutlierFilter.ts');
+
+    assert.equal(isPlausibleCrossMallPrice(20, 0), true);
+    assert.equal(isPlausibleCrossMallPrice(20, Number.NaN), true);
+    assert.equal(isPlausibleCrossMallPrice(20, undefined), true);
+});
+
+test('후보가 0원 이하면 기준가와 무관하게 탈락', async () => {
+    const { isPlausibleCrossMallPrice } = await import('../lib/search/priceOutlierFilter.ts');
+
+    assert.equal(isPlausibleCrossMallPrice(0, 39000), false);
+    assert.equal(isPlausibleCrossMallPrice(-100, undefined), false);
+});

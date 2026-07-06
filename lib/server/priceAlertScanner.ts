@@ -9,6 +9,7 @@ import {
 import { isProductSource, type ProductSource, type UnifiedProduct } from '@/lib/api/types';
 import { normalizeTitle } from '@/lib/core/dataNormalizer';
 import { comparePurchaseOffers, inferStockStatus } from '@/lib/product/purchasePricing';
+import { isPlausibleCrossMallPrice } from '@/lib/search/priceOutlierFilter';
 import { applyVariantSelectionToProducts, findSelectedVariantOption, listVariantSelectionOptions } from '@/lib/product/variantSelection';
 import { deriveAlertPriority, isFavoriteAlertSnoozed } from '@/lib/favorites/alertState';
 import { getAdminDb, getAdminMessaging } from '@/lib/server/firebaseAdmin';
@@ -49,10 +50,15 @@ type ResolvedFavoriteContext = {
 };
 
 function findCheapestCrossMall(
-    results: Awaited<ReturnType<typeof aggregateRealtimeSearch>>
+    results: Awaited<ReturnType<typeof aggregateRealtimeSearch>>,
+    referencePrice?: number
 ): CheapestResult {
     if (results.length === 0) return null;
-    const sorted = [...results].filter(r => r.price > 0).sort((a, b) => a.price - b.price);
+    // 기준가 하한: 추적 상품 가격의 10% 미만 후보는 부자재/오매칭 —
+    // "후드집업이 20원!" 류의 거짓 최저가 알림을 차단한다.
+    const sorted = [...results]
+        .filter(r => isPlausibleCrossMallPrice(r.price, referencePrice))
+        .sort((a, b) => a.price - b.price);
     if (sorted.length === 0) return null;
     const cheapest = sorted[0];
     const mallName = getSourceDisplayName(cheapest.source, cheapest.mallName);
@@ -276,7 +282,7 @@ export async function scanAndDispatchPriceAlerts(): Promise<{
 
             let currentPrice = pickCurrentPrice(results, favorite);
             let currentAvailable = true;
-            let cheapest = findCheapestCrossMall(results ?? []);
+            let cheapest = findCheapestCrossMall(results ?? [], currentPrice);
             let deepLink = favorite.deepLink || favorite.link || '/';
 
             try {

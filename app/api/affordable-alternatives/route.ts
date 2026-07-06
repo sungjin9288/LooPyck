@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { aggregateRealtimeSearch } from '@/lib/api/realtimeAggregator';
 import { analyzeFashionQuery, rerankProductsByFashionRelevance } from '@/lib/search/fashionQueryAssistant';
+import { isPlausibleCrossMallPrice } from '@/lib/search/priceOutlierFilter';
 import { checkRateLimit, getRateLimitKey, normalizeQuery } from '@/lib/security/requestGuards';
 import { isFashionRelated } from '@/lib/core/domainGuard';
 
@@ -51,6 +52,8 @@ export async function GET(request: NextRequest) {
             .filter((product) =>
                 product.id !== currentId
                 && product.price > 0
+                // 기준가의 10% 미만은 부자재/오매칭 — "코트 대안: 20원 지퍼고리" 차단
+                && isPlausibleCrossMallPrice(product.price, currentPrice)
                 && product.price <= maxPrice
                 && product.image
             )

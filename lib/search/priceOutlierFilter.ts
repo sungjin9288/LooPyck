@@ -2,6 +2,8 @@ import type { UnifiedProduct } from '../api/types.ts';
 
 /** 중앙값 대비 저가 임계 비율 — 이보다 싸면 부자재/더미가격 후보 */
 const LOW_PRICE_RATIO = 0.1;
+/** 기준가 대비 크로스몰 후보 하한 비율 — 같은 상품이 기준가의 10% 미만이면 오매칭/부자재 */
+const CROSS_MALL_MIN_RATIO = 0.1;
 /** 절대 상한 — 고가 카테고리에서 정상 보급형까지 지워지는 것 방지 */
 const LOW_PRICE_ABSOLUTE_CAP = 3_000;
 /** 중앙값을 신뢰할 최소 결과 수 */
@@ -21,6 +23,30 @@ const MAX_DROP_RATIO = 0.3;
  * 안전 가드: 결과 8개 미만이면 스킵, 30% 초과를 지우게 되면 스킵.
  * 보존 아이템의 순서는 유지되고 입력은 변형되지 않는다.
  */
+/**
+ * 기준가(추적 상품의 현재가)를 아는 소비자용 상품별 하한 판정 —
+ * 가격알림 스캐너의 크로스몰 최저가·저렴한 대안 추천이 20원짜리 부자재를
+ * "최저가 발견!"으로 오인해 거짓 알림/추천을 내는 것을 차단한다.
+ *
+ * 규칙: 후보 ≤ 0원 → 탈락. 기준가를 모르면(0/NaN/undefined) 통과(차단은
+ * 확신 있을 때만). 후보 < 기준가×10% → 오매칭/부자재 판정으로 탈락.
+ * 90% 세일도 살아남는 보수적 하한이다.
+ */
+export function isPlausibleCrossMallPrice(
+    candidatePrice: number,
+    referencePrice?: number
+): boolean {
+    if (!Number.isFinite(candidatePrice) || candidatePrice <= 0) {
+        return false;
+    }
+
+    if (!Number.isFinite(referencePrice) || (referencePrice as number) <= 0) {
+        return true;
+    }
+
+    return candidatePrice >= (referencePrice as number) * CROSS_MALL_MIN_RATIO;
+}
+
 export function filterLowPriceOutliers(products: UnifiedProduct[]): UnifiedProduct[] {
     if (products.length < MIN_PRODUCTS_FOR_FILTER) {
         return products;
