@@ -94,6 +94,9 @@ type SourceSummaryState = {
     lastSeenAt: string;
     lastStrategy: SearchSourceDiagnostic['strategy'];
     lastFallbackReason?: string;
+    /** direct 성공 시 0 리셋, empty 시 +1 — "되다가 죽은 소스" 감지용 */
+    consecutiveEmptyHits?: number;
+    lastDirectHitAt?: string;
 };
 
 export type SearchSourceSummary = SourceSummaryState & {
@@ -133,12 +136,22 @@ function updateSourceSummary(snapshot: SearchAggregationDiagnostics, sourceDiagn
             lastStrategy: sourceDiagnostic.strategy,
         };
 
+    const isDirectHit = sourceDiagnostic.strategy === 'direct' || sourceDiagnostic.strategy === 'direct_preferred_over_naver';
+    const isEmptyHit = sourceDiagnostic.strategy === 'empty';
+
     nextState.searches += 1;
     nextState.successCount += sourceDiagnostic.success ? 1 : 0;
-    nextState.directHits += sourceDiagnostic.strategy === 'direct' || sourceDiagnostic.strategy === 'direct_preferred_over_naver' ? 1 : 0;
+    nextState.directHits += isDirectHit ? 1 : 0;
     nextState.fallbackHits += sourceDiagnostic.strategy === 'naver_classified_fallback' || sourceDiagnostic.strategy === 'classified_naver' ? 1 : 0;
-    nextState.emptyHits += sourceDiagnostic.strategy === 'empty' ? 1 : 0;
+    nextState.emptyHits += isEmptyHit ? 1 : 0;
     nextState.totalItems += sourceDiagnostic.finalCount;
+
+    if (isDirectHit) {
+        nextState.consecutiveEmptyHits = 0;
+        nextState.lastDirectHitAt = snapshot.generatedAt;
+    } else if (isEmptyHit) {
+        nextState.consecutiveEmptyHits = (nextState.consecutiveEmptyHits ?? 0) + 1;
+    }
 
     if (sourceDiagnostic.attempted) {
         nextState.totalLatencyMs += sourceDiagnostic.durationMs;
@@ -379,7 +392,7 @@ export async function persistSearchDiagnostics(snapshot: SearchAggregationDiagno
         const isFallbackHit = source.strategy === 'naver_classified_fallback' || source.strategy === 'classified_naver';
         const isEmpty = source.strategy === 'empty';
 
-        batch.set(summaryRef, {
+        const summaryPayload: Record<string, unknown> = {
             source: source.source,
             searches: FieldValue.increment(1),
             successCount: FieldValue.increment(source.success ? 1 : 0),
@@ -393,7 +406,17 @@ export async function persistSearchDiagnostics(snapshot: SearchAggregationDiagno
             lastStrategy: source.strategy,
             lastFallbackReason: source.fallbackReason || null,
             updatedAt: FieldValue.serverTimestamp(),
-        }, { merge: true });
+        };
+
+        // 헬스 판정용 스트릭: direct 성공 시 0 리셋, empty 시 +1, 그 외엔 미변경
+        if (isDirectHit) {
+            summaryPayload.consecutiveEmptyHits = 0;
+            summaryPayload.lastDirectHitAt = snapshot.generatedAt;
+        } else if (isEmpty) {
+            summaryPayload.consecutiveEmptyHits = FieldValue.increment(1);
+        }
+
+        batch.set(summaryRef, summaryPayload, { merge: true });
     });
 
     const metaRef = db.collection(META_COLLECTION).doc(META_DOC_ID);
@@ -576,6 +599,8 @@ export async function loadSearchDiagnostics(limit: number = 10): Promise<{
                     ? data.lastStrategy as SearchSourceSummary['lastStrategy']
                     : 'empty',
                 lastFallbackReason: typeof data.lastFallbackReason === 'string' ? data.lastFallbackReason : undefined,
+                consecutiveEmptyHits: Number(data.consecutiveEmptyHits || 0),
+                lastDirectHitAt: typeof data.lastDirectHitAt === 'string' ? data.lastDirectHitAt : undefined,
                 avgLatencyMs: latencySamples > 0 ? Math.round(totalLatencyMs / latencySamples) : 0,
                 successRate: searches > 0 ? Math.round((successCount / searches) * 1000) / 10 : 0,
                 collectionMode: getCollectionMode(doc.id as SearchSourceSummary['source']),

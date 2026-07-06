@@ -1,0 +1,77 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { assessSourceHealth, type SourceHealthInput } from '../lib/api/sourceHealth.ts';
+
+function row(overrides: Partial<SourceHealthInput>): SourceHealthInput {
+    return {
+        source: overrides.source || 'MUSINSA',
+        searches: overrides.searches ?? 100,
+        directHits: overrides.directHits ?? 50,
+        consecutiveEmptyHits: overrides.consecutiveEmptyHits ?? 0,
+        lastDirectHitAt: overrides.lastDirectHitAt,
+    };
+}
+
+test('최근 direct 성공이 있는 소스는 healthy', () => {
+    const [health] = assessSourceHealth([row({ consecutiveEmptyHits: 0 })]);
+
+    assert.equal(health.status, 'healthy');
+});
+
+test('연속 empty 3회 이상이면 degraded', () => {
+    const [health] = assessSourceHealth([row({ consecutiveEmptyHits: 3 })]);
+
+    assert.equal(health.status, 'degraded');
+});
+
+test('연속 empty 10회 이상이면 failing — 되다가 죽은 소스 경보', () => {
+    const [health] = assessSourceHealth([row({ consecutiveEmptyHits: 12 })]);
+
+    assert.equal(health.status, 'failing');
+    assert.ok(health.reason.length > 0);
+});
+
+test('한 번도 direct 성공이 없는 소스는 never_direct — failing과 구분', () => {
+    // WAF/봇차단으로 기대 무수확인 스크레이퍼 — "깨졌다" 경보 대상이 아님
+    const [health] = assessSourceHealth([
+        row({ source: 'SSF', directHits: 0, consecutiveEmptyHits: 80 }),
+    ]);
+
+    assert.equal(health.status, 'never_direct');
+});
+
+test('검색 기록이 없으면 no_data', () => {
+    const [health] = assessSourceHealth([
+        row({ searches: 0, directHits: 0, consecutiveEmptyHits: 0 }),
+    ]);
+
+    assert.equal(health.status, 'no_data');
+});
+
+test('consecutiveEmptyHits 필드가 없는 과거 데이터는 0으로 간주 (하위호환)', () => {
+    const [health] = assessSourceHealth([
+        { source: 'MUSINSA', searches: 40, directHits: 20 },
+    ]);
+
+    assert.equal(health.status, 'healthy');
+});
+
+test('경계값: 2회는 healthy, 9회는 degraded', () => {
+    const [two, nine] = assessSourceHealth([
+        row({ source: 'MUSINSA', consecutiveEmptyHits: 2 }),
+        row({ source: '29CM', consecutiveEmptyHits: 9 }),
+    ]);
+
+    assert.equal(two.status, 'healthy');
+    assert.equal(nine.status, 'degraded');
+});
+
+test('입력 순서를 보존하고 소스별 결과를 반환한다', () => {
+    const result = assessSourceHealth([
+        row({ source: 'MUSINSA' }),
+        row({ source: 'ABLY', consecutiveEmptyHits: 15 }),
+    ]);
+
+    assert.deepEqual(result.map((h) => h.source), ['MUSINSA', 'ABLY']);
+    assert.equal(result[1].status, 'failing');
+});

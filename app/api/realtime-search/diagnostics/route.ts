@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadPdpDiagnostics } from '@/lib/api/pdpDiagnostics';
 import { loadSearchDiagnostics } from '@/lib/api/searchDiagnostics';
+import { assessSourceHealth } from '@/lib/api/sourceHealth';
 import { buildSearchQualityCoverageSummary } from '@/lib/search/searchQualityCoverage';
 import { loadSearchLearningActivity, loadSearchLearningQueue } from '@/lib/search/searchLearningDiagnostics';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
@@ -65,9 +66,15 @@ export async function GET(request: NextRequest) {
         const alertTuningAuditInbox = buildAlertTuningAuditInboxSummary(alertTuningAudit);
         const alertTuningWebhook = getAlertTuningWebhookConfig();
 
+        // 소스 헬스: "되다가 죽은 소스"(failing)를 사람이 안 봐도 아는 신호로 승격
+        const sourceHealth = assessSourceHealth(diagnostics.summary.sources);
+        const failingSources = sourceHealth.filter((health) => health.status === 'failing');
+
         return NextResponse.json(
             {
                 summary: diagnostics.summary,
+                sourceHealth,
+                failingSources,
                 recent: includeRecent ? diagnostics.recent : [],
                 recentInteractions: includeRecent ? diagnostics.recentInteractions : [],
                 quality: diagnostics.quality,
