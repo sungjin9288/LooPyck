@@ -266,6 +266,42 @@ export function parseTwentyNineCmCommerceData(item: Record<string, unknown>, bas
     );
 }
 
+export function parseMusinsaCommerceData(item: Record<string, unknown>, basePrice: number): ParsedCommerceData {
+    const guideText = normalizeOptionalText(item.plusDeliveryGuideText);
+    const isPlusDelivery = normalizeBooleanFlag(item.isPlusDelivery);
+    const shippingText = guideText ?? (isPlusDelivery === true ? '플러스배송' : undefined);
+
+    // couponPrice/finalPrice가 판매가(basePrice)보다 낮을 때만 혜택가로 취급.
+    const benefitPrice = pickLowestCandidate([
+        item.couponPrice,
+        item.finalPrice,
+    ], basePrice);
+
+    const explicitSoldOut = normalizeBooleanFlag(item.isSoldOut ?? item.soldOut);
+
+    return mergeCommerceData(
+        shippingText ? parseShippingText(shippingText) : undefined,
+        shippingText ? { shippingText } : undefined,
+        typeof benefitPrice === 'number'
+            ? {
+                benefitPrice,
+                benefitText: '무신사 혜택가',
+            }
+            : undefined,
+        explicitSoldOut === true
+            ? {
+                stockStatus: 'sold_out',
+                stockText: '품절',
+            }
+            : explicitSoldOut === false
+                ? {
+                    stockStatus: 'in_stock',
+                    stockText: '판매중',
+                }
+                : undefined
+    );
+}
+
 export function parseNaverCommerceData(item: Record<string, unknown>, basePrice: number): ParsedCommerceData {
     const shippingText = normalizeOptionalText(
         item.deliveryFeeContent

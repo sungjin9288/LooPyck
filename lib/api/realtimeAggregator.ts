@@ -1,11 +1,10 @@
-import * as cheerio from 'cheerio';
 import { UnifiedProduct } from './types';
-import { normalizeBrand, normalizePrice, normalizeTitle } from '@/lib/core/dataNormalizer';
+import { normalizeBrand, normalizeTitle } from '@/lib/core/dataNormalizer';
 import { SearchSort } from '@/types/searchSort';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 import type { SearchQueryCandidatePlan } from '@/lib/search/fashionQueryAssistant';
 import {
-    buildCommerceDataFromTexts,
+    parseMusinsaCommerceData,
     parseNaverCommerceData,
     parseTwentyNineCmCommerceData,
 } from '@/lib/product/sourceCommerceParsing';
@@ -39,7 +38,7 @@ import {
 } from '@/lib/api/aggregationCore';
 import { DIRECT_SOURCE_ORDER, buildDirectRegistry } from '@/lib/api/searchSourceRegistry';
 import { withScrapeRetry } from '@/lib/api/scrapeRetry';
-import { getHostLimiter, hostnameFromUrl } from '@/lib/api/hostConcurrency';
+import { getHostLimiter } from '@/lib/api/hostConcurrency';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
@@ -57,6 +56,7 @@ const NAVER_SEARCH_BUDGET_MS = 3_500;
 const RETRY_DEADLINE_MS = 3_200;
 const NAVER_API_HOST = 'openapi.naver.com';
 const TWENTY_NINE_CM_API_HOST = 'search-api.29cm.co.kr';
+const MUSINSA_API_HOST = 'api.musinsa.com';
 
 // Naver Shopping API response item shape
 interface NaverShopItem {
@@ -122,34 +122,6 @@ interface TwentyNineCMItem {
     displayState?: string;
     status?: string;
     stockText?: string;
-}
-
-// Helper Fetcher with Validation
-async function fetchHtml(url: string): Promise<string> {
-    const host = hostnameFromUrl(url);
-
-    try {
-        return await getHostLimiter(host).run(() => withScrapeRetry(
-            async () => {
-                const response = await fetch(url, {
-                    headers: {
-                        'User-Agent': USER_AGENT,
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
-                    },
-                    next: { revalidate: 60 }, // Server-side caching 60s
-                    signal: AbortSignal.timeout(8000)
-                });
-                if (!response.ok) throw new Error(`Status ${response.status}`);
-                return await response.text();
-            },
-            (html) => html.length === 0,
-            Date.now() + RETRY_DEADLINE_MS
-        ));
-    } catch (e) {
-        console.warn(`[RealtimeSearch] fetchHtml gave up for ${url}:`, e);
-        return '';
-    }
 }
 
 // Helper to proxy images for 29CM/Musinsa to bypass hotlink protection
@@ -223,78 +195,81 @@ async function fetchNaverRealtime(
     }
 }
 
-// 2. Musinsa Real-time Scraper (HTML Parsing)
+// Musinsa goods search API item shape (api.musinsa.com/api2/dp/v1/plp/goods)
+interface MusinsaApiItem {
+    goodsNo: number;
+    goodsName: string;
+    goodsLinkUrl?: string;
+    thumbnail?: string;
+    brandName?: string;
+    brand?: string;
+    price?: number;
+    finalPrice?: number;
+    couponPrice?: number | null;
+    isSoldOut?: boolean;
+    isAd?: boolean;
+    plusDeliveryGuideText?: string;
+    isPlusDelivery?: boolean;
+}
+
+// 2. Musinsa Real-time Search (official frontend JSON API — the legacy HTML
+// listing markup this scraper used to parse no longer exists on the SPA site)
 async function scrapeMusinsa(query: string, page: number = 1): Promise<UnifiedProduct[]> {
-    const url = `https://www.musinsa.com/search/goods?keyword=${encodeURIComponent(query)}&page=${page}`;
-    const html = await fetchHtml(url);
-    if (!html) return [];
-
-    const $ = cheerio.load(html);
-    const products: UnifiedProduct[] = [];
-
-    $('.list-box .li_box').each((_, el) => {
-        try {
-            const $el = $(el);
-            const title = $el.find('.item_title').text() || $el.find('.list_info a').attr('title');
-            const priceStr = $el.find('.price').text();
-            let imgUrl = $el.find('img').attr('data-original') || $el.find('img').attr('src');
-            const link = $el.find('.list_info a').attr('href');
-            const brand = $el.find('.item_brand').text();
-            const price = normalizePrice(priceStr);
-            const shippingText = [
-                $el.find('.txt_delivery').first().text(),
-                $el.find('.delivery').first().text(),
-                $el.find('[class*="delivery"]').first().text(),
-                $el.find('[class*="shipping"]').first().text(),
-            ].find((value) => value && value.trim().length > 0);
-            const benefitText = [
-                $el.find('.txt_member_price').first().text(),
-                $el.find('.member-price').first().text(),
-                $el.find('[class*="member"]').first().text(),
-                $el.find('[class*="coupon"]').first().text(),
-                $el.find('[class*="discount"]').first().text(),
-            ].find((value) => value && value.trim().length > 0);
-            const stockText = [
-                $el.find('.txt_state').first().text(),
-                $el.find('.soldout').first().text(),
-                $el.find('[class*="soldout"]').first().text(),
-                $el.find('[class*="stock"]').first().text(),
-                $el.find('[class*="status"]').first().text(),
-            ].find((value) => value && value.trim().length > 0);
-
-            if (title && priceStr && imgUrl && link) {
-                if (imgUrl.startsWith('//')) imgUrl = 'https:' + imgUrl;
-                const image = sanitizeExternalUrl(proxyImage(imgUrl));
-                const productLink = sanitizeExternalUrl(`https://www.musinsa.com${link}`);
-                if (!image || !productLink) {
-                    return;
-                }
-
-                products.push({
-                    id: link?.split('/').pop()
-                        ? `musinsa_${link.split('/').pop()}`
-                        : `musinsa_${normalizeTitle(String(title)).slice(0, 24)}_${products.length}`,
-                    title: normalizeTitle(title as string),
-                    price,
-                    image,
-                    link: productLink,
-                    mallName: 'Musinsa',
-                    brand: normalizeBrand(brand),
-                    source: 'MUSINSA' as const,
-                    ...buildCommerceDataFromTexts({
-                        basePrice: price,
-                        shippingText,
-                        benefitText,
-                        stockText,
-                    }),
+    try {
+        const url = `https://api.musinsa.com/api2/dp/v1/plp/goods?keyword=${encodeURIComponent(query)}&sortCode=POPULAR&page=${page}&size=10&caller=SEARCH`;
+        const res = await getHostLimiter(MUSINSA_API_HOST).run(() => withScrapeRetry(
+            async () => {
+                const response = await fetch(url, {
+                    headers: {
+                        'User-Agent': USER_AGENT,
+                        'Accept': 'application/json',
+                    },
+                    next: { revalidate: 60 },
+                    signal: AbortSignal.timeout(8000),
                 });
-            }
-        } catch (e) {
-            // Ignore
-        }
-    });
+                if (!response.ok) throw new Error(`Status ${response.status}`);
+                return response;
+            },
+            () => false,
+            Date.now() + RETRY_DEADLINE_MS
+        ));
+        const data = await res.json();
+        const list: MusinsaApiItem[] = data?.data?.list;
+        if (!Array.isArray(list)) return [];
 
-    return products.slice(0, 10);
+        return list.reduce((products: UnifiedProduct[], item: MusinsaApiItem) => {
+            // 광고 슬롯은 가격 비교 노이즈라 제외
+            if (item.isAd) return products;
+
+            const price = item.price ?? item.finalPrice;
+            let thumb = typeof item.thumbnail === 'string' ? item.thumbnail : '';
+            if (thumb.startsWith('//')) thumb = `https:${thumb}`;
+            const image = thumb ? sanitizeExternalUrl(proxyImage(thumb)) : null;
+            const link = sanitizeExternalUrl(
+                item.goodsLinkUrl || `https://www.musinsa.com/products/${item.goodsNo}`
+            );
+
+            if (!item.goodsNo || !item.goodsName || !image || !link || !Number.isFinite(price) || (price as number) <= 0) {
+                return products;
+            }
+
+            products.push({
+                id: `musinsa_${item.goodsNo}`,
+                title: normalizeTitle(item.goodsName),
+                price: price as number,
+                image,
+                link,
+                mallName: 'Musinsa',
+                brand: normalizeBrand(item.brandName || item.brand || ''),
+                source: 'MUSINSA' as const,
+                ...parseMusinsaCommerceData(item as unknown as Record<string, unknown>, price as number),
+            });
+            return products;
+        }, []);
+    } catch (e) {
+        console.warn('[RealtimeSearch] Musinsa API gave up:', e);
+        return [];
+    }
 }
 
 // 3. 29CM Real-time Scraper
