@@ -3,6 +3,7 @@ import { aggregateRealtimeSearchDetailed, aggregateRealtimeSearchNaverOnly, type
 import { buildSearchComparisonSnapshot, persistSearchDiagnostics, recordSearchDiagnostics } from '@/lib/api/searchDiagnostics';
 import { analyzeFashionQuery, buildSourceAwareSearchPlan, rerankProductsByFashionRelevance } from '@/lib/search/fashionQueryAssistant';
 import { diversifyProductsBySource } from '@/lib/search/sourceDiversity';
+import { filterLowPriceOutliers } from '@/lib/search/priceOutlierFilter';
 import { loadApprovedSearchLearningQueries, loadApprovedSearchLearningRewritePlan, mergeLearnedQueriesIntoPlan, persistSearchLearningCandidate, recordSearchLearningCandidate } from '@/lib/search/searchLearningRealtime';
 import { mergeSourceQueryPlans } from '@/lib/search/searchLearningRewritePacks';
 import { normalizeSearchSort, type SearchSort } from '@/types/searchSort';
@@ -208,7 +209,9 @@ export async function GET(request: NextRequest) {
         }
 
         const { products, diagnostics } = aggregation;
-        const reranked = rerankProductsByFashionRelevance(products, queryAnalysis, sort);
+        // 극단 저가 노이즈(부자재·더미가격) 제거 — 모든 정렬에 공통 적용
+        const denoisedProducts = filterLowPriceOutliers(products);
+        const reranked = rerankProductsByFashionRelevance(denoisedProducts, queryAnalysis, sort);
         // 관련도(sim) 정렬에서만 같은 소스 연속 점유를 끊는다 — 가격 정렬은 순서 보존.
         const orderedProducts = sort === 'sim'
             ? diversifyProductsBySource(reranked.products)
