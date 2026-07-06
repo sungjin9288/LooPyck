@@ -353,12 +353,22 @@ export type SearchDiagnosticsFetchTelemetry = {
     }>;
 };
 
+export type SourceHealthEntry = {
+    source: string;
+    status: 'healthy' | 'degraded' | 'failing' | 'never_direct' | 'no_data';
+    reason: string;
+    consecutiveEmptyHits: number;
+    lastDirectHitAt?: string;
+};
+
 export type DiagnosticsResponse = {
     summary: {
         trackedSearches: number;
         lastUpdatedAt: string | null;
         sources: SourceSummary[];
     };
+    sourceHealth?: SourceHealthEntry[];
+    failingSources?: SourceHealthEntry[];
     recent: RecentSnapshot[];
     recentInteractions: RecentInteraction[];
     quality: {

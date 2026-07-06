@@ -4,7 +4,77 @@ import type {
     DiagnosticsResponse,
     PdpRecentEvent,
     PdpSourceSummary,
+    SourceHealthEntry,
 } from './types';
+
+const SOURCE_HEALTH_BADGE: Record<SourceHealthEntry['status'], { label: string; className: string }> = {
+    failing: { label: 'FAILING', className: 'bg-rose-500/15 text-rose-300 border-rose-500/40' },
+    degraded: { label: 'DEGRADED', className: 'bg-amber-500/15 text-amber-300 border-amber-500/40' },
+    healthy: { label: 'HEALTHY', className: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40' },
+    never_direct: { label: 'NEVER DIRECT', className: 'bg-slate-700/40 text-slate-400 border-slate-600/50' },
+    no_data: { label: 'NO DATA', className: 'bg-slate-800/40 text-slate-500 border-slate-700/50' },
+};
+
+// 표시는 심각도 우선 — failing이 항상 맨 위에 오도록
+const SOURCE_HEALTH_ORDER: SourceHealthEntry['status'][] = ['failing', 'degraded', 'healthy', 'never_direct', 'no_data'];
+
+function SourceHealthSection({ sourceHealth }: { sourceHealth?: SourceHealthEntry[] }) {
+    if (!sourceHealth || sourceHealth.length === 0) {
+        return null;
+    }
+
+    const sorted = [...sourceHealth].sort(
+        (left, right) => SOURCE_HEALTH_ORDER.indexOf(left.status) - SOURCE_HEALTH_ORDER.indexOf(right.status)
+    );
+    const failingCount = sourceHealth.filter((entry) => entry.status === 'failing').length;
+
+    return (
+        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Source Health</p>
+                    <p className="mt-1 text-sm text-slate-400">
+                        되다가 죽은 소스(FAILING)는 비공식 API 파라미터/스키마 변경 신호입니다.
+                    </p>
+                </div>
+                <span className={`rounded-full border px-3 py-1.5 text-xs font-bold ${
+                    failingCount > 0
+                        ? 'border-rose-500/40 bg-rose-500/15 text-rose-300'
+                        : 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                }`}>
+                    {failingCount > 0 ? `FAILING ${failingCount}` : 'ALL CLEAR'}
+                </span>
+            </div>
+
+            <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {sorted.map((entry) => {
+                    const badge = SOURCE_HEALTH_BADGE[entry.status];
+                    return (
+                        <div
+                            key={entry.source}
+                            className="flex items-start justify-between gap-3 rounded-2xl border border-slate-800/80 bg-slate-950/50 px-4 py-3"
+                        >
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-slate-200">{entry.source}</p>
+                                <p className="mt-1 truncate text-xs text-slate-500" title={entry.reason}>
+                                    {entry.reason}
+                                </p>
+                                {entry.consecutiveEmptyHits > 0 && (
+                                    <p className="mt-1 text-[11px] text-slate-600">
+                                        연속 무수확 {entry.consecutiveEmptyHits}회
+                                    </p>
+                                )}
+                            </div>
+                            <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold ${badge.className}`}>
+                                {badge.label}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
 
 type DashboardHeroProps = {
     data: DiagnosticsResponse | null;
@@ -137,6 +207,8 @@ export function SearchOverviewSections({
                     <p className="mt-2 text-4xl font-black tracking-tight text-amber-300">{fallbackSources}</p>
                 </div>
             </section>
+
+            <SourceHealthSection sourceHealth={data?.sourceHealth} />
 
             <section className="mt-8 grid gap-4 lg:grid-cols-4">
                 <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
