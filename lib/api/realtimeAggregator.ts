@@ -15,7 +15,6 @@ import {
     getSourceDisplayName,
 } from '@/lib/api/sourceCatalog';
 import {
-    scrapeAbly,
     scrapeCoupang,
     scrapeEql,
     scrapeFarfetch,
@@ -59,6 +58,7 @@ const TWENTY_NINE_CM_API_HOST = 'search-api.29cm.co.kr';
 const MUSINSA_API_HOST = 'api.musinsa.com';
 const WCONCEPT_API_HOST = 'api-display.wconcept.co.kr';
 const HAGO_API_HOST = 'www.hago.kr';
+const ABLY_API_HOST = 'api.a-bly.com';
 // W컨셉 프론트가 자체 API 게이트웨이에 박아 쓰는 정적 앱 키(세션/서명 아님, 로그인·쿠키 불필요).
 const WCONCEPT_DISPLAY_API_KEY = 'VWmkUPgs6g2fviPZ5JQFQ3pERP4tIXv/J2jppLqSRBk=';
 
@@ -353,7 +353,7 @@ async function scrapeWConcept(query: string, page: number = 1): Promise<UnifiedP
                         'Content-Type': 'application/json; charset=utf-8',
                         'DISPLAY-API-KEY': WCONCEPT_DISPLAY_API_KEY,
                     },
-                    body: JSON.stringify({ keyword: query, page, size: 20 }),
+                    body: JSON.stringify({ keyword: query, page, size: 10 }),
                     next: { revalidate: 60 },
                     signal: AbortSignal.timeout(8000),
                 });
@@ -436,7 +436,8 @@ async function scrapeHago(query: string, page: number = 1): Promise<UnifiedProdu
         const list: HagoApiItem[] = data?.paginator?.data;
         if (!Array.isArray(list)) return [];
 
-        return list.slice(0, 20).reduce((products: UnifiedProduct[], item: HagoApiItem) => {
+        // 소스별 기여 균형: 무신사/29CM와 동일하게 10개 상한 (한 몰이 결과를 지배하지 않도록)
+        return list.slice(0, 10).reduce((products: UnifiedProduct[], item: HagoApiItem) => {
             const price = item.sell_price;
             const image = item.thumbnail_url ? sanitizeExternalUrl(proxyImage(item.thumbnail_url)) : null;
             const link = sanitizeExternalUrl(`https://www.hago.kr/goods/detail/${item.idx}`);
@@ -460,6 +461,117 @@ async function scrapeHago(query: string, page: number = 1): Promise<UnifiedProdu
         }, []);
     } catch (e) {
         console.warn('[RealtimeSearch] HAGO API gave up:', e);
+        return [];
+    }
+}
+
+// 에이블리 익명 토큰: 만료(exp) 없는 JWT — 함수 인스턴스 수명 동안 모듈 캐시,
+// 401/403 응답 시 요청 안에서 1회 재발급 후 재시도.
+let ablyAnonymousToken: string | null = null;
+
+async function fetchAblyAnonymousToken(): Promise<string | null> {
+    try {
+        const response = await fetch('https://api.a-bly.com/api/v2/anonymous/token/', {
+            headers: { 'User-Agent': USER_AGENT, 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(5000),
+        });
+        if (!response.ok) return null;
+        const data = await response.json();
+        return typeof data?.token === 'string' && data.token.length > 0 ? data.token : null;
+    } catch {
+        return null;
+    }
+}
+
+// 에이블리 스크린 API 아이템 형태 (api.a-bly.com/api/v2/screens/SEARCH_RESULT)
+interface AblyScreenItem {
+    sno: number;
+    name?: string;
+    image?: string;
+    market_name?: string;
+    price?: number;
+    ad?: unknown;
+}
+
+// 6. ABLY Real-time Search (익명 토큰 + 스크린 API.
+//    next_token 기반 페이지네이션이라 1페이지만 지원 — page>1은 빈 배열)
+async function scrapeAbly(query: string, page: number = 1): Promise<UnifiedProduct[]> {
+    if (page > 1) return [];
+
+    try {
+        const doFetch = (token: string) => fetch(
+            `https://api.a-bly.com/api/v2/screens/SEARCH_RESULT/?query=${encodeURIComponent(query)}`,
+            {
+                headers: {
+                    'User-Agent': USER_AGENT,
+                    'Accept': 'application/json',
+                    'x-anonymous-token': token,
+                },
+                next: { revalidate: 60 },
+                signal: AbortSignal.timeout(8000),
+            }
+        );
+
+        const res = await getHostLimiter(ABLY_API_HOST).run(() => withScrapeRetry(
+            async () => {
+                if (!ablyAnonymousToken) {
+                    ablyAnonymousToken = await fetchAblyAnonymousToken();
+                }
+                if (!ablyAnonymousToken) throw new Error('Status 503');
+
+                let response = await doFetch(ablyAnonymousToken);
+                if (response.status === 401 || response.status === 403) {
+                    // 토큰 무효화 → 같은 시도 안에서 1회 재발급 후 재요청
+                    ablyAnonymousToken = await fetchAblyAnonymousToken();
+                    if (!ablyAnonymousToken) throw new Error(`Status ${response.status}`);
+                    response = await doFetch(ablyAnonymousToken);
+                }
+                if (!response.ok) throw new Error(`Status ${response.status}`);
+                return response;
+            },
+            () => false,
+            Date.now() + RETRY_DEADLINE_MS
+        ));
+        const data = await res.json();
+
+        const components: Array<{ entity?: { item_list?: Array<{ item?: AblyScreenItem }> } }> =
+            Array.isArray(data?.components) ? data.components : [];
+        const items: AblyScreenItem[] = [];
+        for (const component of components) {
+            const list = component?.entity?.item_list;
+            if (!Array.isArray(list)) continue;
+            for (const wrapper of list) {
+                // 광고 슬롯(ad 필드 보유)은 가격 비교 노이즈라 제외
+                if (wrapper?.item && !wrapper.item.ad) {
+                    items.push(wrapper.item);
+                }
+            }
+        }
+
+        // 소스별 기여 균형: 다른 API 소스와 동일하게 10개 상한
+        return items.slice(0, 10).reduce((products: UnifiedProduct[], item: AblyScreenItem) => {
+            const price = item.price;
+            const image = item.image ? sanitizeExternalUrl(proxyImage(item.image)) : null;
+            const link = sanitizeExternalUrl(`https://m.a-bly.com/goods/${item.sno}`);
+
+            if (!item.sno || !item.name || !image || !link || !Number.isFinite(price) || (price as number) <= 0) {
+                return products;
+            }
+
+            products.push({
+                id: `ably_${item.sno}`,
+                title: normalizeTitle(item.name),
+                price: price as number,
+                image,
+                link,
+                mallName: '에이블리',
+                brand: normalizeBrand(item.market_name || ''),
+                source: 'ABLY' as const,
+            });
+            return products;
+        }, []);
+    } catch (e) {
+        console.warn('[RealtimeSearch] ABLY API gave up:', e);
         return [];
     }
 }
