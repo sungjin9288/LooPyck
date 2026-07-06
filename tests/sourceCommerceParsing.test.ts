@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     buildCommerceDataFromTexts,
+    parseHagoCommerceData,
     parseMusinsaCommerceData,
     parseNaverCommerceData,
     parseTwentyNineCmCommerceData,
+    parseWConceptCommerceData,
 } from '../lib/product/sourceCommerceParsing.ts';
 
 test('text-based commerce parser extracts musinsa-like shipping, benefit and stock signals', () => {
@@ -94,4 +96,58 @@ test('musinsa commerce parser labels plus delivery when guide text is empty', ()
 
     assert.equal(parsed.shippingText, '플러스배송');
     assert.equal(parsed.stockStatus, 'in_stock');
+});
+
+test('wconcept commerce parser maps finalPrice discount and active status code', () => {
+    const parsed = parseWConceptCommerceData({
+        salePrice: 79000,
+        finalPrice: 69520,
+        couponRate: 8,
+        statusCd: '01',
+    }, 79000);
+
+    assert.equal(parsed.benefitPrice, 69520);
+    assert.ok(parsed.benefitText && parsed.benefitText.length > 0);
+    assert.equal(parsed.stockStatus, 'in_stock');
+});
+
+test('wconcept commerce parser skips non-discount finalPrice and leaves unknown status codes unset', () => {
+    const parsed = parseWConceptCommerceData({
+        salePrice: 38000,
+        finalPrice: 38000,
+        couponRate: 0,
+        statusCd: '04',
+    }, 38000);
+
+    // finalPrice == basePrice → 혜택가 아님
+    assert.equal(parsed.benefitPrice, undefined);
+    // statusCd가 '01'(판매중) 외 값이면 의미가 불확실하므로 재고 상태를 단정하지 않음
+    assert.equal(parsed.stockStatus, undefined);
+});
+
+test('hago commerce parser maps dc_1_price discount, sold-out and free-delivery flags', () => {
+    const parsed = parseHagoCommerceData({
+        sell_price: 43900,
+        dc_1_price: 35998,
+        is_soldout: false,
+        addInfo: { is_free_delivery: true },
+    }, 43900);
+
+    assert.equal(parsed.benefitPrice, 35998);
+    assert.ok(parsed.benefitText && parsed.benefitText.length > 0);
+    assert.equal(parsed.shippingFee, 0);
+    assert.equal(parsed.stockStatus, 'in_stock');
+});
+
+test('hago commerce parser marks sold-out items and skips non-discount dc_1_price', () => {
+    const parsed = parseHagoCommerceData({
+        sell_price: 29452,
+        dc_1_price: 29452,
+        is_soldout: true,
+        addInfo: { is_free_delivery: false },
+    }, 29452);
+
+    assert.equal(parsed.benefitPrice, undefined);
+    assert.equal(parsed.stockStatus, 'sold_out');
+    assert.equal(parsed.shippingFee, undefined);
 });

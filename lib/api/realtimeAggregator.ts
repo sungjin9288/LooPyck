@@ -4,9 +4,11 @@ import { SearchSort } from '@/types/searchSort';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 import type { SearchQueryCandidatePlan } from '@/lib/search/fashionQueryAssistant';
 import {
+    parseHagoCommerceData,
     parseMusinsaCommerceData,
     parseNaverCommerceData,
     parseTwentyNineCmCommerceData,
+    parseWConceptCommerceData,
 } from '@/lib/product/sourceCommerceParsing';
 import {
     detectMarketplaceSource,
@@ -17,13 +19,11 @@ import {
     scrapeCoupang,
     scrapeEql,
     scrapeFarfetch,
-    scrapeHago,
     scrapeHandsome,
     scrapeLfMall,
     scrapeSiVillage,
     scrapeSSF,
     scrapeSSense,
-    scrapeWConcept,
     scrapeZigzag,
 } from '@/lib/api/marketplaceScrapers';
 import {
@@ -57,6 +57,10 @@ const RETRY_DEADLINE_MS = 3_200;
 const NAVER_API_HOST = 'openapi.naver.com';
 const TWENTY_NINE_CM_API_HOST = 'search-api.29cm.co.kr';
 const MUSINSA_API_HOST = 'api.musinsa.com';
+const WCONCEPT_API_HOST = 'api-display.wconcept.co.kr';
+const HAGO_API_HOST = 'www.hago.kr';
+// W컨셉 프론트가 자체 API 게이트웨이에 박아 쓰는 정적 앱 키(세션/서명 아님, 로그인·쿠키 불필요).
+const WCONCEPT_DISPLAY_API_KEY = 'VWmkUPgs6g2fviPZ5JQFQ3pERP4tIXv/J2jppLqSRBk=';
 
 // Naver Shopping API response item shape
 interface NaverShopItem {
@@ -318,6 +322,144 @@ async function scrape29CM(query: string, page: number = 1): Promise<UnifiedProdu
         }, []);
     } catch (e) {
         console.warn('[RealtimeSearch] 29CM API gave up:', e);
+        return [];
+    }
+}
+
+// W컨셉 검색 API 응답 아이템 형태 (api-display.wconcept.co.kr/display/api/v3/search/result/product)
+interface WConceptApiItem {
+    itemCd: string;
+    itemName: string;
+    imageUrlMobile?: string;
+    webViewUrl?: string;
+    brandNameKr?: string;
+    brandNameEn?: string;
+    salePrice?: number;
+    finalPrice?: number;
+    statusCd?: string;
+}
+
+// 4. W컨셉 Real-time Search (공식 프론트 JSON API — POST + 정적 게이트웨이 키,
+// 로그인/쿠키 불필요. 구 스크레이퍼는 SPA 마크업 셀렉터 불일치로 항상 0건이었음)
+async function scrapeWConcept(query: string, page: number = 1): Promise<UnifiedProduct[]> {
+    try {
+        const url = 'https://api-display.wconcept.co.kr/display/api/v3/search/result/product';
+        const res = await getHostLimiter(WCONCEPT_API_HOST).run(() => withScrapeRetry(
+            async () => {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'User-Agent': USER_AGENT,
+                        'Content-Type': 'application/json; charset=utf-8',
+                        'DISPLAY-API-KEY': WCONCEPT_DISPLAY_API_KEY,
+                    },
+                    body: JSON.stringify({ keyword: query, page, size: 20 }),
+                    next: { revalidate: 60 },
+                    signal: AbortSignal.timeout(8000),
+                });
+                if (!response.ok) throw new Error(`Status ${response.status}`);
+                return response;
+            },
+            () => false,
+            Date.now() + RETRY_DEADLINE_MS
+        ));
+        const data = await res.json();
+        const list: WConceptApiItem[] = data?.data?.productList?.content;
+        if (!Array.isArray(list)) return [];
+
+        return list.reduce((products: UnifiedProduct[], item: WConceptApiItem) => {
+            const price = item.salePrice;
+            const image = item.imageUrlMobile ? sanitizeExternalUrl(proxyImage(item.imageUrlMobile)) : null;
+            const link = sanitizeExternalUrl(
+                item.webViewUrl ? `https://www.wconcept.co.kr${item.webViewUrl}` : `https://www.wconcept.co.kr/Product/${item.itemCd}`
+            );
+
+            if (!item.itemCd || !item.itemName || !image || !link || !Number.isFinite(price) || (price as number) <= 0) {
+                return products;
+            }
+
+            products.push({
+                id: `wconcept_${item.itemCd}`,
+                title: normalizeTitle(item.itemName),
+                price: price as number,
+                image,
+                link,
+                mallName: 'W컨셉',
+                brand: normalizeBrand(item.brandNameKr || item.brandNameEn || ''),
+                source: 'W_CONCEPT' as const,
+                ...parseWConceptCommerceData(item as unknown as Record<string, unknown>, price as number),
+            });
+            return products;
+        }, []);
+    } catch (e) {
+        console.warn('[RealtimeSearch] W Concept API gave up:', e);
+        return [];
+    }
+}
+
+// HAGO 검색 API 응답 아이템 형태 (www.hago.kr/search/fetchGoods)
+interface HagoApiItem {
+    idx: number;
+    name: string;
+    decoded_display_name?: string;
+    thumbnail_url?: string;
+    brand_name?: string;
+    kor_brand_name?: string;
+    sell_price?: number;
+    dc_1_price?: number;
+    is_soldout?: boolean;
+    addInfo?: Record<string, unknown>;
+}
+
+// 5. HAGO Real-time Search (공식 프론트 JSON API — 인증/쿠키 불필요, XHR 헤더만 필요)
+async function scrapeHago(query: string, page: number = 1): Promise<UnifiedProduct[]> {
+    try {
+        const url = `https://www.hago.kr/search/fetchGoods?keyword=${encodeURIComponent(query)}&page=${page}`;
+        const res = await getHostLimiter(HAGO_API_HOST).run(() => withScrapeRetry(
+            async () => {
+                const response = await fetch(url, {
+                    headers: {
+                        'User-Agent': USER_AGENT,
+                        'Accept': 'application/json, text/plain, */*',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    next: { revalidate: 60 },
+                    signal: AbortSignal.timeout(8000),
+                });
+                if (!response.ok) throw new Error(`Status ${response.status}`);
+                return response;
+            },
+            () => false,
+            Date.now() + RETRY_DEADLINE_MS
+        ));
+        const data = await res.json();
+        const list: HagoApiItem[] = data?.paginator?.data;
+        if (!Array.isArray(list)) return [];
+
+        return list.slice(0, 20).reduce((products: UnifiedProduct[], item: HagoApiItem) => {
+            const price = item.sell_price;
+            const image = item.thumbnail_url ? sanitizeExternalUrl(proxyImage(item.thumbnail_url)) : null;
+            const link = sanitizeExternalUrl(`https://www.hago.kr/goods/detail/${item.idx}`);
+
+            if (!item.idx || !item.name || !image || !link || !Number.isFinite(price) || (price as number) <= 0) {
+                return products;
+            }
+
+            products.push({
+                id: `hago_${item.idx}`,
+                title: normalizeTitle(item.decoded_display_name || item.name),
+                price: price as number,
+                image,
+                link,
+                mallName: 'HAGO',
+                brand: normalizeBrand(item.kor_brand_name || item.brand_name || ''),
+                source: 'HAGO' as const,
+                ...parseHagoCommerceData(item as unknown as Record<string, unknown>, price as number),
+            });
+            return products;
+        }, []);
+    } catch (e) {
+        console.warn('[RealtimeSearch] HAGO API gave up:', e);
         return [];
     }
 }

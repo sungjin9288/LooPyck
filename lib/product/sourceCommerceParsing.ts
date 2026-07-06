@@ -302,6 +302,68 @@ export function parseMusinsaCommerceData(item: Record<string, unknown>, basePric
     );
 }
 
+export function parseWConceptCommerceData(item: Record<string, unknown>, basePrice: number): ParsedCommerceData {
+    // finalPrice(쿠폰 적용가)가 salePrice(판매가)보다 낮을 때만 혜택가로 취급.
+    const benefitPrice = pickLowestCandidate([item.finalPrice], basePrice);
+
+    // statusCd는 관찰상 '01'(판매중) 외 값의 의미가 불확실(타이틀 텍스트와 상관관계 없음)해
+    // '01'일 때만 in_stock으로 단정하고, 그 외에는 재고 상태를 설정하지 않는다.
+    const statusCd = normalizeOptionalText(item.statusCd);
+
+    return mergeCommerceData(
+        typeof benefitPrice === 'number'
+            ? {
+                benefitPrice,
+                benefitText: 'W컨셉 쿠폰가',
+            }
+            : undefined,
+        statusCd === '01'
+            ? {
+                stockStatus: 'in_stock',
+                stockText: '판매중',
+            }
+            : undefined
+    );
+}
+
+export function parseHagoCommerceData(item: Record<string, unknown>, basePrice: number): ParsedCommerceData {
+    // dc_1_price(추가 할인가)가 sell_price(판매가)보다 낮을 때만 혜택가로 취급.
+    const benefitPrice = pickLowestCandidate([item.dc_1_price], basePrice);
+
+    const explicitSoldOut = normalizeBooleanFlag(item.is_soldout);
+
+    const addInfo = (item.addInfo && typeof item.addInfo === 'object')
+        ? item.addInfo as Record<string, unknown>
+        : undefined;
+    const isFreeDelivery = normalizeBooleanFlag(addInfo?.is_free_delivery);
+
+    return mergeCommerceData(
+        typeof benefitPrice === 'number'
+            ? {
+                benefitPrice,
+                benefitText: 'HAGO 할인가',
+            }
+            : undefined,
+        isFreeDelivery === true
+            ? {
+                shippingFee: 0,
+                shippingText: '무료배송',
+            }
+            : undefined,
+        explicitSoldOut === true
+            ? {
+                stockStatus: 'sold_out',
+                stockText: '품절',
+            }
+            : explicitSoldOut === false
+                ? {
+                    stockStatus: 'in_stock',
+                    stockText: '판매중',
+                }
+                : undefined
+    );
+}
+
 export function parseNaverCommerceData(item: Record<string, unknown>, basePrice: number): ParsedCommerceData {
     const shippingText = normalizeOptionalText(
         item.deliveryFeeContent
