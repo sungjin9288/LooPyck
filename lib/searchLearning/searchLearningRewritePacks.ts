@@ -4,8 +4,8 @@ import {
     buildSourceAwareQueryCandidates,
     type FashionQueryAnalysis,
     type SearchQueryCandidatePlan,
-} from './fashionQueryAssistant.ts';
-import { getSemanticFashionClusterLabel } from './fashionOntology.ts';
+} from '../search/fashionQueryAssistant.ts';
+import { getSemanticFashionClusterLabel } from '../search/fashionOntology.ts';
 
 export type SearchLearningRewriteEntryLike = {
     id: string;

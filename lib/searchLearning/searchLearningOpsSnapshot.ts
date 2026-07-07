@@ -1,4 +1,4 @@
-import type { SearchLearningActivityEvent, SearchLearningEntry } from './queryLearningTypes.ts';
+import type { SearchLearningActivityEvent, SearchLearningEntry } from '../search/queryLearningTypes.ts';
 import type { SearchLearningActivityFollowupSummary } from './searchLearningActivityFollowups.ts';
 import type { SearchLearningActivityOpsQueueSummary } from './searchLearningActivityOpsQueue.ts';
 import type { SearchLearningActivityRecommendationSummary } from './searchLearningActivityRecommendations.ts';

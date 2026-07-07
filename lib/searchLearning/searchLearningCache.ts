@@ -1,4 +1,4 @@
-import type { SearchLearningActivityEvent, SearchLearningEntry } from './queryLearningTypes.ts';
+import type { SearchLearningActivityEvent, SearchLearningEntry } from '../search/queryLearningTypes.ts';
 
 const MAX_MEMORY_ENTRIES = 80;
 const MAX_MEMORY_ACTIVITY = 120;

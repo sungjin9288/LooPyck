@@ -1,86 +1,86 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { analyzeFashionQuery } from '../lib/search/fashionQueryAssistant.ts';
-import { loadSearchLearningActivity } from '../lib/search/searchLearningActivityStore.ts';
-import { loadSearchLearningQueue } from '../lib/search/searchLearningEntryQueryStore.ts';
-import { resetSearchLearningEntries } from '../lib/search/searchLearningEntryMutationStore.ts';
+import { loadSearchLearningActivity } from '../lib/searchLearning/searchLearningActivityStore.ts';
+import { loadSearchLearningQueue } from '../lib/searchLearning/searchLearningEntryQueryStore.ts';
+import { resetSearchLearningEntries } from '../lib/searchLearning/searchLearningEntryMutationStore.ts';
 import {
     loadApprovedSearchLearningRewritePlan,
     mergeLearnedQueriesIntoPlan,
     reviewSearchLearningEntries,
-} from '../lib/search/searchLearningReview.ts';
+} from '../lib/searchLearning/searchLearningReview.ts';
 import {
     buildFallbackSearchLearningSuggestion,
     generateSearchLearningSuggestions,
-} from '../lib/search/searchLearningSuggestions.ts';
+} from '../lib/searchLearning/searchLearningSuggestions.ts';
 import {
     recordSearchLearningCandidate,
     seedSearchLearningEntries,
-} from '../lib/search/searchLearningSeeding.ts';
+} from '../lib/searchLearning/searchLearningSeeding.ts';
 import {
     buildSearchLearningRewritePacks,
     buildSearchLearningRewritePlanForAnalysis,
-} from '../lib/search/searchLearningRewritePacks.ts';
+} from '../lib/searchLearning/searchLearningRewritePacks.ts';
 import {
     buildSearchLearningImpactClusterRollup,
     buildSearchLearningImpactClusterSummaries,
     buildSearchLearningImpactSummary,
-} from '../lib/search/searchLearningImpact.ts';
+} from '../lib/searchLearning/searchLearningImpact.ts';
 import {
     buildSearchLearningRewriteRecommendationSummary,
     buildSearchLearningRewriteRecommendations,
-} from '../lib/search/searchLearningRewriteRecommendations.ts';
+} from '../lib/searchLearning/searchLearningRewriteRecommendations.ts';
 import {
     buildSearchLearningRewriteSourceDraftSummary,
     buildSearchLearningRewriteSourceDrafts,
-} from '../lib/search/searchLearningRewriteSourceDrafts.ts';
+} from '../lib/searchLearning/searchLearningRewriteSourceDrafts.ts';
 import {
     buildSearchLearningRewriteSourceOps,
     buildSearchLearningRewriteSourceOpsSummary,
-} from '../lib/search/searchLearningRewriteSourceOps.ts';
+} from '../lib/searchLearning/searchLearningRewriteSourceOps.ts';
 import {
     buildSearchLearningRewriteSourceActionDrafts,
     buildSearchLearningRewriteSourceActionDraftSummary,
-} from '../lib/search/searchLearningRewriteSourceActionDrafts.ts';
+} from '../lib/searchLearning/searchLearningRewriteSourceActionDrafts.ts';
 import {
     buildSearchLearningRewriteSourceActionReviewQueue,
     buildSearchLearningRewriteSourceActionReviewSummary,
-} from '../lib/search/searchLearningRewriteSourceActionReview.ts';
+} from '../lib/searchLearning/searchLearningRewriteSourceActionReview.ts';
 import {
     buildSearchLearningRewriteSourceApprovalQueue,
     buildSearchLearningRewriteSourceApprovalQueueSummary,
     type SearchLearningRewriteSourceApprovalQueueItem,
-} from '../lib/search/searchLearningRewriteSourceApprovalQueue.ts';
+} from '../lib/searchLearning/searchLearningRewriteSourceApprovalQueue.ts';
 import {
     buildSearchLearningRewriteSourceApprovalActivity,
     buildSearchLearningRewriteSourceApprovalActivitySummary,
-} from '../lib/search/searchLearningRewriteSourceApprovalActivity.ts';
-import { buildSearchLearningActivitySummary } from '../lib/search/searchLearningActivitySummary.ts';
-import { buildSearchLearningActivityRecommendations } from '../lib/search/searchLearningActivityRecommendations.ts';
-import { buildSearchLearningActivityOpsQueue } from '../lib/search/searchLearningActivityOpsQueue.ts';
-import { buildSearchLearningActivityFollowups } from '../lib/search/searchLearningActivityFollowups.ts';
-import { buildSearchLearningOpsCenter } from '../lib/search/searchLearningOpsCenter.ts';
-import { buildSearchLearningOpsPlaybooks } from '../lib/search/searchLearningOpsPlaybooks.ts';
-import { buildSearchLearningOpsPlaybookActivity } from '../lib/search/searchLearningOpsPlaybookActivity.ts';
-import { buildSearchLearningOpsPlaybookOutcomes } from '../lib/search/searchLearningOpsPlaybookOutcomes.ts';
-import { buildSearchLearningOpsPlaybookRecommendations } from '../lib/search/searchLearningOpsPlaybookRecommendations.ts';
-import { buildSearchLearningOpsCompletionSummary } from '../lib/search/searchLearningOpsCompletionSummary.ts';
-import { buildSearchLearningOpsCompletionActions } from '../lib/search/searchLearningOpsCompletionActions.ts';
-import { buildSearchLearningOpsCompletionActivity } from '../lib/search/searchLearningOpsCompletionActivity.ts';
-import { buildSearchLearningOpsCompletionOutcomes } from '../lib/search/searchLearningOpsCompletionOutcomes.ts';
-import { buildSearchLearningOpsCompletionRecommendationOutcomes } from '../lib/search/searchLearningOpsCompletionRecommendationOutcomes.ts';
-import { buildSearchLearningOpsCompletionQueue } from '../lib/search/searchLearningOpsCompletionQueue.ts';
+} from '../lib/searchLearning/searchLearningRewriteSourceApprovalActivity.ts';
+import { buildSearchLearningActivitySummary } from '../lib/searchLearning/searchLearningActivitySummary.ts';
+import { buildSearchLearningActivityRecommendations } from '../lib/searchLearning/searchLearningActivityRecommendations.ts';
+import { buildSearchLearningActivityOpsQueue } from '../lib/searchLearning/searchLearningActivityOpsQueue.ts';
+import { buildSearchLearningActivityFollowups } from '../lib/searchLearning/searchLearningActivityFollowups.ts';
+import { buildSearchLearningOpsCenter } from '../lib/searchLearning/searchLearningOpsCenter.ts';
+import { buildSearchLearningOpsPlaybooks } from '../lib/searchLearning/searchLearningOpsPlaybooks.ts';
+import { buildSearchLearningOpsPlaybookActivity } from '../lib/searchLearning/searchLearningOpsPlaybookActivity.ts';
+import { buildSearchLearningOpsPlaybookOutcomes } from '../lib/searchLearning/searchLearningOpsPlaybookOutcomes.ts';
+import { buildSearchLearningOpsPlaybookRecommendations } from '../lib/searchLearning/searchLearningOpsPlaybookRecommendations.ts';
+import { buildSearchLearningOpsCompletionSummary } from '../lib/searchLearning/searchLearningOpsCompletionSummary.ts';
+import { buildSearchLearningOpsCompletionActions } from '../lib/searchLearning/searchLearningOpsCompletionActions.ts';
+import { buildSearchLearningOpsCompletionActivity } from '../lib/searchLearning/searchLearningOpsCompletionActivity.ts';
+import { buildSearchLearningOpsCompletionOutcomes } from '../lib/searchLearning/searchLearningOpsCompletionOutcomes.ts';
+import { buildSearchLearningOpsCompletionRecommendationOutcomes } from '../lib/searchLearning/searchLearningOpsCompletionRecommendationOutcomes.ts';
+import { buildSearchLearningOpsCompletionQueue } from '../lib/searchLearning/searchLearningOpsCompletionQueue.ts';
 import {
     buildOpsChainActivity,
     buildOpsChainOutcomes,
     buildOpsChainQueue,
     buildOpsChainRecommendations,
-} from '../lib/search/searchLearningOpsChain.ts';
+} from '../lib/searchLearning/searchLearningOpsChain.ts';
 import {
     completionChainLevels,
     completionRecommendationsConfig,
     playbookChainLevels,
-} from '../lib/search/searchLearningOpsChainLevels.ts';
+} from '../lib/searchLearning/searchLearningOpsChainLevels.ts';
 
 // The recursive chain levels were collapsed into the generic ops-chain engine.
 // These wrappers keep the original per-level builder names used by the tests.

@@ -1,5 +1,5 @@
 import { getAdminDb } from '../server/firebaseAdmin.ts';
-import type { SearchLearningEntry, SearchLearningQueue } from './queryLearningTypes.ts';
+import type { SearchLearningEntry, SearchLearningQueue } from '../search/queryLearningTypes.ts';
 import { getMemoryEntries } from './searchLearningCache.ts';
 import { SEARCH_LEARNING_COLLECTION } from './searchLearningCollections.ts';
 import { parseEntry } from './searchLearningEntryCodec.ts';

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { parseGeminiJson, normalizeKeywordList } from '../ai/geminiJson.ts';
-import { analyzeFashionQuery, buildSourceAwareSearchPlan } from './fashionQueryAssistant.ts';
-import type { SearchLearningEntry, SearchLearningSuggestion } from './queryLearningTypes.ts';
+import { analyzeFashionQuery, buildSourceAwareSearchPlan } from '../search/fashionQueryAssistant.ts';
+import type { SearchLearningEntry, SearchLearningSuggestion } from '../search/queryLearningTypes.ts';
 import {
     loadSearchLearningEntry,
 } from './searchLearningEntryQueryStore.ts';

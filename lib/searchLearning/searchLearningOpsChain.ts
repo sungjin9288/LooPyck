@@ -1,4 +1,4 @@
-import type { SearchLearningActivityEvent } from './queryLearningTypes.ts';
+import type { SearchLearningActivityEvent } from '../search/queryLearningTypes.ts';
 import { buildSearchLearningImpact } from './searchLearningImpact.ts';
 
 /**

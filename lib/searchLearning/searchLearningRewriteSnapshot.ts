@@ -1,5 +1,5 @@
 import type { SearchLearningImpactClusterSummary } from './searchLearningImpact.ts';
-import type { SearchLearningEntry } from './queryLearningTypes.ts';
+import type { SearchLearningEntry } from '../search/queryLearningTypes.ts';
 import { buildSearchLearningRewritePacks } from './searchLearningRewritePacks.ts';
 import { buildSearchLearningRewriteRecommendationSummary, buildSearchLearningRewriteRecommendations } from './searchLearningRewriteRecommendations.ts';
 import { buildSearchLearningRewriteSourceActionDraftSummary, buildSearchLearningRewriteSourceActionDrafts } from './searchLearningRewriteSourceActionDrafts.ts';

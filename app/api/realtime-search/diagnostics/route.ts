@@ -3,7 +3,7 @@ import { loadPdpDiagnostics } from '@/lib/api/pdpDiagnostics';
 import { loadSearchDiagnostics } from '@/lib/api/searchDiagnostics';
 import { assessSourceHealth } from '@/lib/api/sourceHealth';
 import { buildSearchQualityCoverageSummary } from '@/lib/search/searchQualityCoverage';
-import { loadSearchLearningActivity, loadSearchLearningQueue } from '@/lib/search/searchLearningDiagnostics';
+import { loadSearchLearningActivity, loadSearchLearningQueue } from '@/lib/searchLearning/searchLearningDiagnostics';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 import { loadAlertDiagnostics } from '@/lib/server/alertDiagnostics';
 import { requireAdminRequest } from '@/lib/server/adminAccess';

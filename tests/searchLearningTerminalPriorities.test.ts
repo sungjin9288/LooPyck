@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildSearchLearningTerminalPriorities } from '../lib/search/searchLearningTerminalPriorities.ts';
-import type { SearchLearningTerminalAlertSummary } from '../lib/search/searchLearningTerminalAlerts.ts';
-import type { SearchLearningTerminalCoverage } from '../lib/search/searchLearningTerminalCoverage.ts';
-import type { SearchLearningTerminalHealth } from '../lib/search/searchLearningTerminalHealth.ts';
-import type { SearchLearningTerminalWatchlist } from '../lib/search/searchLearningTerminalWatchlist.ts';
+import { buildSearchLearningTerminalPriorities } from '../lib/searchLearning/searchLearningTerminalPriorities.ts';
+import type { SearchLearningTerminalAlertSummary } from '../lib/searchLearning/searchLearningTerminalAlerts.ts';
+import type { SearchLearningTerminalCoverage } from '../lib/searchLearning/searchLearningTerminalCoverage.ts';
+import type { SearchLearningTerminalHealth } from '../lib/searchLearning/searchLearningTerminalHealth.ts';
+import type { SearchLearningTerminalWatchlist } from '../lib/searchLearning/searchLearningTerminalWatchlist.ts';
 import type {
     SearchLearningTerminalWorkflowAction,
     SearchLearningTerminalWorkflowSummary,
-} from '../lib/search/searchLearningTerminalWorkflow.ts';
+} from '../lib/searchLearning/searchLearningTerminalWorkflow.ts';
 
 function createAction(
     overrides: Partial<SearchLearningTerminalWorkflowAction>

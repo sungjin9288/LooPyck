@@ -1,6 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminDb } from '../server/firebaseAdmin.ts';
-import type { SearchLearningStatus, SearchLearningSuggestion } from './queryLearningTypes.ts';
+import type { SearchLearningStatus, SearchLearningSuggestion } from '../search/queryLearningTypes.ts';
 import {
     getApprovedCache,
     getMemoryEntries,

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildSearchLearningTerminalAlerts } from '../lib/search/searchLearningTerminalAlerts.ts';
-import type { SearchLearningTerminalWorkflowSummary } from '../lib/search/searchLearningTerminalWorkflow.ts';
+import { buildSearchLearningTerminalAlerts } from '../lib/searchLearning/searchLearningTerminalAlerts.ts';
+import type { SearchLearningTerminalWorkflowSummary } from '../lib/searchLearning/searchLearningTerminalWorkflow.ts';
 
 function createWorkflow(
     overrides: Partial<SearchLearningTerminalWorkflowSummary> = {}

@@ -2,8 +2,8 @@ import { FieldValue } from 'firebase-admin/firestore';
 import type { SearchAggregationDiagnostics } from '../api/realtimeAggregator.ts';
 import { normalizeTitle } from '../core/dataNormalizer.ts';
 import { getAdminDb } from '../server/firebaseAdmin.ts';
-import { analyzeFashionQuery, buildSourceAwareSearchPlan } from './fashionQueryAssistant.ts';
-import type { SearchLearningEntry } from './queryLearningTypes.ts';
+import { analyzeFashionQuery, buildSourceAwareSearchPlan } from '../search/fashionQueryAssistant.ts';
+import type { SearchLearningEntry } from '../search/queryLearningTypes.ts';
 import {
     loadSearchLearningEntry,
 } from './searchLearningEntryQueryStore.ts';

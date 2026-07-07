@@ -4,7 +4,7 @@ import type {
     SearchLearningActivityFeed,
     SearchLearningActivityType,
     SearchLearningStatus,
-} from './queryLearningTypes.ts';
+} from '../search/queryLearningTypes.ts';
 import { appendMemoryActivity, getMemoryActivity } from './searchLearningCache.ts';
 import { buildSearchLearningActivityId, uniqueOrdered } from './searchLearningEntryCodec.ts';
 

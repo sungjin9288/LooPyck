@@ -1,5 +1,5 @@
 import type { SearchLearningImpactClusterRollup } from './searchLearningImpact.ts';
-import type { SearchQualityCoverageSummary } from './searchQualityCoverage.ts';
+import type { SearchQualityCoverageSummary } from '../search/searchQualityCoverage.ts';
 
 export type SearchLearningTerminalCoverageTone = 'emerald' | 'sky' | 'amber' | 'rose' | 'slate';
 

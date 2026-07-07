@@ -1,6 +1,6 @@
 import { getAdminDb } from '../server/firebaseAdmin.ts';
-import { analyzeFashionQuery } from './fashionQueryAssistant.ts';
-import type { SearchLearningEntry, SearchLearningStatus } from './queryLearningTypes.ts';
+import { analyzeFashionQuery } from '../search/fashionQueryAssistant.ts';
+import type { SearchLearningEntry, SearchLearningStatus } from '../search/queryLearningTypes.ts';
 import {
     buildSearchLearningRewritePacks,
     buildSearchLearningRewritePlanForAnalysis,

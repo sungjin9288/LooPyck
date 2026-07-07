@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildSearchLearningTerminalCoverage } from '../lib/search/searchLearningTerminalCoverage.ts';
-import type { SearchLearningImpactClusterRollup } from '../lib/search/searchLearningImpact.ts';
+import { buildSearchLearningTerminalCoverage } from '../lib/searchLearning/searchLearningTerminalCoverage.ts';
+import type { SearchLearningImpactClusterRollup } from '../lib/searchLearning/searchLearningImpact.ts';
 import type { SearchQualityCoverageSummary } from '../lib/search/searchQualityCoverage.ts';
 
 function createCoverage(

@@ -1,4 +1,4 @@
-import { buildSearchLearningImpact } from '@/lib/search/searchLearningImpact';
+import { buildSearchLearningImpact } from '@/lib/searchLearning/searchLearningImpact';
 import {
     formatPercent,
     formatTime,

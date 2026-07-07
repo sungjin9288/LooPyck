@@ -5,7 +5,7 @@ import type {
     SearchLearningApprovalBaseline,
     SearchLearningEntry,
     SearchLearningSuggestion,
-} from './queryLearningTypes.ts';
+} from '../search/queryLearningTypes.ts';
 
 export function normalizeSearchLearningQuery(query: string): string {
     return normalizeTitle(query)

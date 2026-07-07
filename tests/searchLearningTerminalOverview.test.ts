@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildSearchLearningTerminalOverview } from '../lib/search/searchLearningTerminalOverview.ts';
-import type { SearchLearningTerminalCoverage } from '../lib/search/searchLearningTerminalCoverage.ts';
-import type { SearchLearningTerminalHealth } from '../lib/search/searchLearningTerminalHealth.ts';
-import type { SearchLearningTerminalMetrics } from '../lib/search/searchLearningTerminalMetrics.ts';
-import type { SearchLearningTerminalPrioritySummary } from '../lib/search/searchLearningTerminalPriorities.ts';
-import type { SearchLearningTerminalTrends } from '../lib/search/searchLearningTerminalTrends.ts';
-import type { SearchLearningTerminalWorkflowSummary } from '../lib/search/searchLearningTerminalWorkflow.ts';
+import { buildSearchLearningTerminalOverview } from '../lib/searchLearning/searchLearningTerminalOverview.ts';
+import type { SearchLearningTerminalCoverage } from '../lib/searchLearning/searchLearningTerminalCoverage.ts';
+import type { SearchLearningTerminalHealth } from '../lib/searchLearning/searchLearningTerminalHealth.ts';
+import type { SearchLearningTerminalMetrics } from '../lib/searchLearning/searchLearningTerminalMetrics.ts';
+import type { SearchLearningTerminalPrioritySummary } from '../lib/searchLearning/searchLearningTerminalPriorities.ts';
+import type { SearchLearningTerminalTrends } from '../lib/searchLearning/searchLearningTerminalTrends.ts';
+import type { SearchLearningTerminalWorkflowSummary } from '../lib/searchLearning/searchLearningTerminalWorkflow.ts';
 
 function createWorkflow(
     overrides: Partial<SearchLearningTerminalWorkflowSummary> = {}

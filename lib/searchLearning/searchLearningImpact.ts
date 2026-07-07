@@ -1,4 +1,4 @@
-import { getSemanticFashionClusterLabel, resolveSemanticFashionExpansion } from './fashionOntology.ts';
+import { getSemanticFashionClusterLabel, resolveSemanticFashionExpansion } from '../search/fashionOntology.ts';
 
 export type SearchLearningImpactBaseline = {
     approvedAt: string;

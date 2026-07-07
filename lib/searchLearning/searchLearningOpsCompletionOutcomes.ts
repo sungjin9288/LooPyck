@@ -2,17 +2,17 @@ import type {
     SearchLearningApprovalBaseline,
     SearchLearningStatus,
     SearchLearningSuggestion,
-} from './queryLearningTypes.ts';
+} from '../search/queryLearningTypes.ts';
 import { buildSearchLearningImpact } from './searchLearningImpact.ts';
-import type { SearchLearningOpsPlaybookRun } from './searchLearningOpsPlaybookActivity.ts';
+import type { SearchLearningOpsCompletionActivityRun } from './searchLearningOpsCompletionActivity.ts';
 
-export type SearchLearningOpsPlaybookOutcomeStatus =
+export type SearchLearningOpsCompletionOutcomeStatus =
     | 'ready_review'
     | 'needs_attention'
     | 'awaiting_samples'
     | 'validated';
 
-export type SearchLearningOpsPlaybookOutcomeEntryLike = {
+export type SearchLearningOpsCompletionOutcomeEntryLike = {
     id: string;
     query: string;
     status: SearchLearningStatus;
@@ -23,16 +23,16 @@ export type SearchLearningOpsPlaybookOutcomeEntryLike = {
     zeroResultCount: number;
 };
 
-export type SearchLearningOpsPlaybookOutcome = {
+export type SearchLearningOpsCompletionOutcome = {
     id: string;
-    playbookId: string;
+    runId: string;
     title: string;
-    action: SearchLearningOpsPlaybookRun['action'];
+    action: SearchLearningOpsCompletionActivityRun['action'];
     context: string;
     createdAt: string;
     queries: string[];
     entryIds: string[];
-    status: SearchLearningOpsPlaybookOutcomeStatus;
+    status: SearchLearningOpsCompletionOutcomeStatus;
     description: string;
     improvedCount: number;
     noImprovementCount: number;
@@ -40,23 +40,23 @@ export type SearchLearningOpsPlaybookOutcome = {
     readyReviewCount: number;
 };
 
-export type SearchLearningOpsPlaybookOutcomeSummary = {
+export type SearchLearningOpsCompletionOutcomeSummary = {
     total: number;
     readyReview: number;
     needsAttention: number;
     awaitingSamples: number;
     validated: number;
-    topReadyReview: SearchLearningOpsPlaybookOutcome[];
-    topNeedsAttention: SearchLearningOpsPlaybookOutcome[];
-    topAwaitingSamples: SearchLearningOpsPlaybookOutcome[];
-    topValidated: SearchLearningOpsPlaybookOutcome[];
+    topReadyReview: SearchLearningOpsCompletionOutcome[];
+    topNeedsAttention: SearchLearningOpsCompletionOutcome[];
+    topAwaitingSamples: SearchLearningOpsCompletionOutcome[];
+    topValidated: SearchLearningOpsCompletionOutcome[];
 };
 
 function uniqueOrdered(values: string[]): string[] {
     return Array.from(new Set(values.filter(Boolean)));
 }
 
-function sortOutcomes(items: SearchLearningOpsPlaybookOutcome[]): SearchLearningOpsPlaybookOutcome[] {
+function sortOutcomes(items: SearchLearningOpsCompletionOutcome[]): SearchLearningOpsCompletionOutcome[] {
     return [...items].sort((left, right) => {
         if (right.noImprovementCount !== left.noImprovementCount) {
             return right.noImprovementCount - left.noImprovementCount;
@@ -78,17 +78,17 @@ function sortOutcomes(items: SearchLearningOpsPlaybookOutcome[]): SearchLearning
     });
 }
 
-export function buildSearchLearningOpsPlaybookOutcomes(
-    runs: SearchLearningOpsPlaybookRun[],
-    entries: SearchLearningOpsPlaybookOutcomeEntryLike[]
-): SearchLearningOpsPlaybookOutcomeSummary {
+export function buildSearchLearningOpsCompletionOutcomes(
+    runs: SearchLearningOpsCompletionActivityRun[],
+    entries: SearchLearningOpsCompletionOutcomeEntryLike[]
+): SearchLearningOpsCompletionOutcomeSummary {
     const entryMap = new Map(entries.map((entry) => [entry.id, entry]));
-    const outcomes: SearchLearningOpsPlaybookOutcome[] = [];
+    const outcomes: SearchLearningOpsCompletionOutcome[] = [];
 
     for (const run of runs) {
         const relatedEntries = run.entryIds
             .map((entryId) => entryMap.get(entryId))
-            .filter((entry): entry is SearchLearningOpsPlaybookOutcomeEntryLike => Boolean(entry));
+            .filter((entry): entry is SearchLearningOpsCompletionOutcomeEntryLike => Boolean(entry));
 
         if (relatedEntries.length === 0) {
             continue;
@@ -104,23 +104,23 @@ export function buildSearchLearningOpsPlaybookOutcomes(
         const awaitingSamplesCount = impacts.filter((impact) => impact?.outcome === 'awaiting_samples').length;
         const noImprovementCount = impacts.filter((impact) => impact?.outcome === 'unchanged' || impact?.outcome === 'regressed').length;
 
-        let status: SearchLearningOpsPlaybookOutcomeStatus = 'validated';
-        let description = '실행된 playbook이 현재 승인 상태와 검색 개선 지표까지 안정적으로 이어졌습니다.';
+        let status: SearchLearningOpsCompletionOutcomeStatus = 'validated';
+        let description = 'completion 실행이 승인 상태와 검색 개선 지표까지 안정적으로 이어졌습니다.';
 
         if (readyReviewCount > 0) {
             status = 'ready_review';
-            description = 'playbook 실행으로 AI suggestion이 준비됐고, 이제 draft review/승인이 필요한 상태입니다.';
+            description = 'completion 실행으로 새 AI suggestion이 준비되어 즉시 review/승인이 필요한 상태입니다.';
         } else if (noImprovementCount > 0) {
             status = 'needs_attention';
-            description = 'playbook이 실행됐지만 승인 후 low-fit/0건 개선이 약해서 재학습 또는 rewrite 조정이 필요합니다.';
+            description = 'completion 실행 후에도 low-fit/0건 개선이 약해 재학습 또는 rewrite 조정이 필요합니다.';
         } else if (awaitingSamplesCount > 0 || improvedCount === 0) {
             status = 'awaiting_samples';
-            description = 'playbook은 실행됐지만 아직 표본이 부족해 실제 개선 여부를 더 지켜봐야 합니다.';
+            description = 'completion은 실행됐지만 아직 표본이 부족해 실제 개선 여부를 더 지켜봐야 합니다.';
         }
 
         outcomes.push({
-            id: `playbook_outcome:${run.id}`,
-            playbookId: run.playbookId,
+            id: `completion_outcome:${run.id}`,
+            runId: run.id,
             title: run.title,
             action: run.action,
             context: run.context,

@@ -4,8 +4,8 @@ import { buildSearchComparisonSnapshot, persistSearchDiagnostics, recordSearchDi
 import { analyzeFashionQuery, buildSourceAwareSearchPlan, rerankProductsByFashionRelevance } from '@/lib/search/fashionQueryAssistant';
 import { diversifyProductsBySource } from '@/lib/search/sourceDiversity';
 import { filterLowPriceOutliers } from '@/lib/search/priceOutlierFilter';
-import { loadApprovedSearchLearningQueries, loadApprovedSearchLearningRewritePlan, mergeLearnedQueriesIntoPlan, persistSearchLearningCandidate, recordSearchLearningCandidate } from '@/lib/search/searchLearningRealtime';
-import { mergeSourceQueryPlans } from '@/lib/search/searchLearningRewritePacks';
+import { loadApprovedSearchLearningQueries, loadApprovedSearchLearningRewritePlan, mergeLearnedQueriesIntoPlan, persistSearchLearningCandidate, recordSearchLearningCandidate } from '@/lib/searchLearning/searchLearningRealtime';
+import { mergeSourceQueryPlans } from '@/lib/searchLearning/searchLearningRewritePacks';
 import { normalizeSearchSort, type SearchSort } from '@/types/searchSort';
 import { checkRateLimit, getRateLimitKey, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
 import { persistPriceHistorySnapshot, searchTrackedProductsByFashionQuery } from '@/lib/server/priceHistoryStore';

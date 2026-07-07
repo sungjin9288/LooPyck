@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildSearchLearningTerminalValidation } from '../lib/search/searchLearningTerminalValidation.ts';
-import type { SearchLearningTerminalCoverage } from '../lib/search/searchLearningTerminalCoverage.ts';
-import type { SearchLearningTerminalHandoff } from '../lib/search/searchLearningTerminalHandoff.ts';
-import type { SearchLearningTerminalOverview } from '../lib/search/searchLearningTerminalOverview.ts';
-import type { SearchLearningTerminalWorkflowSummary } from '../lib/search/searchLearningTerminalWorkflow.ts';
+import { buildSearchLearningTerminalValidation } from '../lib/searchLearning/searchLearningTerminalValidation.ts';
+import type { SearchLearningTerminalCoverage } from '../lib/searchLearning/searchLearningTerminalCoverage.ts';
+import type { SearchLearningTerminalHandoff } from '../lib/searchLearning/searchLearningTerminalHandoff.ts';
+import type { SearchLearningTerminalOverview } from '../lib/searchLearning/searchLearningTerminalOverview.ts';
+import type { SearchLearningTerminalWorkflowSummary } from '../lib/searchLearning/searchLearningTerminalWorkflow.ts';
 
 function createOverview(
     overrides: Partial<SearchLearningTerminalOverview> = {}

@@ -1,8 +1,8 @@
 import type { SearchLearningImpactClusterRollup, SearchLearningImpactSummary } from './searchLearningImpact.ts';
 import type { SearchLearningOpsCompletionSummary } from './searchLearningOpsCompletionSummary.ts';
 import type { SearchLearningOpsCenterSummary } from './searchLearningOpsCenter.ts';
-import type { SearchLearningActivityEvent, SearchLearningEntry } from './queryLearningTypes.ts';
-import type { SearchQualityCoverageSummary } from './searchQualityCoverage.ts';
+import type { SearchLearningActivityEvent, SearchLearningEntry } from '../search/queryLearningTypes.ts';
+import type { SearchQualityCoverageSummary } from '../search/searchQualityCoverage.ts';
 import { buildSearchLearningTerminalAlerts } from './searchLearningTerminalAlerts.ts';
 import { buildSearchLearningTerminalChecklist } from './searchLearningTerminalChecklist.ts';
 import type { SearchLearningTerminalCoverage } from './searchLearningTerminalCoverage.ts';

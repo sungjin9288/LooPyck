@@ -1,16 +1,16 @@
-import { buildSearchLearningImpactClusterRollup, buildSearchLearningImpactClusterSummaries, buildSearchLearningImpactSummary } from '@/lib/search/searchLearningImpact';
+import { buildSearchLearningImpactClusterRollup, buildSearchLearningImpactClusterSummaries, buildSearchLearningImpactSummary } from '@/lib/searchLearning/searchLearningImpact';
 import {
     buildSearchLearningActivitySnapshot,
-} from '@/lib/search/searchLearningActivity';
+} from '@/lib/searchLearning/searchLearningActivity';
 import {
     buildSearchLearningOpsSnapshot,
-} from '@/lib/search/searchLearningOps';
+} from '@/lib/searchLearning/searchLearningOps';
 import {
     buildSearchLearningRewriteSnapshot,
-} from '@/lib/search/searchLearningRewrite';
+} from '@/lib/searchLearning/searchLearningRewrite';
 import {
     buildSearchLearningTerminalSnapshot,
-} from '@/lib/search/searchLearningTerminal';
+} from '@/lib/searchLearning/searchLearningTerminal';
 import type { DiagnosticsResponse, SearchLearningActivityEvent, SearchLearningEntry } from './types';
 
 type BuildSearchLearningWorkbenchParams = {
@@ -230,7 +230,7 @@ export function buildSearchLearningWorkbench({
     };
 }
 
-export type { SearchLearningActivityOpsQueueItem } from '@/lib/search/searchLearningActivity';
+export type { SearchLearningActivityOpsQueueItem } from '@/lib/searchLearning/searchLearningActivity';
 export type {
     SearchLearningOpsCenterItem,
     SearchLearningOpsCompletionAction,
@@ -241,5 +241,5 @@ export type {
     SearchLearningOpsPlaybookOutcome,
     SearchLearningOpsPlaybookRecommendation,
     OpsChainOutcome,
-} from '@/lib/search/searchLearningOps';
-export type { SearchLearningTerminalWorkflowAction } from '@/lib/search/searchLearningTerminal';
+} from '@/lib/searchLearning/searchLearningOps';
+export type { SearchLearningTerminalWorkflowAction } from '@/lib/searchLearning/searchLearningTerminal';

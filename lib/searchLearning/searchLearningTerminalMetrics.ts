@@ -1,4 +1,4 @@
-import type { SearchLearningActivityEvent } from './queryLearningTypes.ts';
+import type { SearchLearningActivityEvent } from '../search/queryLearningTypes.ts';
 import type { SearchLearningTerminalAlertSummary } from './searchLearningTerminalAlerts.ts';
 import type { SearchLearningTerminalHealth } from './searchLearningTerminalHealth.ts';
 import type { SearchLearningTerminalWorkflowSummary } from './searchLearningTerminalWorkflow.ts';

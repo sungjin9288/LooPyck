@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildSearchLearningTerminalHandoff } from '../lib/search/searchLearningTerminalHandoff.ts';
-import type { SearchLearningTerminalOverview } from '../lib/search/searchLearningTerminalOverview.ts';
-import type { SearchLearningTerminalPrioritySummary } from '../lib/search/searchLearningTerminalPriorities.ts';
-import type { SearchLearningTerminalRunbook } from '../lib/search/searchLearningTerminalRunbook.ts';
+import { buildSearchLearningTerminalHandoff } from '../lib/searchLearning/searchLearningTerminalHandoff.ts';
+import type { SearchLearningTerminalOverview } from '../lib/searchLearning/searchLearningTerminalOverview.ts';
+import type { SearchLearningTerminalPrioritySummary } from '../lib/searchLearning/searchLearningTerminalPriorities.ts';
+import type { SearchLearningTerminalRunbook } from '../lib/searchLearning/searchLearningTerminalRunbook.ts';
 
 function createOverview(overrides: Partial<SearchLearningTerminalOverview> = {}): SearchLearningTerminalOverview {
     return {
