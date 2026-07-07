@@ -337,11 +337,18 @@ export function parseHagoCommerceData(item: Record<string, unknown>, basePrice: 
         : undefined;
     const isFreeDelivery = normalizeBooleanFlag(addInfo?.is_free_delivery);
 
+    // discount_step1_v2.coupon_title: dc_1_price를 만드는 실제 쿠폰명(관찰상 sell_price - discount_amount_krw === dc_1_price로 항상 일치).
+    // 있으면 구체적인 쿠폰명을, 없으면 기존 일반 문구를 사용.
+    const discountStep1V2 = (item.discount_step1_v2 && typeof item.discount_step1_v2 === 'object')
+        ? item.discount_step1_v2 as Record<string, unknown>
+        : undefined;
+    const couponTitle = normalizeOptionalText(discountStep1V2?.coupon_title);
+
     return mergeCommerceData(
         typeof benefitPrice === 'number'
             ? {
                 benefitPrice,
-                benefitText: 'HAGO 할인가',
+                benefitText: couponTitle || 'HAGO 할인가',
             }
             : undefined,
         isFreeDelivery === true
@@ -361,6 +368,31 @@ export function parseHagoCommerceData(item: Record<string, unknown>, basePrice: 
                     stockText: '판매중',
                 }
                 : undefined
+    );
+}
+
+// 에이블리 delivery_type 관찰값(standard/today/shak/third_pl) → 사람이 읽을 수 있는 배송 라벨.
+// shak(샥배송)/today(오늘출발)는 에이블리의 빠른배송 프로그램, third_pl은 위탁(3PL)배송, standard는 일반배송.
+const ABLY_DELIVERY_TYPE_LABELS: Record<string, string> = {
+    standard: '일반배송',
+    today: '오늘출발',
+    shak: '샥배송',
+    third_pl: '위탁배송',
+};
+
+export function parseAblyCommerceData(item: Record<string, unknown>, _basePrice: number): ParsedCommerceData {
+    // 품절/재고 신호: 에이블리 검색 결과 아이템 스키마에는 sold-out류 필드가 전혀 없음(검색 결과 자체가 판매중 상품만 노출하는 것으로 관찰됨).
+    // first_page_rendering.original_price는 실측상 항상 실제 숫자이며 price보다 높은 "정가"이므로,
+    // benefitPrice(판매가보다 낮아야 함) 규칙에 위배되어 매핑하지 않는다.
+    const deliveryType = normalizeOptionalText(item.delivery_type);
+    const shippingLabel = deliveryType ? ABLY_DELIVERY_TYPE_LABELS[deliveryType] : undefined;
+
+    return mergeCommerceData(
+        shippingLabel
+            ? {
+                shippingText: shippingLabel,
+            }
+            : undefined
     );
 }
 

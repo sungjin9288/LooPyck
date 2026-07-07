@@ -4,6 +4,7 @@ import { SearchSort } from '@/types/searchSort';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 import type { SearchQueryCandidatePlan } from '@/lib/search/fashionQueryAssistant';
 import {
+    parseAblyCommerceData,
     parseHagoCommerceData,
     parseMusinsaCommerceData,
     parseNaverCommerceData,
@@ -490,6 +491,7 @@ interface AblyScreenItem {
     image?: string;
     market_name?: string;
     price?: number;
+    delivery_type?: string;
     ad?: unknown;
 }
 
@@ -567,6 +569,7 @@ async function scrapeAbly(query: string, page: number = 1): Promise<UnifiedProdu
                 mallName: '에이블리',
                 brand: normalizeBrand(item.market_name || ''),
                 source: 'ABLY' as const,
+                ...parseAblyCommerceData(item as unknown as Record<string, unknown>, price as number),
             });
             return products;
         }, []);
