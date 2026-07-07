@@ -1,6 +1,11 @@
 import { CapacitorConfig } from '@capacitor/cli';
 import { loadEnvConfig } from '@next/env';
-import { resolveCapacitorAppId, resolveCapacitorAppName, resolveCapacitorServerUrl } from './lib/config/appConfig';
+import {
+    assertCapacitorRemoteServerUrl,
+    resolveCapacitorAppId,
+    resolveCapacitorAppName,
+    resolveCapacitorServerUrl,
+} from './lib/config/appConfig';
 
 loadEnvConfig(process.cwd());
 
@@ -17,7 +22,9 @@ const config: CapacitorConfig = {
     appName: resolveCapacitorAppName(),
     webDir: 'public', // server.url 사용 시 실제론 무시됨
     server: {
-        url: resolveCapacitorServerUrl(),
+        // env 누락 시 localhost 폴백으로 빈 껍데기 앱이 조용히 빌드되는 것을 차단.
+        // cap:sync:prod를 쓰거나 로컬 라이브리로드면 CAPACITOR_ALLOW_LOCALHOST=1 명시.
+        url: assertCapacitorRemoteServerUrl(resolveCapacitorServerUrl()),
         cleartext: false,
     },
     ios: {

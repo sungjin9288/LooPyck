@@ -3,6 +3,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { haptics } from '@/lib/ux/hapticEngine';
+import { buildShareMessage, pickShareStrategy } from '@/lib/native/shareStrategy';
+import { shareViaToss } from '@/lib/native/tossShare';
+import { useIsTossWebView } from '@/lib/native/tossWebView';
 
 interface RichShareProps {
     productTitle: string;
@@ -24,6 +27,7 @@ function toAbsoluteUrl(url: string): string {
 export default function RichShare({ productTitle, productImage, currentPrice, shareUrl }: RichShareProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
+    const isToss = useIsTossWebView();
 
     const handleOpen = () => {
         haptics.trigger('medium');
@@ -35,6 +39,30 @@ export default function RichShare({ productTitle, productImage, currentPrice, sh
         setIsCopied(true);
         navigator.clipboard.writeText(toAbsoluteUrl(shareUrl));
         setTimeout(() => setIsCopied(false), 2000);
+    };
+
+    // Toss 네이티브 공유 시트 > Web Share API > 클립보드 순으로 시도.
+    // 상위 전략이 실패하면(브릿지 오류·사용자 취소 외 오류) 다음으로 폴백한다.
+    const handleNativeShare = async () => {
+        haptics.trigger('medium');
+        const absoluteUrl = toAbsoluteUrl(shareUrl);
+        const message = buildShareMessage({ productTitle, currentPrice, shareUrl: absoluteUrl });
+        const canWebShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+        const strategy = pickShareStrategy({ isToss, canWebShare });
+
+        if (strategy === 'toss' && (await shareViaToss(message))) return;
+
+        if (canWebShare) {
+            try {
+                await navigator.share({ text: message, url: absoluteUrl });
+                return;
+            } catch (error: unknown) {
+                // 사용자가 시트를 닫은 경우(AbortError)는 폴백하지 않는다.
+                if (error instanceof DOMException && error.name === 'AbortError') return;
+            }
+        }
+
+        handleCopyLink();
     };
 
     return (
@@ -89,19 +117,27 @@ export default function RichShare({ productTitle, productImage, currentPrice, sh
                                 <p className="text-center text-gray-500 text-sm mb-6">
                                     상품 상세와 비교 링크를 바로 복사할 수 있습니다.
                                 </p>
-                                <div className="flex gap-3">
+                                <div className="flex flex-col gap-3">
                                     <button
-                                        onClick={handleCopyLink}
-                                        className={`flex-1 py-3 rounded-xl font-bold transition-all ${isCopied ? 'bg-green-500 text-white' : 'bg-black text-white'}`}
+                                        onClick={handleNativeShare}
+                                        className="w-full py-3 rounded-xl font-bold bg-black text-white transition-all hover:bg-gray-800"
                                     >
-                                        {isCopied ? '복사 완료' : '링크 복사'}
+                                        공유하기
                                     </button>
-                                    <button
-                                        onClick={() => setIsOpen(false)}
-                                        className="py-3 px-6 bg-gray-100 rounded-xl font-bold hover:bg-gray-200"
-                                    >
-                                        닫기
-                                    </button>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={handleCopyLink}
+                                            className={`flex-1 py-3 rounded-xl font-bold transition-all ${isCopied ? 'bg-green-500 text-white' : 'bg-gray-100 text-black hover:bg-gray-200'}`}
+                                        >
+                                            {isCopied ? '복사 완료' : '링크 복사'}
+                                        </button>
+                                        <button
+                                            onClick={() => setIsOpen(false)}
+                                            className="py-3 px-6 bg-gray-100 rounded-xl font-bold hover:bg-gray-200"
+                                        >
+                                            닫기
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
