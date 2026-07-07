@@ -42,7 +42,9 @@ test('search query persists in URL and survives back-navigation', async ({ page 
 test('login page renders the editorial auth card', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByText('LooPyck Auth')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Google Sign-In' })).toBeVisible();
+    // 헤딩은 Firebase 자격증명 유무에 따라 Google Sign-In(로컬) 또는
+    // Sign In Failed(CI, redirect 확인 실패)로 갈린다 — 카드 렌더 자체가 계약.
+    await expect(page.getByRole('heading', { name: /Google Sign-In|Sign In Failed/ })).toBeVisible();
 });
 
 test('unknown route renders the custom 404 page', async ({ page }) => {
