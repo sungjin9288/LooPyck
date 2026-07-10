@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deriveCardCommerceBadges } from '../lib/product/cardCommerceBadges.ts';
+import { deriveCardCommerceBadges, describeCommerceBadgeContext } from '../lib/product/cardCommerceBadges.ts';
 
 test('returns an empty array when no commerce signals are present', () => {
     const badges = deriveCardCommerceBadges({});
@@ -77,4 +77,25 @@ test('never returns more than 2 badges', () => {
         benefitText: '전상품 18% 쿠폰',
     });
     assert.ok(badges.length <= 2);
+});
+
+// ── describeCommerceBadgeContext (전환율 관찰 계측) ──────────────────
+// product_open 로그의 context에 배지 상태를 실어, 배지 노출이 상세 진입
+// 전환에 기여하는지 진단 데이터로 비교할 수 있게 한다.
+
+test('describeCommerceBadgeContext: 배지 종류를 순서대로 직렬화', () => {
+    assert.equal(
+        describeCommerceBadgeContext({ shippingText: '오늘출발', benefitPrice: 10000, benefitText: '쿠폰' }),
+        'badges=shipping+benefit'
+    );
+    assert.equal(describeCommerceBadgeContext({ shippingText: '무료배송' }), 'badges=shipping');
+    assert.equal(
+        describeCommerceBadgeContext({ benefitPrice: 8900, benefitText: 'W컨셉 쿠폰가' }),
+        'badges=benefit'
+    );
+});
+
+test('describeCommerceBadgeContext: 신호 없으면 badges=none', () => {
+    assert.equal(describeCommerceBadgeContext({}), 'badges=none');
+    assert.equal(describeCommerceBadgeContext({ shippingText: '   ' }), 'badges=none');
 });

@@ -56,3 +56,13 @@ export function deriveCardCommerceBadges(product: CardCommerceSignalInput): Card
 
     return badges.slice(0, MAX_CARD_COMMERCE_BADGES);
 }
+
+/**
+ * product_open 진단 로그의 context에 실을 배지 상태 직렬화 —
+ * 배지 노출 상품과 미노출 상품의 상세 진입 전환을 비교 관찰하기 위한 계측.
+ * 예: 'badges=shipping+benefit' / 'badges=none'
+ */
+export function describeCommerceBadgeContext(product: CardCommerceSignalInput): string {
+    const kinds = deriveCardCommerceBadges(product).map((badge) => badge.kind);
+    return kinds.length > 0 ? `badges=${kinds.join('+')}` : 'badges=none';
+}

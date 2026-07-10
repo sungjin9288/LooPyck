@@ -18,6 +18,7 @@ import { useGroupedProducts } from '@/hooks/useGroupedProducts';
 import { estimatePurchasePrice, getGroupPurchaseMetrics } from '@/lib/product/purchasePricing';
 import { rerankProductsByPreference, type PreferenceProfile } from '@/lib/search/preferenceRerank';
 import { logSearchInteraction } from '@/lib/search/searchInteractionClient';
+import { describeCommerceBadgeContext } from '@/lib/product/cardCommerceBadges';
 import { buildRealtimeSearchPersistentFeedback } from '@/lib/search/realtimeSearchFeedback';
 
 interface InfiniteProductGridProps {
@@ -269,7 +270,8 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
             productId: enrichedGroup.representative.id,
             productTitle: enrichedGroup.representative.title,
             brand: enrichedGroup.representative.brand,
-            context: 'search_results',
+            // 배지 상태를 함께 남겨 배지 노출↔상세 진입 전환 비교를 가능하게 한다
+            context: `search_results:${describeCommerceBadgeContext(enrichedGroup.representative)}`,
         });
         setSelectedProduct(enrichedGroup.representative);
         setSelectedVariants(enrichedGroup.variants);
