@@ -4,7 +4,7 @@ import {
     buildAggregationDiagnostics,
     mergeWithPreferredDirectProducts,
 } from '../lib/api/aggregationCore.ts';
-import { DIRECT_SOURCE_ORDER } from '../lib/api/searchSourceRegistry.ts';
+import { ACTIVE_DIRECT_SOURCE_ORDER, DIRECT_SOURCE_ORDER, DISABLED_DIRECT_SOURCES, buildDirectRegistry } from '../lib/api/searchSourceRegistry.ts';
 import type { ProductSource, UnifiedProduct } from '../lib/api/types.ts';
 
 const EXPECTED_DIRECT_ORDER: ProductSource[] = [
@@ -191,4 +191,59 @@ test('buildAggregationDiagnostics classifies NAVER-only non-direct sources as cl
     assert.equal(farfetchDiag?.strategy, 'classified_naver');
     assert.equal(farfetchDiag?.attempted, false);
     assert.equal(farfetchDiag?.fallbackReason, 'naver_classified_only');
+});
+
+// ── 프로덕션 실측 기반 소스 비활성화 (2026-07-10 관찰 리뷰) ─────────────
+// COUPANG·SSENSE는 로컬 IP에서만 수확되던 스크레이퍼 — Netlify에서 33~35회
+// 연속 무수확(403) 실측 후 배선 해제. 실행 레지스트리에서만 제외하고
+// DIRECT_SOURCE_ORDER(머지·진단 순서 의미)는 그대로 둔다.
+
+test('DISABLED_DIRECT_SOURCES: COUPANG·SSENSE가 실측 사유와 함께 등재', () => {
+    assert.ok(DISABLED_DIRECT_SOURCES.COUPANG, 'COUPANG 비활성 사유 필요');
+    assert.ok(DISABLED_DIRECT_SOURCES.SSENSE, 'SSENSE 비활성 사유 필요');
+    // 사유는 복원 판단이 가능하도록 실측 근거를 포함해야 한다
+    assert.match(DISABLED_DIRECT_SOURCES.COUPANG ?? '', /무수확|403|Netlify/);
+    assert.match(DISABLED_DIRECT_SOURCES.SSENSE ?? '', /무수확|403|Netlify/);
+});
+
+test('buildDirectRegistry: 비활성 소스는 실행 레지스트리에서 제외된다', () => {
+    const noop = async () => [] as UnifiedProduct[];
+    const registry = buildDirectRegistry({
+        musinsa: noop, twentyNineCm: noop, wConcept: noop, zigzag: noop,
+        ably: noop, ssf: noop, coupang: noop, handsome: noop, farfetch: noop,
+        ssense: noop, hago: noop, eql: noop, lfMall: noop, siVillage: noop,
+    });
+
+    const sources = registry.map((entry) => entry.source);
+    assert.ok(!sources.includes('COUPANG'), 'COUPANG이 여전히 배선됨');
+    assert.ok(!sources.includes('SSENSE'), 'SSENSE가 여전히 배선됨');
+    // 비활성 외 소스는 DIRECT_SOURCE_ORDER 상대 순서 그대로
+    const expected = DIRECT_SOURCE_ORDER.filter(
+        (source) => !(source in DISABLED_DIRECT_SOURCES)
+    );
+    assert.deepEqual(sources, expected);
+    assert.equal(sources.length, 12);
+});
+
+test('비활성 소스의 NAVER 분류 상품은 classified_naver 행으로 진단에 남는다', () => {
+    // COUPANG은 배선 해제됐지만 NAVER가 쿠팡 상품을 분류해오면
+    // ACTIVE 순서 기준 테일 루프가 행을 만들어야 한다(사각지대 방지).
+    const naverRun = {
+        source: 'NAVER' as ProductSource,
+        products: [product({ id: 'naver-coupang', source: 'COUPANG' })],
+        durationMs: 100,
+    };
+
+    const diagnostics = buildAggregationDiagnostics(
+        '패딩', 1, 'sim',
+        naverRun.products,
+        naverRun as never,
+        [],
+        ACTIVE_DIRECT_SOURCE_ORDER
+    );
+
+    const coupangRow = diagnostics.sources.find((s) => s.source === 'COUPANG');
+    assert.ok(coupangRow, 'COUPANG 진단 행이 사라짐');
+    assert.equal(coupangRow?.strategy, 'classified_naver');
+    assert.equal(coupangRow?.attempted, false);
 });

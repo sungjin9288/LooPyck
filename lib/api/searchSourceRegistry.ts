@@ -45,6 +45,26 @@ const DIRECT_SOURCE_SEARCH_BUDGET_MS = 3_500;
 const DIRECT_EMPTY_REASON = 'no_direct_results';
 const DIRECT_TIMEOUT_REASON = 'source_timeout';
 
+/**
+ * 프로덕션 실측으로 배선 해제된 소스 — 값은 복원 판단이 가능한 실측 사유.
+ * 실행 레지스트리에서만 제외되며 DIRECT_SOURCE_ORDER(머지·진단 순서 의미)와
+ * executor 맵(satisfies 완전성 가드)은 그대로 유지된다. 복원은 이 맵에서
+ * 한 줄 지우면 끝.
+ */
+export const DISABLED_DIRECT_SOURCES: Readonly<Partial<Record<ProductSource, string>>> = {
+    COUPANG: 'Netlify IP 상시 403 — 2026-07-10 관찰 리뷰에서 33회 연속 무수확 실측(로컬 IP에서만 수확되던 스크레이퍼)',
+    SSENSE: 'Netlify IP 상시 403 — 2026-07-10 관찰 리뷰에서 35회 연속 무수확 실측(로컬 IP에서만 수확되던 스크레이퍼)',
+};
+
+/**
+ * 실행·진단이 실제로 다루는 소스 순서. 진단의 classified_naver 테일은
+ * "이 목록에 없는 소스"만 NAVER 분류 행으로 승격하므로, 비활성 소스를
+ * 여기서 빼야 그들의 NAVER 분류 상품이 진단에서 사라지지 않는다.
+ */
+export const ACTIVE_DIRECT_SOURCE_ORDER: readonly ProductSource[] = DIRECT_SOURCE_ORDER.filter(
+    (source) => !(source in DISABLED_DIRECT_SOURCES)
+);
+
 export interface DirectSourceExecutors {
     musinsa: SourceScrapeFn;
     twentyNineCm: SourceScrapeFn;
@@ -85,7 +105,7 @@ const DIRECT_SOURCE_TO_EXECUTOR_KEY = {
 } satisfies Record<Exclude<ProductSource, 'NAVER'>, keyof DirectSourceExecutors>;
 
 export function buildDirectRegistry(executors: DirectSourceExecutors): readonly SearchSourceEntry[] {
-    return DIRECT_SOURCE_ORDER.map((source) => {
+    return ACTIVE_DIRECT_SOURCE_ORDER.map((source) => {
         const executorKey = DIRECT_SOURCE_TO_EXECUTOR_KEY[source as Exclude<ProductSource, 'NAVER'>];
         return {
             source,

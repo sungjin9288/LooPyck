@@ -36,7 +36,7 @@ import {
     type AggregateRealtimeSearchResult as CoreAggregateRealtimeSearchResult,
     type TimedSearchResult,
 } from '@/lib/api/aggregationCore';
-import { DIRECT_SOURCE_ORDER, buildDirectRegistry } from '@/lib/api/searchSourceRegistry';
+import { ACTIVE_DIRECT_SOURCE_ORDER, buildDirectRegistry } from '@/lib/api/searchSourceRegistry';
 import { withScrapeRetry } from '@/lib/api/scrapeRetry';
 import { getHostLimiter } from '@/lib/api/hostConcurrency';
 
@@ -650,7 +650,7 @@ export async function aggregateRealtimeSearchDetailed(
         sorted,
         naverRun,
         directRuns,
-        DIRECT_SOURCE_ORDER
+        ACTIVE_DIRECT_SOURCE_ORDER
     );
 
     return {
@@ -672,7 +672,7 @@ export async function aggregateRealtimeSearchNaverOnly(
         NAVER_SEARCH_BUDGET_MS,
         'naver_timeout'
     );
-    const diagnostics = buildAggregationDiagnostics(query, page, sort, naverRun.products, naverRun, [], DIRECT_SOURCE_ORDER);
+    const diagnostics = buildAggregationDiagnostics(query, page, sort, naverRun.products, naverRun, [], ACTIVE_DIRECT_SOURCE_ORDER);
 
     return {
         products: naverRun.products,
