@@ -39,6 +39,7 @@ import {
 import { ACTIVE_DIRECT_SOURCE_ORDER, buildDirectRegistry } from '@/lib/api/searchSourceRegistry';
 import { withScrapeRetry } from '@/lib/api/scrapeRetry';
 import { getHostLimiter } from '@/lib/api/hostConcurrency';
+import { Logger, toErrorMessage } from '../core/observability';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
@@ -195,7 +196,7 @@ async function fetchNaverRealtime(
             return products;
         }, []);
     } catch (e) {
-        console.warn('[RealtimeSearch] Naver API gave up:', e);
+        Logger.warn('[RealtimeSearch] Naver API gave up', { error: toErrorMessage(e) });
         return [];
     }
 }
@@ -272,7 +273,7 @@ async function scrapeMusinsa(query: string, page: number = 1): Promise<UnifiedPr
             return products;
         }, []);
     } catch (e) {
-        console.warn('[RealtimeSearch] Musinsa API gave up:', e);
+        Logger.warn('[RealtimeSearch] Musinsa API gave up', { error: toErrorMessage(e) });
         return [];
     }
 }
@@ -322,7 +323,7 @@ async function scrape29CM(query: string, page: number = 1): Promise<UnifiedProdu
             return products;
         }, []);
     } catch (e) {
-        console.warn('[RealtimeSearch] 29CM API gave up:', e);
+        Logger.warn('[RealtimeSearch] 29CM API gave up', { error: toErrorMessage(e) });
         return [];
     }
 }
@@ -393,7 +394,7 @@ async function scrapeWConcept(query: string, page: number = 1): Promise<UnifiedP
             return products;
         }, []);
     } catch (e) {
-        console.warn('[RealtimeSearch] W Concept API gave up:', e);
+        Logger.warn('[RealtimeSearch] W Concept API gave up', { error: toErrorMessage(e) });
         return [];
     }
 }
@@ -461,7 +462,7 @@ async function scrapeHago(query: string, page: number = 1): Promise<UnifiedProdu
             return products;
         }, []);
     } catch (e) {
-        console.warn('[RealtimeSearch] HAGO API gave up:', e);
+        Logger.warn('[RealtimeSearch] HAGO API gave up', { error: toErrorMessage(e) });
         return [];
     }
 }
@@ -574,7 +575,7 @@ async function scrapeAbly(query: string, page: number = 1): Promise<UnifiedProdu
             return products;
         }, []);
     } catch (e) {
-        console.warn('[RealtimeSearch] ABLY API gave up:', e);
+        Logger.warn('[RealtimeSearch] ABLY API gave up', { error: toErrorMessage(e) });
         return [];
     }
 }

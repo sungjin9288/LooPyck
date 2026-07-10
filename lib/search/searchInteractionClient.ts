@@ -1,3 +1,4 @@
+import { Logger, toErrorMessage } from '@/lib/core/observability';
 type SearchInteractionPayload = {
     type: 'suggestion_click' | 'product_open' | 'store_click';
     query: string;
@@ -20,6 +21,6 @@ export async function logSearchInteraction(payload: SearchInteractionPayload): P
             keepalive: true,
         });
     } catch (error) {
-        console.error('[searchInteractionClient] log failed:', error);
+        Logger.error('[searchInteractionClient] log failed', error);
     }
 }

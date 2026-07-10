@@ -1,5 +1,6 @@
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Logger } from '@/lib/core/observability';
 
 export type PushRegistrationStatus =
     | 'registered'
@@ -132,7 +133,7 @@ export async function registerPushToken(
 
         return 'registered';
     } catch (error) {
-        console.error('[Push] token registration failed:', error);
+        Logger.error('[Push] token registration failed', error);
         return 'failed';
     }
 }

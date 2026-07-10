@@ -6,6 +6,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import type { Firestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import type { Messaging } from 'firebase-admin/messaging';
+import { Logger } from '../core/observability.ts';
 
 type CachedAdmin = {
     app: App | null;
@@ -52,7 +53,7 @@ function initAdmin(): CachedAdmin {
         } else {
             if (!globalAdmin.__loopyckAdminMissingLogged) {
                 globalAdmin.__loopyckAdminMissingLogged = true;
-                console.warn(
+                Logger.warn(
                     '[FirebaseAdmin] Missing FIREBASE_ADMIN_* env. Price history and alert scanner are disabled.'
                 );
             }
@@ -76,7 +77,7 @@ function initAdmin(): CachedAdmin {
         globalAdmin.__loopyckAdmin = cached;
         return cached;
     } catch (error) {
-        console.error('[FirebaseAdmin] Initialization failed:', error);
+        Logger.error('[FirebaseAdmin] Initialization failed', error);
         globalAdmin.__loopyckAdmin = {
             app: null,
             db: null,

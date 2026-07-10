@@ -7,6 +7,7 @@ import { analyzeFashionQuery, searchProductsByFashionQuery, type FashionQueryAna
 import { buildVariantHistoryIdentity, buildVariantHistoryStorageKey } from '@/lib/product/variantHistory';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 import { getAdminDb } from '@/lib/server/firebaseAdmin';
+import { Logger, toErrorMessage } from '../core/observability.ts';
 
 const MAX_PRODUCTS_PER_INGEST = 40;
 const MAX_SITEMAP_PRODUCTS = 200;
@@ -723,7 +724,7 @@ export async function readComparableGroup(
 
         return await reconstructComparableGroup(db, seedProduct, limitCount, fallbackGroup);
     } catch (error) {
-        console.warn('[PriceHistory] comparable group load failed:', error);
+        Logger.warn('[PriceHistory] comparable group load failed', { error: toErrorMessage(error) });
         return fallbackGroup;
     }
 }
@@ -763,7 +764,7 @@ export async function listTrackedProductsForSitemap(
 
         return products;
     } catch (error) {
-        console.warn('[PriceHistory] sitemap load failed:', error);
+        Logger.warn('[PriceHistory] sitemap load failed', { error: toErrorMessage(error) });
         return [];
     }
 }
@@ -800,7 +801,7 @@ export async function searchTrackedProductsByFashionQuery(
 
         return searchProductsByFashionQuery(Array.from(dedup.values()), analysis, limitCount);
     } catch (error) {
-        console.warn('[PriceHistory] tracked search fallback failed:', error);
+        Logger.warn('[PriceHistory] tracked search fallback failed', { error: toErrorMessage(error) });
         return [];
     }
 }

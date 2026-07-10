@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { Auth, getAuth } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
+import { Logger } from '@/lib/core/observability';
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -22,7 +23,7 @@ if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
         auth = getAuth(app);
         db = getFirestore(app);
     } catch (error) {
-        console.error("Firebase Initialization Error:", error);
+        Logger.error('Firebase Initialization Error', error);
     }
 }
 

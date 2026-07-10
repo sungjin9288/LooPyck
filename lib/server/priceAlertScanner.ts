@@ -14,6 +14,7 @@ import { applyVariantSelectionToProducts, findSelectedVariantOption, listVariant
 import { deriveAlertPriority, isFavoriteAlertSnoozed } from '@/lib/favorites/alertState';
 import { getAdminDb, getAdminMessaging } from '@/lib/server/firebaseAdmin';
 import { markAlertDelivery, readComparableGroup, readTrackedProduct } from '@/lib/server/priceHistoryStore';
+import { Logger, toErrorMessage } from '../core/observability.ts';
 
 type FavoriteDoc = {
     favoriteId?: string;
@@ -294,7 +295,7 @@ export async function scanAndDispatchPriceAlerts(): Promise<{
                     deepLink = compareContext.deepLink || deepLink;
                 }
             } catch (error) {
-                console.warn('[PriceAlertScanner] compare context resolution failed:', error);
+                Logger.warn('[PriceAlertScanner] compare context resolution failed', { error: toErrorMessage(error) });
             }
 
             const shouldTrigger = currentAvailable

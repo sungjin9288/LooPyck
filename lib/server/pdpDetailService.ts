@@ -7,6 +7,7 @@ import {
 } from '../product/pdpDetailEnrichment.ts';
 import type { UnifiedProduct } from '../api/types.ts';
 import { persistPdpDiagnostics, recordPdpDiagnostics, type PdpEnrichmentDiagnosticEvent } from '../api/pdpDiagnostics.ts';
+import { Logger, toErrorMessage } from '../core/observability.ts';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const MAX_ENRICH_PRODUCTS = 8;
@@ -76,7 +77,7 @@ async function fetchProductDetailHtml(product: UnifiedProduct): Promise<string> 
 
         return await response.text();
     } catch (error) {
-        console.error('[pdpDetailService] fetch failed:', product.source, product.link, error);
+        Logger.error('[pdpDetailService] fetch failed', error, { source: product.source, link: product.link });
         return '';
     }
 }
@@ -167,7 +168,7 @@ export async function enrichProductsWithPdpDetails(products: UnifiedProduct[]): 
             try {
                 await persistPdpDiagnostics(diagnostics);
             } catch (error) {
-                console.warn('[pdpDetailService] diagnostics persist failed:', error);
+                Logger.warn('[pdpDetailService] diagnostics persist failed', { error: toErrorMessage(error) });
             }
         }
         return mergedWithCache;
@@ -233,7 +234,7 @@ export async function enrichProductsWithPdpDetails(products: UnifiedProduct[]): 
         try {
             await persistTrackedProductDetails(persistedCandidates);
         } catch (error) {
-            console.warn('[pdpDetailService] persist failed:', error);
+            Logger.warn('[pdpDetailService] persist failed', { error: toErrorMessage(error) });
         }
     }
 
@@ -242,7 +243,7 @@ export async function enrichProductsWithPdpDetails(products: UnifiedProduct[]): 
         try {
             await persistPdpDiagnostics(diagnostics);
         } catch (error) {
-            console.warn('[pdpDetailService] diagnostics persist failed:', error);
+            Logger.warn('[pdpDetailService] diagnostics persist failed', { error: toErrorMessage(error) });
         }
     }
 

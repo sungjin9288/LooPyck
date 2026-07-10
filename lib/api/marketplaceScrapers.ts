@@ -3,6 +3,7 @@ import { type ProductSource, type ProductStockStatus, type UnifiedProduct } from
 import { normalizeBrand, normalizePrice, normalizeTitle } from '../core/dataNormalizer.ts';
 import { sanitizeExternalUrl } from '../security/urlSafety.ts';
 import { getSourceIdPrefix, getSourceMetadata } from './sourceCatalog.ts';
+import { Logger } from '../core/observability.ts';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
@@ -81,7 +82,7 @@ async function fetchSearchHtml(url: string): Promise<string> {
 
         return await response.text();
     } catch (error) {
-        console.error('[marketplaceScrapers] fetch failed:', url, error);
+        Logger.error('[marketplaceScrapers] fetch failed', error, { url });
         return '';
     }
 }

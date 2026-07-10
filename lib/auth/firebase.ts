@@ -10,6 +10,7 @@ import {
     signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { Logger } from '@/lib/core/observability';
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -40,7 +41,7 @@ export const signInWithGoogle = async () => {
             await signInWithRedirect(firebaseAuth, googleProvider);
             return null;
         }
-        console.error('Google Sign-In Error:', error);
+        Logger.error('Google Sign-In Error', error);
         throw error;
     }
 };
@@ -49,7 +50,7 @@ export const signOut = async () => {
     try {
         await firebaseSignOut(getAuthOrThrow());
     } catch (error) {
-        console.error('Sign-Out Error:', error);
+        Logger.error('Sign-Out Error', error);
         throw error;
     }
 };

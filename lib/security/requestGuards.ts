@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { Logger, toErrorMessage } from '@/lib/core/observability';
 
 interface RateLimitEntry {
     count: number;
@@ -180,7 +181,7 @@ function logRedisFallbackOnce(error: unknown): void {
         return;
     }
     globalRateLimit.__loopyckRedisFallbackLogged = true;
-    console.warn('[RateLimit] Redis unavailable, falling back to in-memory limiter.', error);
+    Logger.warn('[RateLimit] Redis unavailable, falling back to in-memory limiter.', { error: toErrorMessage(error) });
 }
 
 function buildRedisRateLimitKey(key: string): string {

@@ -1,3 +1,4 @@
+import { Logger } from './observability';
 /**
  * Performance Monitor
  * 시스템 병목 현상을 실시간으로 추적하고 로깅하는 모듈.
@@ -87,7 +88,7 @@ export const performanceMonitor = {
 
         // Slow Operation Warning
         if (metric.durationMs > SLOW_THRESHOLD_MS) {
-            console.warn(`[Performance Warning] '${metric.operationName}' took ${metric.durationMs}ms (Threshold: ${SLOW_THRESHOLD_MS}ms)`);
+            Logger.warn(`[Performance Warning] '${metric.operationName}' took ${metric.durationMs}ms (Threshold: ${SLOW_THRESHOLD_MS}ms)`);
         }
     },
 

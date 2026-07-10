@@ -1,6 +1,7 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import type { ProductSource } from './types.ts';
 import { getAdminDb } from '../server/firebaseAdmin.ts';
+import { Logger, toErrorMessage } from '../core/observability.ts';
 
 const MAX_RECENT_EVENTS = 200;
 const EVENTS_COLLECTION = 'pdpDiagnosticsEvents';
@@ -314,7 +315,7 @@ export async function loadPdpDiagnostics(limit: number = 20): Promise<{
             storage: 'firestore',
         };
     } catch (error) {
-        console.warn('[PdpDiagnostics] firestore load failed:', error);
+        Logger.warn('[PdpDiagnostics] firestore load failed', { error: toErrorMessage(error) });
         return {
             summary: getPdpDiagnosticsSummary(),
             recent: getRecentPdpDiagnostics(limit),

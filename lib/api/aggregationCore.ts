@@ -12,6 +12,7 @@ import { getSourceIdPrefix } from './sourceCatalog.ts';
 import { normalizeTitle } from '../core/dataNormalizer.ts';
 import type { ProductSource, UnifiedProduct } from './types.ts';
 import type { SearchSort } from '../../types/searchSort.ts';
+import { Logger } from '../core/observability.ts';
 
 export type TimedSearchResult = {
     source: UnifiedProduct['source'];
@@ -164,7 +165,7 @@ export async function runTimedSearch(
             fallbackReason: products.length > 0 ? undefined : emptyReason,
         };
     } catch (error) {
-        console.error(`[RealtimeSearch] ${source} adapter failed:`, error);
+        Logger.error(`[RealtimeSearch] ${source} adapter failed`, error);
         return {
             source,
             products: [],
@@ -201,7 +202,7 @@ export async function runTimedSearchWithCandidates(
                 };
             }
         } catch (error) {
-            console.error(`[RealtimeSearch] ${source} adapter failed for candidate "${candidate}":`, error);
+            Logger.error(`[RealtimeSearch] ${source} adapter failed`, error, { candidate });
             lastReason = 'adapter_exception';
         }
     }
@@ -257,7 +258,7 @@ export async function runNaverSearchLike(
                 };
             }
         } catch (error) {
-            console.error(`[RealtimeSearch] NAVER adapter failed for candidate "${candidate}":`, error);
+            Logger.error('[RealtimeSearch] NAVER adapter failed', error, { candidate });
             lastReason = 'naver_exception';
         }
     }

@@ -1,3 +1,4 @@
+import { Logger, toErrorMessage } from '@/lib/core/observability';
 /**
  * Native Bridge for iOS/Android WebViews
  * Handles safe execution of native app features like haptics when wrapped in a WebView.
@@ -32,7 +33,7 @@ export const triggerHaptic = (type: HapticFeedbackType = 'light') => {
             window.webkit.messageHandlers.hapticFallback.postMessage(type);
             return;
         } catch (error) {
-            console.warn('Native haptic bridge failed', error);
+            Logger.warn('Native haptic bridge failed', { error: toErrorMessage(error) });
         }
     }
 
