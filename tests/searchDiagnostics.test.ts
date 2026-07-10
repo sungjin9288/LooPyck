@@ -147,6 +147,147 @@ test('source diagnostics summary aggregates direct hits and fallbacks', () => {
     assert.equal(wConceptSource?.resolvedQuery, 'knit');
 });
 
+test('recentOutcomes tracks direct=1/empty=0 and skips fallback (스트릭과 동일 규칙)', () => {
+    resetSearchDiagnostics();
+
+    recordSearchDiagnostics({
+        query: 'A',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-07-01T00:00:00.000Z',
+        totalProducts: 1,
+        directSourceCount: 1,
+        fallbackSourceCount: 0,
+        sources: [
+            { source: 'MUSINSA', attempted: true, success: true, durationMs: 10, directCount: 1, naverCount: 0, finalCount: 1, strategy: 'direct' },
+        ],
+    });
+    recordSearchDiagnostics({
+        query: 'B',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-07-01T00:01:00.000Z',
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 0,
+        sources: [
+            { source: 'MUSINSA', attempted: true, success: false, durationMs: 10, directCount: 0, naverCount: 0, finalCount: 0, strategy: 'empty' },
+        ],
+    });
+    recordSearchDiagnostics({
+        query: 'C',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-07-01T00:02:00.000Z',
+        totalProducts: 1,
+        directSourceCount: 0,
+        fallbackSourceCount: 1,
+        sources: [
+            {
+                source: 'MUSINSA',
+                attempted: true,
+                success: true,
+                durationMs: 10,
+                directCount: 0,
+                naverCount: 1,
+                finalCount: 1,
+                strategy: 'naver_classified_fallback',
+                fallbackReason: 'direct_empty_used_naver_classification',
+            },
+        ],
+    });
+    recordSearchDiagnostics({
+        query: 'D',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-07-01T00:03:00.000Z',
+        totalProducts: 1,
+        directSourceCount: 1,
+        fallbackSourceCount: 0,
+        sources: [
+            { source: 'MUSINSA', attempted: true, success: true, durationMs: 10, directCount: 1, naverCount: 0, finalCount: 1, strategy: 'direct' },
+        ],
+    });
+
+    const summary = getSearchDiagnosticsSummary();
+    const musinsa = summary.sources.find((entry) => entry.source === 'MUSINSA');
+
+    // fallback(C)는 스트릭과 마찬가지로 recentOutcomes에도 기록되지 않는다
+    assert.deepEqual(musinsa?.recentOutcomes, [1, 0, 1]);
+});
+
+test('recentOutcomes caps at 20 entries, dropping the oldest, newest-last', () => {
+    resetSearchDiagnostics();
+
+    for (let i = 0; i < 25; i += 1) {
+        const isDirect = i % 2 === 0;
+        recordSearchDiagnostics({
+            query: `q${i}`,
+            page: 1,
+            sort: 'sim',
+            generatedAt: `2026-07-01T01:${String(i).padStart(2, '0')}:00.000Z`,
+            totalProducts: isDirect ? 1 : 0,
+            directSourceCount: isDirect ? 1 : 0,
+            fallbackSourceCount: 0,
+            sources: [
+                {
+                    source: 'MUSINSA',
+                    attempted: true,
+                    success: isDirect,
+                    durationMs: 10,
+                    directCount: isDirect ? 1 : 0,
+                    naverCount: 0,
+                    finalCount: isDirect ? 1 : 0,
+                    strategy: isDirect ? 'direct' : 'empty',
+                },
+            ],
+        });
+    }
+
+    const summary = getSearchDiagnosticsSummary();
+    const musinsa = summary.sources.find((entry) => entry.source === 'MUSINSA');
+
+    const fullSequence = Array.from({ length: 25 }, (_, i) => (i % 2 === 0 ? 1 : 0));
+    const expected = fullSequence.slice(fullSequence.length - 20);
+
+    assert.equal(musinsa?.recentOutcomes?.length, 20);
+    assert.deepEqual(musinsa?.recentOutcomes, expected);
+});
+
+test('NAVER strategy=api 성공은 recentOutcomes에 1로 기록된다 (direct와 동일 취급)', () => {
+    resetSearchDiagnostics();
+
+    recordSearchDiagnostics({
+        query: 'A',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-07-01T02:00:00.000Z',
+        totalProducts: 5,
+        directSourceCount: 0,
+        fallbackSourceCount: 0,
+        sources: [
+            { source: 'NAVER', attempted: true, success: true, durationMs: 10, directCount: 5, naverCount: 5, finalCount: 5, strategy: 'api' },
+        ],
+    });
+    recordSearchDiagnostics({
+        query: 'B',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-07-01T02:01:00.000Z',
+        totalProducts: 0,
+        directSourceCount: 0,
+        fallbackSourceCount: 0,
+        sources: [
+            { source: 'NAVER', attempted: true, success: false, durationMs: 10, directCount: 0, naverCount: 0, finalCount: 0, strategy: 'empty' },
+        ],
+    });
+
+    const summary = getSearchDiagnosticsSummary();
+    const naver = summary.sources.find((entry) => entry.source === 'NAVER');
+
+    assert.deepEqual(naver?.recentOutcomes, [1, 0]);
+});
+
 test('interaction summary aggregates suggestion clicks and product opens', () => {
     resetSearchDiagnostics();
 

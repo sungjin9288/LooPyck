@@ -14,6 +14,9 @@ export interface SourceHealthInput {
     successCount?: number;
     consecutiveEmptyHits?: number;
     lastDirectHitAt?: string;
+    /** 최근 최대 20회의 0/1 결과(오래된 것 먼저, 최신이 마지막) — lifetime 누적치와 달리
+     *  "지금" 되살아난 소스를 즉시 반영한다. 비어있으면 아직 표본이 없다는 뜻 */
+    recentOutcomes?: number[];
 }
 
 export type SourceHealthStatus =
@@ -29,6 +32,19 @@ export interface SourceHealth {
     reason: string;
     consecutiveEmptyHits: number;
     lastDirectHitAt?: string;
+    /** 최근 표본(최대 20회) 중 성공 비율(0..1). 표본이 없으면 null — lifetime
+     *  successRate와 달리 부활한 소스를 즉시 반영하는 정보성 지표(상태 판정에는 미사용) */
+    recentWindowRate: number | null;
+}
+
+/** recentOutcomes(0/1 배열)을 성공 비율로 환산한다. 표본 없으면 null. */
+function computeRecentWindowRate(recentOutcomes?: number[]): number | null {
+    if (!recentOutcomes || recentOutcomes.length === 0) {
+        return null;
+    }
+
+    const successCount = recentOutcomes.reduce((sum, outcome) => sum + outcome, 0);
+    return Math.round((successCount / recentOutcomes.length) * 1000) / 1000;
 }
 
 /**
@@ -47,6 +63,7 @@ export function assessSourceHealth(rows: SourceHealthInput[]): SourceHealth[] {
             source: String(rowInput.source),
             consecutiveEmptyHits,
             lastDirectHitAt: rowInput.lastDirectHitAt,
+            recentWindowRate: computeRecentWindowRate(rowInput.recentOutcomes),
         };
 
         if (!rowInput.searches || rowInput.searches <= 0) {

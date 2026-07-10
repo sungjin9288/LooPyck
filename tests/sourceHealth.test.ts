@@ -10,6 +10,7 @@ function row(overrides: Partial<SourceHealthInput>): SourceHealthInput {
         successCount: overrides.successCount ?? 50,
         consecutiveEmptyHits: overrides.consecutiveEmptyHits ?? 0,
         lastDirectHitAt: overrides.lastDirectHitAt,
+        recentOutcomes: overrides.recentOutcomes,
     };
 }
 
@@ -92,4 +93,46 @@ test('입력 순서를 보존하고 소스별 결과를 반환한다', () => {
 
     assert.deepEqual(result.map((h) => h.source), ['MUSINSA', 'ABLY']);
     assert.equal(result[1].status, 'failing');
+});
+
+test('recentOutcomes가 비어있으면 recentWindowRate는 null', () => {
+    const [health] = assessSourceHealth([row({ recentOutcomes: [] })]);
+
+    assert.equal(health.recentWindowRate, null);
+});
+
+test('recentOutcomes가 없는 과거 데이터는 recentWindowRate가 null (하위호환)', () => {
+    const [health] = assessSourceHealth([
+        { source: 'MUSINSA', searches: 40, directHits: 20, successCount: 20 },
+    ]);
+
+    assert.equal(health.recentWindowRate, null);
+});
+
+test('recentOutcomes 혼합값의 recentWindowRate는 성공 비율(0..1)', () => {
+    const [health] = assessSourceHealth([row({ recentOutcomes: [1, 1, 0, 1] })]);
+
+    assert.equal(health.recentWindowRate, 0.75);
+});
+
+test('recentOutcomes 전부 실패면 recentWindowRate는 0', () => {
+    const [health] = assessSourceHealth([row({ recentOutcomes: [0, 0, 0] })]);
+
+    assert.equal(health.recentWindowRate, 0);
+});
+
+test('recentOutcomes 전부 성공이면 recentWindowRate는 1', () => {
+    const [health] = assessSourceHealth([row({ recentOutcomes: [1, 1, 1] })]);
+
+    assert.equal(health.recentWindowRate, 1);
+});
+
+test('recentWindowRate는 status 판정에 영향을 주지 않는다 — 정보성 필드', () => {
+    // consecutiveEmptyHits가 높아 failing이어도 recentOutcomes는 별개 신호로 그대로 계산된다
+    const [health] = assessSourceHealth([
+        row({ consecutiveEmptyHits: 12, recentOutcomes: [1, 1, 1, 1, 1] }),
+    ]);
+
+    assert.equal(health.status, 'failing');
+    assert.equal(health.recentWindowRate, 1);
 });

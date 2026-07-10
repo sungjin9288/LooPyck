@@ -6,9 +6,12 @@ import type { ProductSource } from './types.ts';
 import { groupProducts } from '../product/productMatching.ts';
 import { getGroupPurchaseMetrics } from '../product/purchasePricing.ts';
 import { analyzeVariantAlignment } from '../product/variantAlignment.ts';
+import { Logger, toErrorMessage } from '../core/observability.ts';
 
 const MAX_RECENT_SNAPSHOTS = 120;
 const MAX_RECENT_INTERACTIONS = 200;
+/** 소스별 최근 성공/실패 롤링 윈도우 상한 — lifetime 누적치와 달리 "지금" 상태를 반영 */
+const MAX_RECENT_OUTCOMES = 20;
 const SNAPSHOT_COLLECTION = 'searchDiagnosticsSnapshots';
 const SUMMARY_COLLECTION = 'searchDiagnosticsSourceSummary';
 const META_COLLECTION = 'searchDiagnosticsMeta';
@@ -97,6 +100,10 @@ type SourceSummaryState = {
     /** direct 성공 시 0 리셋, empty 시 +1 — "되다가 죽은 소스" 감지용 */
     consecutiveEmptyHits?: number;
     lastDirectHitAt?: string;
+    /** 최근 최대 MAX_RECENT_OUTCOMES회의 0/1 결과, append-newest-last.
+     *  스트릭(consecutiveEmptyHits)과 동일한 성공/실패 판정 규칙을 따른다:
+     *  direct 성공(및 NAVER의 strategy=api 성공) → 1, empty → 0, 그 외(fallback 등)는 미변경 */
+    recentOutcomes?: number[];
 };
 
 export type SearchSourceSummary = SourceSummaryState & {
@@ -117,6 +124,24 @@ const recentSnapshots: SearchAggregationDiagnostics[] = [];
 const recentInteractions: SearchInteractionEvent[] = [];
 const sourceSummaryMap = new Map<SearchSourceDiagnostic['source'], SourceSummaryState>();
 
+/** strategy에서 direct 성공 여부를 판정한다 (스트릭/윈도우 공통 규칙) */
+function isDirectStrategy(strategy: SearchSourceDiagnostic['strategy']): boolean {
+    return strategy === 'direct' || strategy === 'direct_preferred_over_naver';
+}
+
+/** NAVER는 strategy='direct'가 아니라 'api'로 성공을 표현한다 — 이 소스만의 성공 신호 */
+function isApiStrategySuccess(strategy: SearchSourceDiagnostic['strategy']): boolean {
+    return strategy === 'api';
+}
+
+/** recentOutcomes에 최신값을 append하고 MAX_RECENT_OUTCOMES로 캡핑한다 (오래된 값부터 버림) */
+function appendRecentOutcome(existing: number[] | undefined, outcome: 0 | 1): number[] {
+    const next = existing ? [...existing, outcome] : [outcome];
+    return next.length > MAX_RECENT_OUTCOMES
+        ? next.slice(next.length - MAX_RECENT_OUTCOMES)
+        : next;
+}
+
 function updateSourceSummary(snapshot: SearchAggregationDiagnostics, sourceDiagnostic: SearchSourceDiagnostic): void {
     const existing = sourceSummaryMap.get(sourceDiagnostic.source);
 
@@ -136,8 +161,9 @@ function updateSourceSummary(snapshot: SearchAggregationDiagnostics, sourceDiagn
             lastStrategy: sourceDiagnostic.strategy,
         };
 
-    const isDirectHit = sourceDiagnostic.strategy === 'direct' || sourceDiagnostic.strategy === 'direct_preferred_over_naver';
+    const isDirectHit = isDirectStrategy(sourceDiagnostic.strategy);
     const isEmptyHit = sourceDiagnostic.strategy === 'empty';
+    const isRecentWindowSuccess = isDirectHit || isApiStrategySuccess(sourceDiagnostic.strategy);
 
     nextState.searches += 1;
     nextState.successCount += sourceDiagnostic.success ? 1 : 0;
@@ -151,6 +177,13 @@ function updateSourceSummary(snapshot: SearchAggregationDiagnostics, sourceDiagn
         nextState.lastDirectHitAt = snapshot.generatedAt;
     } else if (isEmptyHit) {
         nextState.consecutiveEmptyHits = (nextState.consecutiveEmptyHits ?? 0) + 1;
+    }
+
+    // 최근 성공/실패 윈도우: 스트릭과 동일한 규칙(direct/api 성공 → 1, empty → 0, fallback 등은 미변경)
+    if (isRecentWindowSuccess) {
+        nextState.recentOutcomes = appendRecentOutcome(nextState.recentOutcomes, 1);
+    } else if (isEmptyHit) {
+        nextState.recentOutcomes = appendRecentOutcome(nextState.recentOutcomes, 0);
     }
 
     if (sourceDiagnostic.attempted) {
@@ -372,6 +405,15 @@ type PersistResult = {
     persisted: boolean;
 };
 
+/** Firestore 문서에서 recentOutcomes(0/1 배열)를 안전하게 파싱한다 — 외부 데이터이므로 값 검증 필수 */
+function parseRecentOutcomes(data: Record<string, unknown> | undefined): number[] | undefined {
+    if (!data || !Array.isArray(data.recentOutcomes)) {
+        return undefined;
+    }
+
+    return data.recentOutcomes.filter((value): value is 0 | 1 => value === 0 || value === 1);
+}
+
 export async function persistSearchDiagnostics(snapshot: SearchAggregationDiagnostics): Promise<PersistResult> {
     const db = getAdminDb();
     if (!db) {
@@ -386,11 +428,19 @@ export async function persistSearchDiagnostics(snapshot: SearchAggregationDiagno
         createdAt: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    snapshot.sources.forEach((source) => {
-        const summaryRef = db.collection(SUMMARY_COLLECTION).doc(source.source);
-        const isDirectHit = source.strategy === 'direct' || source.strategy === 'direct_preferred_over_naver';
+    // recentOutcomes는 최대 20개로 캡핑된 배열이라 FieldValue.increment/arrayUnion으로 표현할 수
+    // 없다(arrayUnion은 0/1 중복값을 dedupe해버림). 기존 값을 읽어 in-memory와 동일한 append+cap
+    // 규칙을 적용한 뒤 그대로 덮어쓴다. 소스 수만큼 read가 늘지만 이 엔드포인트는 admin 진단용
+    // 호출 빈도이지 hot path가 아니므로 허용 범위 — 병렬로 1회씩만 조회한다.
+    const summaryRefs = snapshot.sources.map((source) => db.collection(SUMMARY_COLLECTION).doc(source.source));
+    const existingSummaryDocs = await Promise.all(summaryRefs.map((ref) => ref.get()));
+
+    snapshot.sources.forEach((source, index) => {
+        const summaryRef = summaryRefs[index];
+        const isDirectHit = isDirectStrategy(source.strategy);
         const isFallbackHit = source.strategy === 'naver_classified_fallback' || source.strategy === 'classified_naver';
         const isEmpty = source.strategy === 'empty';
+        const isRecentWindowSuccess = isDirectHit || isApiStrategySuccess(source.strategy);
 
         const summaryPayload: Record<string, unknown> = {
             source: source.source,
@@ -414,6 +464,15 @@ export async function persistSearchDiagnostics(snapshot: SearchAggregationDiagno
             summaryPayload.lastDirectHitAt = snapshot.generatedAt;
         } else if (isEmpty) {
             summaryPayload.consecutiveEmptyHits = FieldValue.increment(1);
+        }
+
+        // 최근 성공/실패 윈도우: in-memory updateSourceSummary와 동일한 규칙(NAVER misclassification
+        // 버그 재발 방지를 위해 두 경로의 성공/실패 판정 로직을 반드시 일치시킨다)
+        const existingRecentOutcomes = parseRecentOutcomes(existingSummaryDocs[index].data());
+        if (isRecentWindowSuccess) {
+            summaryPayload.recentOutcomes = appendRecentOutcome(existingRecentOutcomes, 1);
+        } else if (isEmpty) {
+            summaryPayload.recentOutcomes = appendRecentOutcome(existingRecentOutcomes, 0);
         }
 
         batch.set(summaryRef, summaryPayload, { merge: true });
@@ -601,6 +660,7 @@ export async function loadSearchDiagnostics(limit: number = 10): Promise<{
                 lastFallbackReason: typeof data.lastFallbackReason === 'string' ? data.lastFallbackReason : undefined,
                 consecutiveEmptyHits: Number(data.consecutiveEmptyHits || 0),
                 lastDirectHitAt: typeof data.lastDirectHitAt === 'string' ? data.lastDirectHitAt : undefined,
+                recentOutcomes: parseRecentOutcomes(data),
                 avgLatencyMs: latencySamples > 0 ? Math.round(totalLatencyMs / latencySamples) : 0,
                 successRate: searches > 0 ? Math.round((successCount / searches) * 1000) / 10 : 0,
                 collectionMode: getCollectionMode(doc.id as SearchSourceSummary['source']),
@@ -631,7 +691,7 @@ export async function loadSearchDiagnostics(limit: number = 10): Promise<{
             storage: 'firestore',
         };
     } catch (error) {
-        console.warn('[SearchDiagnostics] firestore load failed:', error);
+        Logger.warn('[SearchDiagnostics] firestore load failed', { error: toErrorMessage(error) });
         const recent = getRecentSearchDiagnostics(limit);
         const recentInteractionItems = getRecentSearchInteractions(limit);
         return {

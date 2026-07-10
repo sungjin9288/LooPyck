@@ -23,6 +23,8 @@ export type SourceSummary = {
     lastSeenAt: string;
     lastStrategy: string;
     lastFallbackReason?: string;
+    /** 최근 최대 20회의 0/1 결과(오래된 것 먼저) — lifetime successRate와 별개로 "지금" 상태를 반영 */
+    recentOutcomes?: number[];
 };
 
 export type RecentSnapshot = {
@@ -359,6 +361,9 @@ export type SourceHealthEntry = {
     reason: string;
     consecutiveEmptyHits: number;
     lastDirectHitAt?: string;
+    /** 최근 표본(최대 20회) 중 성공 비율(0..1). 표본이 없으면 null/undefined — 상태 판정에는 미사용,
+     *  lifetime successRate와 달리 되살아난 소스를 즉시 반영하는 정보성 지표 */
+    recentWindowRate?: number | null;
 };
 
 export type DiagnosticsResponse = {

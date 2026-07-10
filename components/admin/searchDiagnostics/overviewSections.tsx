@@ -64,6 +64,11 @@ function SourceHealthSection({ sourceHealth }: { sourceHealth?: SourceHealthEntr
                                         연속 무수확 {entry.consecutiveEmptyHits}회
                                     </p>
                                 )}
+                                {entry.recentWindowRate !== null && entry.recentWindowRate !== undefined && (
+                                    <p className="mt-1 text-[11px] text-slate-600">
+                                        최근 20회 {Math.round(entry.recentWindowRate * 100)}%
+                                    </p>
+                                )}
                             </div>
                             <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold ${badge.className}`}>
                                 {badge.label}
