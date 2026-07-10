@@ -357,7 +357,7 @@ export type SearchDiagnosticsFetchTelemetry = {
 
 export type SourceHealthEntry = {
     source: string;
-    status: 'healthy' | 'degraded' | 'failing' | 'never_direct' | 'no_data';
+    status: 'healthy' | 'degraded' | 'failing' | 'never_direct' | 'no_data' | 'disabled';
     reason: string;
     consecutiveEmptyHits: number;
     lastDirectHitAt?: string;

@@ -12,11 +12,12 @@ const SOURCE_HEALTH_BADGE: Record<SourceHealthEntry['status'], { label: string; 
     degraded: { label: 'DEGRADED', className: 'bg-amber-500/15 text-amber-300 border-amber-500/40' },
     healthy: { label: 'HEALTHY', className: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40' },
     never_direct: { label: 'NEVER DIRECT', className: 'bg-slate-700/40 text-slate-400 border-slate-600/50' },
+    disabled: { label: 'DISABLED', className: 'bg-sky-500/10 text-sky-300/80 border-sky-500/30' },
     no_data: { label: 'NO DATA', className: 'bg-slate-800/40 text-slate-500 border-slate-700/50' },
 };
 
 // 표시는 심각도 우선 — failing이 항상 맨 위에 오도록
-const SOURCE_HEALTH_ORDER: SourceHealthEntry['status'][] = ['failing', 'degraded', 'healthy', 'never_direct', 'no_data'];
+const SOURCE_HEALTH_ORDER: SourceHealthEntry['status'][] = ['failing', 'degraded', 'healthy', 'disabled', 'never_direct', 'no_data'];
 
 function SourceHealthSection({ sourceHealth }: { sourceHealth?: SourceHealthEntry[] }) {
     if (!sourceHealth || sourceHealth.length === 0) {

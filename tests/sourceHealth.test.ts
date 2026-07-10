@@ -136,3 +136,37 @@ test('recentWindowRate는 status 판정에 영향을 주지 않는다 — 정보
     assert.equal(health.status, 'failing');
     assert.equal(health.recentWindowRate, 1);
 });
+
+// ── disabled 상태 (2026-07-10 후속) ──────────────────────────────────
+// 배선 해제된 소스는 시도가 멈춰 스트릭이 동결되므로, failing으로 영원히
+// 경보가 남는다 — 의도적 해제임을 아는 'disabled' 상태로 구분한다.
+
+test('disabled: DISABLED_DIRECT_SOURCES 등재 소스는 스트릭과 무관하게 disabled', () => {
+    const [coupang] = assessSourceHealth([
+        { source: 'COUPANG', searches: 100, directHits: 5, consecutiveEmptyHits: 33 },
+    ]);
+
+    assert.equal(coupang.status, 'disabled');
+    // 사유는 레지스트리의 실측 근거 문자열을 그대로 노출한다
+    assert.match(coupang.reason, /배선 해제/);
+    assert.match(coupang.reason, /403|무수확/);
+});
+
+test('disabled: 윈도우 통계는 여전히 계산된다 (복원 판단 근거)', () => {
+    const [ssense] = assessSourceHealth([
+        {
+            source: 'SSENSE', searches: 50, directHits: 3,
+            consecutiveEmptyHits: 35, recentOutcomes: [0, 0, 0, 0],
+        },
+    ]);
+
+    assert.equal(ssense.status, 'disabled');
+    assert.equal(ssense.recentWindowRate, 0);
+});
+
+test('disabled: 비활성 아닌 소스의 기존 판정은 불변', () => {
+    const [musinsa] = assessSourceHealth([
+        { source: 'MUSINSA', searches: 100, directHits: 30, consecutiveEmptyHits: 0 },
+    ]);
+    assert.equal(musinsa.status, 'healthy');
+});
