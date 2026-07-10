@@ -75,5 +75,9 @@ export function buildFavoriteProductFromUnified(
         variantSku: product.variantSku,
         optionKey: options?.optionKey,
         deepLink: `/product/${encodeURIComponent(product.id)}?${params.toString()}`,
+        shippingText: product.shippingText,
+        shippingFee: product.shippingFee,
+        benefitPrice: product.benefitPrice,
+        benefitText: product.benefitText,
     };
 }

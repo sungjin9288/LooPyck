@@ -24,6 +24,10 @@ export interface Product {
   deepLink?: string;       // 내부 compare link
   targetPrice?: number;    // 사용자 설정 목표 가격 (확장)
   alertSnoozedUntil?: number; // 알림 스누즈 만료 시각
+  shippingText?: string;   // 배송 안내 텍스트 (예: "오늘출발")
+  shippingFee?: number;    // 배송비 (0이면 무료배송)
+  benefitPrice?: number;   // 혜택 적용가
+  benefitText?: string;    // 혜택 설명 (예: "전상품 18% 쿠폰")
 }
 
 // 네이버 쇼핑 API 응답 타입

@@ -6,6 +6,7 @@ import { hasPdpDetailData } from '@/lib/product/pdpDetailEnrichment';
 import { getGroupPurchaseMetrics, summarizePurchaseEvidence } from '@/lib/product/purchasePricing';
 import { getMatchStrategyLabel } from '@/lib/product/matchStrategyLabel';
 import { buildFavoriteProductFromUnified } from '@/lib/favorites/favoriteProduct';
+import { deriveCardCommerceBadges } from '@/lib/product/cardCommerceBadges';
 import CompareShortlistButton from '@/components/product/CompareShortlistButton';
 
 interface SearchSummaryMetricsSectionProps {
@@ -74,6 +75,7 @@ export function SearchResultCard({
     const bestCaseOffer = metrics.lowestBestCaseOffer;
     const retailerTrust = classifyRetailerTrust(product);
     const shortlistProduct = buildFavoriteProductFromUnified(product);
+    const commerceBadges = deriveCardCommerceBadges(product);
 
     return (
         <motion.div
@@ -143,6 +145,22 @@ export function SearchResultCard({
                         </p>
                     )}
                 </div>
+                {commerceBadges.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {commerceBadges.map((badge) => (
+                            <span
+                                key={badge.kind}
+                                className={
+                                    badge.kind === 'shipping'
+                                        ? 'rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-200'
+                                        : 'max-w-[140px] truncate rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-200'
+                                }
+                            >
+                                {badge.label}
+                            </span>
+                        ))}
+                    </div>
+                )}
                 {checkoutEvidence && (
                     <p className="mt-1 text-[11px] text-slate-200 line-clamp-2">
                         {checkoutEvidence.checkoutBasisLabel} · {checkoutEvidence.detailLabels.slice(1, 3).join(' · ')}

@@ -9,6 +9,7 @@ import PriceAlertButton from './PriceAlertButton';
 import PriceInsight from './PriceInsight';
 import SocialCounter from './SocialCounter';
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
+import { deriveCardCommerceBadges } from '@/lib/product/cardCommerceBadges';
 
 interface ProductCardProps {
     product: Product;
@@ -27,6 +28,7 @@ const ProductCard = memo(function ProductCard({ product, relatedProducts }: Prod
     const variantMeta = [product.variantSku ? `SKU ${product.variantSku}` : null, product.variantId ? `Variant ${product.variantId}` : null]
         .filter(Boolean)
         .join(' · ');
+    const commerceBadges = deriveCardCommerceBadges(product);
 
     return (
         <a
@@ -78,6 +80,23 @@ const ProductCard = memo(function ProductCard({ product, relatedProducts }: Prod
                             </span>
                         )}
                     </div>
+
+                    {commerceBadges.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            {commerceBadges.map((badge) => (
+                                <span
+                                    key={badge.kind}
+                                    className={
+                                        badge.kind === 'shipping'
+                                            ? 'rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700'
+                                            : 'max-w-[140px] truncate rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600'
+                                    }
+                                >
+                                    {badge.label}
+                                </span>
+                            ))}
+                        </div>
+                    )}
 
                     {product.variantLabel && (
                         <p className="text-xs font-medium text-slate-500">
