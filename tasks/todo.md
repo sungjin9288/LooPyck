@@ -37,6 +37,15 @@
 
 ## 🚧 In Progress (진행 중)
 
+### Phase 80: Production Release and Playwright CLI Contract ✅ COMPLETED
+
+- [x] release candidate `c249204`를 `origin/main`에 push하고 Netlify production에 배포
+- [x] deployed provenance와 public/admin API, public/admin browser UAT 5-step gate 통과
+- [x] production search/detail/favorites release QA와 SSF·Handsome·EQL·LF몰 direct-source smoke 통과
+- [x] Playwright CLI `run-code` function contract drift를 RED test로 재현하고 10개 legacy invocation을 함수형 호출로 수정
+- [x] production favorites probe에서 Firestore `0 -> 1 -> 0`, favorites compare deep-link, cleanup 후 baseline 복원 확인
+- [x] adapter/domain 527건, typecheck, shell syntax와 diff whitespace 검증 통과
+
 ### Phase 79: Optional Tool Release-Candidate Hygiene ✅ COMPLETED
 
 - [x] `tools/capacitor-assets/node_modules`가 untracked release candidate에 노출되는 ignore boundary 결함 재현
@@ -164,7 +173,7 @@
 - [x] Capacitor remote URL과 Apps in Toss Toss-CDN artifact 배포를 문서에서 분리하고 redirect/iframe shell 우회 금지
 - [x] Fastify 4용 `middie 8.x`를 Fastify 5 계열 `9.x`로 강제 override하지 않고 잔여 upstream critical debt를 명시
 - [ ] Apps in Toss artifact 출시가 필요하면 static mini-app frontend + hosted API backend 분리를 별도 architecture decision으로 승인 후 구현
-- [ ] 실제 production 배포와 provenance-linked UAT는 commit/push/deploy 승인 이후 수행
+- [x] 2026-09-03 production 배포와 provenance-linked UAT 5-step gate 통과
 
 ### Phase 63: Dependency Audit Regression Gate ✅ COMPLETED
 
@@ -175,7 +184,7 @@
 - [x] release evidence evaluator/report에 dependency audit artifact와 workspace fingerprint linkage 추가; release provenance contract 25건 통과
 - [x] adapter/domain 504건, typecheck, production build, manifest-linked system stress 100/100, local search/detail/favorites QA, screenshot 4개, direct-source required 4개, portfolio/CI/dependency self-audit 통과
 - [x] 잔여 31 high/1 critical package finding은 Apps in Toss/Capacitor 등 upstream debt로 명시. baseline은 해결/안전 판정이 아니며 신규 악화만 fail-close
-- [ ] 실제 production 배포와 provenance-linked UAT는 commit/push/deploy 승인 이후 수행. 현재 배포본 manifest 404 blocker 유지
+- [x] 2026-09-03 production 배포 후 manifest HTTP 200, expected commit 일치, provenance-linked UAT 5-step gate 통과
 
 ### Phase 62: CI Build Artifact Completeness ✅ COMPLETED
 

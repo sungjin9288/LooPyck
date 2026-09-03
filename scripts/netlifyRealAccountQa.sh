@@ -51,7 +51,7 @@ take_screenshot() {
   local file_name="$1"
   local full_path="$OUTPUT_DIR/$file_name"
   mkdir -p "$OUTPUT_DIR"
-  pw run-code "await page.screenshot({ path: ${full_path@Q}, fullPage: true });" >/dev/null
+  pw run-code "async (page) => { await page.screenshot({ path: ${full_path@Q}, fullPage: true }); }" >/dev/null
   printf '%s' "$full_path"
 }
 

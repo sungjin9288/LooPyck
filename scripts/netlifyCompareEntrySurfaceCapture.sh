@@ -127,12 +127,12 @@ capture_locator() {
   local locator_expression="$2"
   local full_path="$OUTPUT_DIR/$file_name"
   mkdir -p "$OUTPUT_DIR"
-  pw run-code "const locator = ${locator_expression}; await locator.scrollIntoViewIfNeeded(); await locator.screenshot({ path: ${full_path@Q} });" >/dev/null
+  pw run-code "async (page) => { const locator = ${locator_expression}; await locator.scrollIntoViewIfNeeded(); await locator.screenshot({ path: ${full_path@Q} }); }" >/dev/null
   printf '%s' "$full_path"
 }
 
 seed_shortlist_fixture() {
-  pw run-code "await page.evaluate(() => {
+  pw run-code "async (page) => { await page.evaluate(() => {
     const item = {
       title: '무신사 스탠다드 후드 집업',
       link: 'https://store.musinsa.com/app/goods/3890000',
@@ -156,14 +156,14 @@ seed_shortlist_fixture() {
     localStorage.setItem('loopyck-compare-shortlist', JSON.stringify([item]));
     window.dispatchEvent(new CustomEvent('loopyck:compare-shortlist-changed', { detail: [item] }));
   });
-  await page.locator('section:has-text(\"로그인 없이 저장한 비교 후보\")').first().waitFor({ state: 'visible', timeout: 10000 });" >/dev/null
+  await page.locator('section:has-text(\"로그인 없이 저장한 비교 후보\")').first().waitFor({ state: 'visible', timeout: 10000 }); }" >/dev/null
 }
 
 clear_shortlist_fixture() {
-  pw run-code "await page.evaluate(() => {
+  pw run-code "async (page) => { await page.evaluate(() => {
     localStorage.setItem('loopyck-compare-shortlist', JSON.stringify([]));
     window.dispatchEvent(new CustomEvent('loopyck:compare-shortlist-changed', { detail: [] }));
-  });" >/dev/null
+  }); }" >/dev/null
 }
 
 cleanup() {
@@ -197,9 +197,9 @@ SEARCH_COUNT="$(printf '%s' "$SEARCH_PAYLOAD" | node -e "
 SEARCH_SUMMARY_SCREENSHOT="$(capture_locator 'compare-entry-search-summary.png' "page.locator('section:has-text(\"최저 결제가\")').first()")"
 SEARCH_HIGHLIGHTS_SCREENSHOT="$(capture_locator 'compare-entry-search-highlights.png' "page.locator('section:has-text(\"비교 하이라이트\")').first()")"
 SEARCH_HIGHLIGHT_CARD_SCREENSHOT="$OUTPUT_DIR/compare-entry-search-highlight-card.png"
-pw run-code "const card = page.locator('section:has-text(\"비교 하이라이트\") button').first(); await card.scrollIntoViewIfNeeded(); await card.screenshot({ path: ${SEARCH_HIGHLIGHT_CARD_SCREENSHOT@Q} });" >/dev/null
+pw run-code "async (page) => { const card = page.locator('section:has-text(\"비교 하이라이트\") button').first(); await card.scrollIntoViewIfNeeded(); await card.screenshot({ path: ${SEARCH_HIGHLIGHT_CARD_SCREENSHOT@Q} }); }" >/dev/null
 SEARCH_RESULT_CARD_SCREENSHOT="$OUTPUT_DIR/compare-entry-search-result-card.png"
-pw run-code "const card = page.locator('div.relative.group.overflow-hidden.rounded-xl.bg-slate-100').first(); await card.scrollIntoViewIfNeeded(); await card.hover(); await page.waitForTimeout(200); await card.screenshot({ path: ${SEARCH_RESULT_CARD_SCREENSHOT@Q} });" >/dev/null
+pw run-code "async (page) => { const card = page.locator('div.relative.group.overflow-hidden.rounded-xl.bg-slate-100').first(); await card.scrollIntoViewIfNeeded(); await card.hover(); await page.waitForTimeout(200); await card.screenshot({ path: ${SEARCH_RESULT_CARD_SCREENSHOT@Q} }); }" >/dev/null
 
 node -e "
   const fs = require('node:fs');

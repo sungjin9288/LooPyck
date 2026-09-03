@@ -311,12 +311,12 @@ Detailed guides:
 
 ## Testing
 
-2026-09-03 현재 working tree 기준으로 adapter/domain test 526건을 실행해 모두 통과했습니다.
+2026-09-03 현재 working tree 기준으로 adapter/domain test 527건을 실행해 모두 통과했습니다.
 테스트 수와 pass 결과는 아래 명령의 Node.js test runner summary로 확인합니다.
 
 ```bash
 npm run typecheck
-npm run test:adapters  # tests 526, pass 526, fail 0
+npm run test:adapters  # tests 527, pass 527, fail 0
 npm run test:deployment-provenance-contract
 npm run test:release-closeout-contract
 npm run build

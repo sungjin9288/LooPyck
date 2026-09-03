@@ -236,13 +236,13 @@ DEEP_LINK="$(json_field "$PREPARE_JSON" deepLink)"
 
 echo "[ntl:favorites-probe] verify -> favorites contains added item" >&2
 pw open "${BASE_URL}/login?next=%2Ffavorites#customToken=${CUSTOM_TOKEN}" >/dev/null
-pw run-code "await page.waitForTimeout(12000)" >/dev/null
+pw run-code "async (page) => { await page.waitForTimeout(12000); }" >/dev/null
 poll_favorites_loaded >/dev/null
 poll_favorites_contains "$ADDED_TITLE" "$ADDED_TOTAL" >/dev/null
 
 echo "[ntl:favorites-probe] verify -> favorites compare link click-through" >&2
 click_favorite_compare_link "$DEEP_LINK" "$ADDED_TITLE"
-pw run-code "await page.waitForTimeout(12000)" >/dev/null
+pw run-code "async (page) => { await page.waitForTimeout(12000); }" >/dev/null
 poll_compare_page_loaded "$DEEP_LINK" "$ADDED_TITLE" >/dev/null
 
 echo "[ntl:favorites-probe] cleanup -> firestore probe document" >&2
@@ -252,7 +252,7 @@ REMOVED_TOTAL="$(json_field "$CLEANUP_JSON" afterRemoveCount)"
 
 echo "[ntl:favorites-probe] verify -> favorites restored" >&2
 pw open "${BASE_URL}/favorites" >/dev/null
-pw run-code "await page.waitForTimeout(8000)" >/dev/null
+pw run-code "async (page) => { await page.waitForTimeout(8000); }" >/dev/null
 poll_favorites_removed "$ADDED_TITLE" "$REMOVED_TOTAL" >/dev/null
 
 cat <<EOF
