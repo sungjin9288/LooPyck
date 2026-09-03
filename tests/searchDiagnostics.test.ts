@@ -19,6 +19,43 @@ import {
     parseRealtimeSearchFeedbackMeta,
 } from '../lib/search/realtimeSearchFeedback.ts';
 import type { UnifiedProduct } from '../lib/api/types.ts';
+import {
+    buildSearchQualityObservation,
+    type SearchQualityObservationInput,
+} from '../lib/search/searchQualityObservation.ts';
+import { readRuntimeMemoryUsage } from '../lib/core/performanceMonitor.ts';
+
+function searchQualityObservationFixture(): SearchQualityObservationInput {
+    return {
+        summary: { trackedSearches: 80 },
+        quality: {
+            strong: 42,
+            mixed: 28,
+            weak: 10,
+            lowFitShare: 47.5,
+            compareReadyRatio: 18.2,
+            priceSpreadCaptureRate: 61.4,
+            optionMatchPrecision: 74,
+            avgCapturedPriceSpread: 13200,
+            maxCapturedPriceSpread: 42000,
+        },
+        interactionSummary: {
+            total: 160,
+            productImpressions: 120,
+            productOpens: 30,
+            badgeCohorts: [
+                { cohort: 'shipping+benefit', impressions: 30, opens: 12, openRate: 40 },
+                { cohort: 'shipping', impressions: 30, opens: 6, openRate: 20 },
+                { cohort: 'benefit', impressions: 30, opens: 9, openRate: 30 },
+                { cohort: 'none', impressions: 30, opens: 9, openRate: 30 },
+            ],
+        },
+        sourceHealth: [
+            { source: 'MUSINSA', status: 'healthy', reason: 'recent direct success' },
+            { source: 'HAGO', status: 'degraded', reason: 'fallback observed' },
+        ],
+    };
+}
 
 function product(overrides: Partial<UnifiedProduct>): UnifiedProduct {
     return {
@@ -319,6 +356,115 @@ test('interaction summary aggregates suggestion clicks and product opens', () =>
     assert.equal(summary.topOpenedBrands[0]?.brand, '무신사 스탠다드');
 });
 
+test('interaction summary calculates badge cohort open rate from matched unique product impressions', () => {
+    const summary = buildSearchInteractionSummary([
+        {
+            type: 'product_impression',
+            query: '후드',
+            generatedAt: '2026-07-10T01:00:00.000Z',
+            productIds: ['shipping-1', 'shipping-2', 'shipping-2'],
+            context: 'search_results:badges=shipping',
+        },
+        {
+            type: 'product_impression',
+            query: '후드',
+            generatedAt: '2026-07-10T01:00:01.000Z',
+            productIds: ['plain-1'],
+            context: 'search_results:badges=none',
+        },
+        {
+            type: 'product_open',
+            query: '후드',
+            generatedAt: '2026-07-10T01:00:02.000Z',
+            productId: 'shipping-1',
+            context: 'search_results:badges=shipping',
+        },
+        {
+            type: 'product_open',
+            query: '후드',
+            generatedAt: '2026-07-10T01:00:03.000Z',
+            productId: 'not-in-recent-impressions',
+            context: 'search_results:badges=shipping',
+        },
+        {
+            type: 'product_open',
+            query: '맨투맨',
+            generatedAt: '2026-07-10T01:00:04.000Z',
+            productId: 'shipping-2',
+            context: 'search_results:badges=shipping',
+        },
+    ]);
+
+    const shipping = summary.badgeCohorts.find((entry) => entry.cohort === 'shipping');
+    const none = summary.badgeCohorts.find((entry) => entry.cohort === 'none');
+
+    assert.equal(summary.productImpressions, 3);
+    assert.deepEqual(shipping, { cohort: 'shipping', impressions: 2, opens: 1, openRate: 50 });
+    assert.deepEqual(none, { cohort: 'none', impressions: 1, opens: 0, openRate: 0 });
+});
+
+test('badge cohort opens do not match an impression from a different query', () => {
+    const summary = buildSearchInteractionSummary([
+        {
+            type: 'product_impression',
+            query: '후드',
+            generatedAt: '2026-07-10T01:00:00.000Z',
+            productIds: ['shared-product'],
+            context: 'search_results:badges=benefit',
+        },
+        {
+            type: 'product_open',
+            query: '맨투맨',
+            generatedAt: '2026-07-10T01:00:01.000Z',
+            productId: 'shared-product',
+            context: 'search_results:badges=benefit',
+        },
+    ]);
+
+    assert.deepEqual(
+        summary.badgeCohorts.find((entry) => entry.cohort === 'benefit'),
+        { cohort: 'benefit', impressions: 1, opens: 0, openRate: 0 }
+    );
+});
+
+test('badge cohort opens only count when they occur after the matching impression', () => {
+    const summary = buildSearchInteractionSummary([
+        {
+            type: 'product_open',
+            query: '후드',
+            generatedAt: '2026-07-10T01:00:02.000Z',
+            productId: 'valid-product',
+            context: 'search_results:badges=shipping',
+        },
+        {
+            type: 'product_impression',
+            query: '후드',
+            generatedAt: '2026-07-10T01:00:01.000Z',
+            productIds: ['valid-product'],
+            context: 'search_results:badges=shipping',
+        },
+        {
+            type: 'product_open',
+            query: '후드',
+            generatedAt: '2026-07-10T00:59:59.000Z',
+            productId: 'future-impression-product',
+            context: 'search_results:badges=shipping',
+        },
+        {
+            type: 'product_impression',
+            query: '후드',
+            generatedAt: '2026-07-10T01:00:03.000Z',
+            productIds: ['future-impression-product'],
+            context: 'search_results:badges=shipping',
+        },
+    ]);
+
+    assert.deepEqual(
+        summary.badgeCohorts.find((entry) => entry.cohort === 'shipping'),
+        { cohort: 'shipping', impressions: 2, opens: 1, openRate: 50 }
+    );
+});
+
 test('comparison diagnostics snapshot captures compare-ready ratio, spread capture, and option precision', () => {
     const snapshot = buildSearchComparisonSnapshot([
         product({
@@ -529,4 +675,71 @@ test('realtime search degraded feedback remains stable across repeated degraded 
             fallbackSourceCount: 3,
         }
     );
+});
+
+test('search quality observation compares sufficiently sampled cohorts against no-badge baseline', () => {
+    const observation = buildSearchQualityObservation(searchQualityObservationFixture());
+    const combined = observation.badgeCohorts.find((entry) => entry.cohort === 'shipping+benefit');
+    const shipping = observation.badgeCohorts.find((entry) => entry.cohort === 'shipping');
+
+    assert.equal(observation.status, 'watch');
+    assert.equal(combined?.upliftVsNoBadge, 10);
+    assert.equal(combined?.decision, 'candidate');
+    assert.equal(shipping?.upliftVsNoBadge, -10);
+    assert.equal(shipping?.decision, 'watch');
+    assert.ok(observation.actions.some((action) => action.id === 'validate-positive-badge-cohorts'));
+    assert.ok(observation.actions.some((action) => action.id === 'inspect-negative-badge-cohorts'));
+});
+
+test('search quality observation holds decisions when baseline or cohort samples are insufficient', () => {
+    const input = searchQualityObservationFixture();
+    input.interactionSummary.badgeCohorts = input.interactionSummary.badgeCohorts.map((entry) => ({
+        ...entry,
+        impressions: entry.cohort === 'none' ? 12 : 18,
+    }));
+
+    const observation = buildSearchQualityObservation(input);
+
+    assert.equal(observation.status, 'hold');
+    assert.ok(observation.badgeCohorts.every((entry) => entry.decision === 'hold'));
+    assert.ok(observation.actions.some((action) => action.id === 'collect-no-badge-baseline'));
+    assert.ok(observation.actions.some((action) => action.id === 'collect-badge-cohort-samples'));
+});
+
+test('search quality observation prioritizes failing sources without inventing traffic conclusions', () => {
+    const input = searchQualityObservationFixture();
+    input.interactionSummary.total = 0;
+    input.interactionSummary.badgeCohorts = [];
+    input.sourceHealth = [
+        { source: 'W_CONCEPT', status: 'failing', reason: 'consecutive empty results' },
+        { source: 'SSENSE', status: 'disabled', reason: 'adapter disabled' },
+    ];
+
+    const observation = buildSearchQualityObservation(input);
+
+    assert.equal(observation.status, 'watch');
+    assert.deepEqual(observation.sourceHealth.failingSources, [
+        { source: 'W_CONCEPT', reason: 'consecutive empty results' },
+    ]);
+    assert.equal(observation.actions[0].id, 'repair-failing-sources');
+});
+
+test('search quality observation reports insufficient-data for an empty observation window', () => {
+    const input = searchQualityObservationFixture();
+    input.summary.trackedSearches = 0;
+    input.interactionSummary.total = 0;
+    input.interactionSummary.badgeCohorts = [];
+    input.sourceHealth = [];
+
+    assert.equal(buildSearchQualityObservation(input).status, 'insufficient-data');
+});
+
+test('runtime memory probe skips browser process polyfills without memoryUsage', () => {
+    assert.equal(readRuntimeMemoryUsage({}), undefined);
+    assert.ok(readRuntimeMemoryUsage(undefined));
+});
+
+test('runtime memory probe reads Node-compatible providers', () => {
+    const memoryUsage = process.memoryUsage();
+    assert.equal(readRuntimeMemoryUsage({ memoryUsage: () => memoryUsage }), memoryUsage);
 });

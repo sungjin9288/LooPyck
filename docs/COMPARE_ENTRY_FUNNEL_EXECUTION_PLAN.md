@@ -20,14 +20,14 @@
 
 ## Delivery Tracks
 
-## Current Direction Lock
+## Current Delivery Status
 
-현재 라운드의 운영 방향은 `Figma-first` 로 고정한다.
+이 계획은 `Figma-first` 순서를 유지한 상태로 완료됐다.
 
-- `SUN-10` 의 수동 Figma frame 작성, worksheet, decision log가 완료되기 전에는 `SUN-11` / `SUN-12` 구현을 시작하지 않는다.
-- 현재 gate 상태는 `output/playwright/compare-entry-review-gate.json` 기준 `BLOCKED` 이고, bundle 상태는 `output/playwright/compare-entry-review-artifact-audit.json` 기준 `READY` 이다.
-- 다음 실제 작업은 구현이 아니라 `SUN-10` 수동 작성이다.
-- 새 review tooling 추가는 중단한다. 이후 라운드에서는 existing packet/checklist를 사용해 실제 frame completion만 진행한다.
+- `SUN-10` 은 build `84/84`, review `35/35`, decision `Approved With Follow-up`으로 승인됐다.
+- 현재 gate는 `output/playwright/compare-entry-review-gate.json` 기준 `READY`, bundle은 `output/playwright/compare-entry-review-artifact-audit.json` 기준 `READY`, active blocker는 `none`이다.
+- `SUN-11` landing implementation, `SUN-12` search-result hierarchy, `SUN-13` validation/release closure까지 완료됐다.
+- Figma quota 대응과 manual worksheet 절차는 재발 시 사용하는 historical recovery path이며 현재 실행 작업이 아니다.
 
 ### Track 1. Figma Kickoff Build
 
@@ -61,11 +61,11 @@ acceptance:
 - production reference packet 기준 hero/routes/shortlist/search shell 대응이 확인된다
 - `approved design direction` gate는 `docs/COMPARE_ENTRY_FUNNEL_DESIGN_REVIEW_CHECKLIST.md` 를 따른다
 
-blockers:
+historical blockers and resolution:
 
-- Figma Starter plan page/tool-call limit
-- blocked 상태에서는 `docs/COMPARE_ENTRY_FUNNEL_MANUAL_FIGMA_BUILD_CHECKLIST.md` 를 수동 fallback path로 사용
-- current first slice는 `Brand-Musinsa -> CompareEntry/Desktop/Brand-Musinsa -> TopNav/Context` 로 고정한다
+- Figma Starter plan page/tool-call limit 때문에 초기 MCP 생성이 차단됐다.
+- `docs/COMPARE_ENTRY_FUNNEL_MANUAL_FIGMA_BUILD_CHECKLIST.md` 의 수동 fallback과 desktop Plugin API build로 6개 frame을 완료했다.
+- 보호된 manual evidence는 `CompareEntry/Mobile/Brand-Musinsa` frame `14:2`, `TopNav/Context` section `14:3`이며 현재 gate에서 재검증된다.
 
 ### Track 2. Compare Entry Landing Implementation
 
@@ -159,8 +159,8 @@ acceptance:
 3. Track 3 구현
 4. Track 4 검증
 
-이 순서를 바꾸지 않는다. Figma direction이 없는 상태에서 Track 2/3을 먼저 시작하면 다시 code-first drift가 생긴다.
-`npm run ntl:compare-entry-review-ready-check` 가 exit code `0` 이 되기 전에는 Track 2/3 으로 이동하지 않는다.
+이번 delivery는 위 순서로 완료됐다. 후속 comparable redesign에서도 Figma direction이 없는 상태에서 implementation을 먼저 시작하지 않는다.
+`npm run ntl:compare-entry-review-ready-check` 가 exit code `0` 이 되기 전에는 새 Track 2/3 implementation으로 이동하지 않는다.
 
 ## Guardrails
 

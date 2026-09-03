@@ -1,5 +1,7 @@
 # LooPyck Technical Whitepaper
 
+> **Evidence status:** Legacy planning artifact. Numeric outcomes are assumptions, not measured LooPyck results.
+
 ## AI-Driven Fashion Search Platform
 
 **Version**: 1.0  

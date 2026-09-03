@@ -10,9 +10,15 @@ function normalizeWhitespace(value: string): string {
     return value.replace(/\s+/g, ' ').trim();
 }
 
+function hasUnresolvedTemplateSyntax(value: string): boolean {
+    return /\{\{|\}\}|<%|%>|\$\{/.test(value);
+}
+
 function normalizeOptionalText(value: unknown, maxLength: number = 160): string | undefined {
     if (typeof value !== 'string') return undefined;
-    const normalized = normalizeWhitespace(value).slice(0, maxLength);
+    const normalizedValue = normalizeWhitespace(value);
+    if (hasUnresolvedTemplateSyntax(normalizedValue)) return undefined;
+    const normalized = normalizedValue.slice(0, maxLength);
     return normalized.length > 0 ? normalized : undefined;
 }
 

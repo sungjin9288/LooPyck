@@ -7,6 +7,7 @@ import { loadSearchLearningActivity, loadSearchLearningQueue } from '@/lib/searc
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 import { loadAlertDiagnostics } from '@/lib/server/alertDiagnostics';
 import { requireAdminRequest } from '@/lib/server/adminAccess';
+import { Logger } from '@/lib/core/observability';
 import {
     buildAlertTuningAuditInboxSummary,
     buildAlertTuningReminderDigest,
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
             },
         );
     } catch (error) {
-        console.error('Realtime search diagnostics route failed:', error);
+        Logger.error('[RealtimeSearchDiagnostics] request failed', error);
         return NextResponse.json(
             {
                 error: error instanceof Error

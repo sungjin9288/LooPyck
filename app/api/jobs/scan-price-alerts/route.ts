@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { scanAndDispatchPriceAlerts } from '@/lib/server/priceAlertScanner';
+import { Logger } from '@/lib/core/observability';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
         }
         return NextResponse.json({ ok: true, ...result });
     } catch (error) {
-        console.error('[scan-price-alerts] failed:', error);
+        Logger.error('[scan-price-alerts] job failed', error);
         return NextResponse.json(
             { ok: false, error: '가격 알림 스캔 중 오류가 발생했습니다.' },
             { status: 500 }

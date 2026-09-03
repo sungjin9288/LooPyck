@@ -61,10 +61,12 @@ function formatRelativeAge(ageMs: number): string {
 
 function formatAbsoluteTime(timestampMs: number): string {
     return new Intl.DateTimeFormat('ko-KR', {
+        timeZone: 'Asia/Seoul',
         month: 'numeric',
         day: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
+        hourCycle: 'h23',
     }).format(new Date(timestampMs));
 }
 

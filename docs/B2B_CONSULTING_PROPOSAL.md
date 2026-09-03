@@ -1,5 +1,7 @@
 # B2B Consulting Proposal
 
+> **Evidence status:** Legacy planning artifact. Numeric outcomes are assumptions, not measured LooPyck results.
+
 ## AI-Powered Data Intelligence
 
 ---

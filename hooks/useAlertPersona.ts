@@ -16,6 +16,7 @@ import {
 } from '@/lib/favorites/alertPersonalization';
 import { useAlertTuningSettings } from './useAlertTuningSettings';
 import type { AlertInboxItem } from './useAlertInbox';
+import { Logger } from '@/lib/core/observability';
 
 type UseAlertPersonaArgs = {
     alerts: AlertInboxItem[];
@@ -85,7 +86,7 @@ export function useAlertPersona({ alerts, favorites }: UseAlertPersonaArgs): {
                 updatedAt: toMillis(data.updatedAt),
             });
         }, (error) => {
-            console.error('[useAlertPersona] failed to load stored persona:', error);
+            Logger.error('[useAlertPersona] stored persona load failed', error);
             setStoredState({ profile: null });
         });
     }, [appId, isAuthenticated, tuningConfig, userId]);
@@ -111,7 +112,7 @@ export function useAlertPersona({ alerts, favorites }: UseAlertPersonaArgs): {
             profile: derivedSnapshot,
             updatedAt: serverTimestamp(),
         }, { merge: true }).catch((error) => {
-            console.error('[useAlertPersona] failed to persist persona:', error);
+            Logger.error('[useAlertPersona] persona persist failed', error);
             writeSignatureRef.current = null;
         });
     }, [appId, derivedSnapshot, hasSignals, isAuthenticated, storedSnapshot, userId]);

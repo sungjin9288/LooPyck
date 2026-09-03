@@ -1,5 +1,7 @@
 # Executive Pitch Deck
 
+> **Evidence status:** Legacy planning artifact. Numeric outcomes are assumptions, not measured LooPyck results.
+
 ## AI Business Automation Framework
 
 ### Zero-Cost Architecture | 99.8% Cost Reduction

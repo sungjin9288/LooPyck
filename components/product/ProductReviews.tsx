@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useUser } from '@/contexts/UserContext';
 import AIReviewSummary from './AIReviewSummary';
+import { Logger } from '@/lib/core/observability';
 
 interface Review {
     id: string;
@@ -59,7 +60,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
             setReviews([]);
             setFeedUnavailable(true);
             if (!isPermissionDeniedError(error)) {
-                console.error('[ProductReviews] review feed unavailable:', error);
+                Logger.error('[ProductReviews] review feed unavailable', error);
             }
         });
 
@@ -86,7 +87,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
             setFit(null);
             setTimeout(() => setSubmitted(false), 3000);
         } catch (error) {
-            console.error('리뷰 저장 실패:', error);
+            Logger.error('[ProductReviews] save failed', error);
         } finally {
             setSubmitting(false);
         }

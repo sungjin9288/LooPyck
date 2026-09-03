@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { getFreshnessBadgeClassName, summarizePriceHistoryFreshness } from '@/lib/product/dataFreshness';
 import { computePriceVerdict, type PriceVerdict, type PriceVerdictLevel } from '@/lib/product/priceVerdict';
+import { Logger } from '@/lib/core/observability';
 
 interface PricePoint {
     date: string;
@@ -178,7 +179,7 @@ export default function PriceHistoryChart({
                 if (error instanceof DOMException && error.name === 'AbortError') {
                     return;
                 }
-                console.error('[PriceHistoryChart] load failed:', error);
+                Logger.error('[PriceHistoryChart] load failed', error);
                 setVerdict(computePriceVerdict([], currentPrice));
                 setLatestRecordedAt(null);
                 setData([{

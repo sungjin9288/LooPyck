@@ -56,7 +56,8 @@ AI 기반 한국 패션 가격 비교 플랫폼. Next.js App Router + Firebase +
 | Recharts | 3.7.0 |
 | Capacitor | 8.1.0 (iOS/Android) |
 | @toss/tds-mobile | 2.3.0 |
-| @apps-in-toss/web-framework | 2.0.7 |
+| @apps-in-toss/web-bridge / bridge-core | 2.10.6 (runtime) |
+| @apps-in-toss/web-framework | 2.10.6 (build/dev) |
 | TensorFlow.js | 4.22.0 |
 | Cheerio | 1.2.0 |
 | Lenis | 1.3.17 |
@@ -237,7 +238,7 @@ npm run cap:ios:prod         # iOS Xcode 열기
 
 ### 모바일 지원
 - **Capacitor**: Remote URL 모드 (`CAPACITOR_SERVER_URL` = Netlify URL로 WebView 래핑)
-- **Toss WebView**: `lib/native/tossWebView.ts`로 감지, `@toss/tds-mobile` + `@apps-in-toss/web-framework` 컴포넌트 분기
+- **Toss WebView**: `lib/native/tossWebView.ts`로 감지, `@toss/tds-mobile` UI 분기 + `@apps-in-toss/web-bridge` runtime share 연동. `@apps-in-toss/web-framework`는 build/dev-only
 
 ### 이미지
 `next.config.js`의 `remotePatterns`에 등록된 도메인만 허용. CDN: 무신사(`image.msscdn.net`), 29CM(`img.29cm.co.kr`). 포맷: WebP/AVIF 자동 변환.

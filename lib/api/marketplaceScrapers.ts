@@ -14,6 +14,7 @@ type MarketplaceAdapterConfig = {
     cardSelectors: readonly string[];
     titleSelectors: readonly string[];
     priceSelectors: readonly string[];
+    priceExcludeSelectors?: readonly string[];
     brandSelectors?: readonly string[];
     linkSelectors?: readonly string[];
     imageSelectors?: readonly string[];
@@ -87,6 +88,31 @@ async function fetchSearchHtml(url: string): Promise<string> {
     }
 }
 
+async function fetchSearchJson(url: string, init: RequestInit = {}): Promise<unknown | null> {
+    try {
+        const headers = new Headers(init.headers);
+        if (!headers.has('User-Agent')) headers.set('User-Agent', USER_AGENT);
+        if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+        if (!headers.has('Accept-Language')) headers.set('Accept-Language', 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7');
+
+        const response = await fetch(url, {
+            ...init,
+            headers,
+            next: { revalidate: 60 },
+            signal: init.signal ?? AbortSignal.timeout(8000),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Status ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        Logger.error('[marketplaceScrapers] JSON fetch failed', error, { url });
+        return null;
+    }
+}
+
 function resolveAbsoluteUrl(origin: string, rawUrl: string): string | null {
     const trimmed = rawUrl.trim();
     if (!trimmed) return null;
@@ -133,6 +159,28 @@ function firstText($root: cheerio.Cheerio<any>, selectors: readonly string[] = [
         const ariaLabel = normalizeWhitespace(match.attr('aria-label') || '');
         if (ariaLabel) return ariaLabel;
     }
+    return '';
+}
+
+function firstTextExcluding(
+    $root: cheerio.Cheerio<any>,
+    selectors: readonly string[],
+    excludeSelectors: readonly string[] = []
+): string {
+    for (const selector of selectors) {
+        const $selected = selectElements($root, selector).first();
+        if (!$selected.length) continue;
+
+        const $clone = $selected.clone();
+        for (const excludeSelector of excludeSelectors) {
+            $clone.find(excludeSelector).remove();
+            if ($clone.is(excludeSelector)) $clone.remove();
+        }
+
+        const value = normalizeWhitespace($clone.text());
+        if (value) return value;
+    }
+
     return '';
 }
 
@@ -577,7 +625,9 @@ function parseCardProducts(html: string, config: MarketplaceAdapterConfig): Unif
             if (!link || !config.linkPattern.test(link)) return;
 
             const title = firstText($element, config.titleSelectors) || firstAttr($element, imageSelectors, ['alt', 'title']);
-            const priceText = firstText($element, config.priceSelectors);
+            const priceText = config.priceExcludeSelectors?.length
+                ? firstTextExcluding($element, config.priceSelectors, config.priceExcludeSelectors)
+                : firstText($element, config.priceSelectors);
             const price = normalizePrice(priceText);
             const rawImage = firstAttr($element, imageSelectors, ['src', 'data-src', 'data-original', 'data-image']);
             const image = rawImage ? resolveImageUrl(config.absoluteOrigin, rawImage, config.proxyImages ?? true) : null;
@@ -632,6 +682,127 @@ export function parseMarketplaceSearchResults(html: string, config: MarketplaceA
     return dedupeProducts([...jsonLdProducts, ...cardProducts]).slice(0, config.maxItems ?? 12);
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : null;
+}
+
+function readString(record: Record<string, unknown>, key: string): string {
+    const value = record[key];
+    return typeof value === 'string' ? normalizeWhitespace(value) : '';
+}
+
+function readPositivePrice(record: Record<string, unknown>, key: string): number {
+    const value = record[key];
+    const price = typeof value === 'number' ? value : typeof value === 'string' ? normalizePrice(value) : 0;
+    return Number.isFinite(price) && price > 0 ? price : 0;
+}
+
+export function buildHandsomeSearchApiUrl(query: string, page: number): string {
+    return `https://www.thehandsome.com/api/goods/1/ko/search/v2/product?q=${encodeURIComponent(query)}&page=${page}&passArgs&size=10&resultType=data&caller=i&sortGbn=10&showfacet=n`;
+}
+
+export function parseHandsomeSearchResponse(value: unknown): UnifiedProduct[] {
+    const root = asRecord(value);
+    if (!root || readString(root, 'code') !== '0000') return [];
+
+    const payload = asRecord(root?.payload);
+    const list = Array.isArray(payload?.list) ? payload.list : [];
+
+    return list.flatMap((entry, index) => {
+        const item = asRecord(entry);
+        if (!item) return [];
+
+        const goodsCode = readString(item, 'goodsCode') || readString(item, 'id');
+        const title = readString(item, 'name');
+        const price = readPositivePrice(item, 'price');
+        const image = readString(item, 'image1');
+        const brand = readString(item, 'brandName');
+        if (!goodsCode) return [];
+
+        const link = `https://www.thehandsome.com/ko/PM/productDetail/${encodeURIComponent(goodsCode)}`;
+        const resolvedImage = resolveImageUrl(HANDSOME_SCRAPER_CONFIG.absoluteOrigin, image, HANDSOME_SCRAPER_CONFIG.proxyImages ?? true);
+        if (!resolvedImage) return [];
+
+        const product = buildProduct(
+            HANDSOME_SCRAPER_CONFIG,
+            link,
+            title,
+            price,
+            resolvedImage,
+            brand,
+            {},
+            index
+        );
+        return product ? [product] : [];
+    });
+}
+
+export function buildLfMallSearchApiRequest(query: string, page: number): { url: string; body: string } {
+    return {
+        url: 'https://nxapi.lfmall.co.kr/exhibition/search/v1',
+        body: JSON.stringify({
+            aggs: ['categories'],
+            brandGroupPageWithFixedTid: false,
+            keyword: query,
+            order: 'popular_2_increase_category',
+            page,
+            sendLogYN: 'N',
+            size: 10,
+            cameFromBack: false,
+        }),
+    };
+}
+
+export function parseLfMallSearchResponse(value: unknown): UnifiedProduct[] {
+    const root = asRecord(value);
+    const header = asRecord(root?.header);
+    if (!root || readString(header ?? {}, 'resultCode') !== 'Success') return [];
+
+    const body = asRecord(root.body);
+    const results = asRecord(body?.results);
+    const products = Array.isArray(results?.products) ? results.products : [];
+
+    return products.flatMap((entry, index) => {
+        const item = asRecord(entry);
+        if (!item) return [];
+
+        const id = readString(item, 'id');
+        const title = readString(item, 'name');
+        const price = readPositivePrice(item, 'salePrice');
+        const brand = readString(item, 'brandName');
+        const representImage = asRecord(item.representImage);
+        const images = Array.isArray(item.images) ? item.images : [];
+        const firstImage = asRecord(images[0]);
+        const image = readString(representImage ?? {}, 'url') || readString(firstImage ?? {}, 'url');
+        if (!id) return [];
+
+        const resolvedImage = resolveImageUrl(LFMALL_SCRAPER_CONFIG.absoluteOrigin, image, LFMALL_SCRAPER_CONFIG.proxyImages ?? true);
+        if (!resolvedImage) return [];
+
+        const freeDelivery = item.freeDelivery === true;
+        const deliveryFee = readPositivePrice(item, 'deliveryFee');
+        const soldOut = item.soldout === true;
+        const product = buildProduct(
+            LFMALL_SCRAPER_CONFIG,
+            `https://www.lfmall.co.kr/app/product/${encodeURIComponent(id)}`,
+            title,
+            price,
+            resolvedImage,
+            brand,
+            {
+                shippingFee: freeDelivery ? 0 : deliveryFee || undefined,
+                shippingText: freeDelivery ? '무료배송' : deliveryFee > 0 ? `배송비 ${deliveryFee.toLocaleString('ko-KR')}원` : undefined,
+                stockStatus: soldOut ? 'sold_out' : 'in_stock',
+                stockText: soldOut ? '품절' : '판매중',
+            },
+            index
+        );
+        return product ? [product] : [];
+    });
+}
+
 async function scrapeMarketplace(query: string, page: number, config: MarketplaceAdapterConfig): Promise<UnifiedProduct[]> {
     const html = await fetchSearchHtml(config.searchUrl(query, page));
     if (!html) return [];
@@ -655,7 +826,7 @@ export const WCONCEPT_SCRAPER_CONFIG: MarketplaceAdapterConfig = {
 
 export const ZIGZAG_SCRAPER_CONFIG: MarketplaceAdapterConfig = {
     source: 'ZIGZAG',
-    searchUrl: (query, page) => `https://zigzag.kr/catalog/products?keyword=${encodeURIComponent(query)}&page=${page}`,
+    searchUrl: (query, page) => `https://zigzag.kr/search?keyword=${encodeURIComponent(query)}&page=${page}`,
     absoluteOrigin: 'https://zigzag.kr',
     cardSelectors: ['a[href*="/catalog/products/"]', 'li:has(a[href*="/catalog/products/"])', '[data-testid*="product"]'],
     titleSelectors: ['[class*="name"]', '[class*="title"]', 'img'],
@@ -685,15 +856,16 @@ export const ABLY_SCRAPER_CONFIG: MarketplaceAdapterConfig = {
 
 export const SSF_SCRAPER_CONFIG: MarketplaceAdapterConfig = {
     source: 'SSF',
-    searchUrl: (query, page) => `https://www.ssfshop.com/public/search/searchView?keyword=${encodeURIComponent(query)}&currentPage=${page}`,
+    searchUrl: (query, page) => `https://www.ssfshop.com/search/result?keyword=${encodeURIComponent(query)}&page=${page}`,
     absoluteOrigin: 'https://www.ssfshop.com',
-    cardSelectors: ['a[href*="/goods/"]', 'li:has(a[href*="/goods/"])', '[class*="prd"]'],
-    titleSelectors: ['[class*="prd_name"]', '[class*="name"]', '[class*="title"]', 'img'],
-    priceSelectors: ['[class*="sale"]', '[class*="price"]', '.price'],
+    cardSelectors: ['li.god-item', 'li:has(a[href$="/good"])'],
+    titleSelectors: ['.god-info .name', '[class*="prd_name"]', '[class*="name"]', 'img'],
+    priceSelectors: ['.god-info .price', '[class*="price"]'],
+    priceExcludeSelectors: ['del', 'em', '.wa_hidden'],
     brandSelectors: ['[class*="brand"]'],
-    linkSelectors: ['a[href*="/goods/"]'],
+    linkSelectors: ['a[href*="/good"]'],
     imageSelectors: ['img'],
-    linkPattern: /\/goods\//i,
+    linkPattern: /\/[^/]+\/[^/]+\/good(?:\?|$)/i,
     maxItems: 10,
     proxyImages: true,
 };
@@ -715,7 +887,7 @@ export const COUPANG_SCRAPER_CONFIG: MarketplaceAdapterConfig = {
 
 export const HANDSOME_SCRAPER_CONFIG: MarketplaceAdapterConfig = {
     source: 'HANDSOME',
-    searchUrl: (query, page) => `https://www.thehandsome.com/ko/DP/searchList?searchTerm=${encodeURIComponent(query)}&pageNo=${page}`,
+    searchUrl: (query, page) => `https://www.thehandsome.com/ko/DP/searchResult?search=${encodeURIComponent(query)}&page=${page}`,
     absoluteOrigin: 'https://www.thehandsome.com',
     cardSelectors: ['a[href*="productDetail"]', 'li:has(a[href*="productDetail"])', '[data-product-code]'],
     titleSelectors: ['[class*="product_name"]', '[class*="prod_name"]', '[class*="name"]', 'img'],
@@ -775,11 +947,11 @@ export const HAGO_SCRAPER_CONFIG: MarketplaceAdapterConfig = {
 
 export const EQL_SCRAPER_CONFIG: MarketplaceAdapterConfig = {
     source: 'EQL',
-    searchUrl: (query, page) => `https://www.eqlstore.com/display/search?keyword=${encodeURIComponent(query)}&page=${page}`,
+    searchUrl: (query, page) => `https://www.eqlstore.com/public/search/view?searchWord=${encodeURIComponent(query)}&currentPage=${page}&tabContent0`,
     absoluteOrigin: 'https://www.eqlstore.com',
-    cardSelectors: ['a[href*="/product/"]', 'li:has(a[href*="/product/"])', '[data-itemno]'],
-    titleSelectors: ['[class*="product-name"]', '[class*="title"]', '[class*="name"]', 'img'],
-    priceSelectors: ['[class*="sale"]', '[class*="price"]', '.price'],
+    cardSelectors: ['.product_list > li', 'li:has(a.go-product-detail)'],
+    titleSelectors: ['.info_area .product', '[class*="product-name"]', '[class*="title"]', 'img'],
+    priceSelectors: ['.price_wrap .current', '[class*="price"]'],
     brandSelectors: ['[class*="brand"]'],
     linkSelectors: ['a[href*="/product/"]'],
     imageSelectors: ['img'],
@@ -790,15 +962,15 @@ export const EQL_SCRAPER_CONFIG: MarketplaceAdapterConfig = {
 
 export const LFMALL_SCRAPER_CONFIG: MarketplaceAdapterConfig = {
     source: 'LFMALL',
-    searchUrl: (query, page) => `https://www.lfmall.co.kr/app/search/searchResult?searchText=${encodeURIComponent(query)}&page=${page}`,
+    searchUrl: (query, page) => `https://www.lfmall.co.kr/app/search/result/${encodeURIComponent(query)}?page=${page}`,
     absoluteOrigin: 'https://www.lfmall.co.kr',
-    cardSelectors: ['a[href*="/product.do"]', 'li:has(a[href*="/product.do"])', '[class*="product"]'],
+    cardSelectors: ['a[href*="/app/product/"]', 'li:has(a[href*="/app/product/"])', '[class*="product"]'],
     titleSelectors: ['[class*="product-name"]', '[class*="title"]', '[class*="name"]', 'img'],
     priceSelectors: ['[class*="sale"]', '[class*="price"]', '.price'],
     brandSelectors: ['[class*="brand"]'],
-    linkSelectors: ['a[href*="/product.do"]'],
+    linkSelectors: ['a[href*="/app/product/"]'],
     imageSelectors: ['img'],
-    linkPattern: /\/product\.do/i,
+    linkPattern: /\/app\/product\//i,
     maxItems: 10,
     proxyImages: true,
 };
@@ -839,7 +1011,8 @@ export async function scrapeCoupang(query: string, page: number = 1): Promise<Un
 }
 
 export async function scrapeHandsome(query: string, page: number = 1): Promise<UnifiedProduct[]> {
-    return scrapeMarketplace(query, page, HANDSOME_SCRAPER_CONFIG);
+    const response = await fetchSearchJson(buildHandsomeSearchApiUrl(query, page));
+    return parseHandsomeSearchResponse(response);
 }
 
 export async function scrapeFarfetch(query: string, page: number = 1): Promise<UnifiedProduct[]> {
@@ -859,7 +1032,18 @@ export async function scrapeEql(query: string, page: number = 1): Promise<Unifie
 }
 
 export async function scrapeLfMall(query: string, page: number = 1): Promise<UnifiedProduct[]> {
-    return scrapeMarketplace(query, page, LFMALL_SCRAPER_CONFIG);
+    const request = buildLfMallSearchApiRequest(query, page);
+    const response = await fetchSearchJson(request.url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'device-type': '2',
+            'Origin': 'https://www.lfmall.co.kr',
+            'Referer': 'https://www.lfmall.co.kr/',
+        },
+        body: request.body,
+    });
+    return parseLfMallSearchResponse(response);
 }
 
 export async function scrapeSiVillage(query: string, page: number = 1): Promise<UnifiedProduct[]> {

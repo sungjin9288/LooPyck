@@ -20,6 +20,7 @@ import {
 import { pushAppNotification } from '@/lib/core/notifications';
 import { triggerHaptic } from '@/lib/native/bridge';
 import { alertPriorityLabel, buildAlertSnoozeUntil, formatAlertSnoozeUntil, isFavoriteAlertSnoozed } from '@/lib/favorites/alertState';
+import { Logger } from '@/lib/core/observability';
 
 interface AlertDetailViewProps {
     alertId: string;
@@ -82,7 +83,7 @@ export default function AlertDetailView({ alertId }: AlertDetailViewProps) {
         autoMarkedIdsRef.current.add(alert.id);
 
         markAlertRead(alert.id, true).catch((error) => {
-            console.error('[AlertDetailView] failed to mark alert read:', error);
+            Logger.error('[AlertDetailView] mark-read failed', error);
         });
     }, [alert, markAlertRead]);
 

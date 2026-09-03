@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ALLOWED_PRODUCT_SOURCES } from '@/lib/api/types';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 import { readPriceHistory } from '@/lib/server/priceHistoryStore';
+import { Logger } from '@/lib/core/observability';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
             }
         );
     } catch (error) {
-        console.error('[price-history] error:', error);
+        Logger.error('[price-history] request failed', error);
         return NextResponse.json(
             { error: '가격 이력 조회 중 오류가 발생했습니다.' },
             { status: 500, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }

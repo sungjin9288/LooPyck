@@ -14,6 +14,13 @@ type LowFitQuery = ReturnType<typeof buildLowFitQueries>[number];
 type SourceDrilldown = ReturnType<typeof buildSourceDrilldown>;
 type SourceTrendPoint = ReturnType<typeof buildSourceTrend>[number];
 
+const BADGE_COHORT_LABELS: Record<DiagnosticsResponse['interactionSummary']['badgeCohorts'][number]['cohort'], string> = {
+    'shipping+benefit': '배송 + 혜택',
+    shipping: '배송',
+    benefit: '혜택',
+    none: '배지 없음',
+};
+
 type SearchDiagnosticsSourceSectionsProps = {
     lowFitQueries: LowFitQuery[];
     interactionSummary?: DiagnosticsResponse['interactionSummary'];
@@ -108,9 +115,36 @@ export function SearchDiagnosticsSourceSections({
                             </div>
                         </div>
                     </div>
+                    <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                        <div className="flex flex-wrap items-end justify-between gap-2">
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Badge Cohort Open Rate</p>
+                                <p className="mt-1 text-xs text-slate-500">최근 표본에서 동일 검색어의 노출 ID와 매칭된 고유 상품 열람 기준</p>
+                            </div>
+                            <span className="text-xs font-semibold text-slate-400">
+                                {interactionSummary?.productImpressions ?? 0} impressions
+                            </span>
+                        </div>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            {(interactionSummary?.badgeCohorts || []).map((entry) => (
+                                <div key={entry.cohort} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <span className="text-sm font-semibold text-slate-200">{BADGE_COHORT_LABELS[entry.cohort]}</span>
+                                        <span className="text-sm font-black text-lime-200">{entry.openRate}%</span>
+                                    </div>
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        {entry.opens} opens / {entry.impressions} impressions
+                                    </p>
+                                </div>
+                            ))}
+                            {(interactionSummary?.badgeCohorts || []).length === 0 && (
+                                <div className="text-sm text-slate-500">배지 cohort 표본이 없습니다.</div>
+                            )}
+                        </div>
+                    </div>
                     <div className="mt-4 space-y-3">
-                        {recentInteractions.map((entry) => (
-                            <div key={`${entry.generatedAt}_${entry.type}_${entry.productId || entry.selectedQuery || entry.query}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                        {recentInteractions.map((entry, index) => (
+                            <div key={`${entry.generatedAt}_${entry.type}_${entry.productId || entry.selectedQuery || entry.query}_${entry.context || 'general'}_${entry.productIds?.join(',') || 'single'}_${index}`} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
                                 <div className="flex items-start justify-between gap-3">
                                     <div>
                                         <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{formatTime(entry.generatedAt)}</p>
@@ -126,6 +160,9 @@ export function SearchDiagnosticsSourceSections({
                                     {entry.productTitle && <div>product: <span className="text-slate-200">{entry.productTitle}</span></div>}
                                     {entry.brand && <div>brand: <span className="text-slate-200">{entry.brand}</span></div>}
                                     {entry.source && <div>source: <span className="text-slate-200">{entry.source}</span></div>}
+                                    {entry.productIds && entry.productIds.length > 0 && (
+                                        <div>products: <span className="text-slate-200">{entry.productIds.length}</span></div>
+                                    )}
                                 </div>
                             </div>
                         ))}

@@ -21,17 +21,18 @@
 - Gemini 2.5 Flash 기반 AI chat, image-to-search keyword, 체형 기반 style recommendation API를 구현하고 Zod validation, JSON parsing, deterministic fallback으로 응답 안정성을 보완
 - 검색 품질과 운영 상태를 확인하기 위한 admin diagnostics, search-learning 모듈, Netlify smoke/UAT script를 정리해 개발-검증-운영 문서화 흐름을 구축
 - 사용자 구매 흐름을 문제정의, 요구사항, 비교 기준, 검증 기준으로 구조화하고 Compare Entry funnel 문서와 validation matrix로 구현 범위를 관리
+- Figma-first review gate를 통과한 brand/category Compare Entry와 search-result hierarchy를 구현하고, visual baseline과 release QA artifact로 디자인-코드 handoff를 검증
 
 ## 4. 구현 후 넣을 수 있는 bullet
 
-- 구현 후 사용 가능: Compare Entry funnel Figma 승인 후 brand/category/search entry surface를 재설계하고, visual regression artifact와 UAT 결과를 기반으로 검색 진입 전환 흐름을 개선
 - 구현 후 사용 가능: 운영 로그와 사용자 행동 데이터를 기반으로 검색 품질 지표를 정량화하고, source별 fallback/precision 개선 결과를 수치로 관리
 - 구현 후 사용 가능: 실제 사용자 테스트 또는 production analytics를 통해 검색 성공률, 비교 완료율, 알림 클릭률 같은 지표를 측정하고 개선
 
 ## 5. 기술스택 한 줄
 
 - 현재 사용 중: TypeScript, Next.js 16, React 18.3.1, Tailwind CSS, Firebase Auth/Firestore/Admin, Gemini 2.5 Flash, Naver Shopping API, Cheerio, Zod, Netlify, Capacitor
-- 예정/검토: Cloudflare Workers/OpenNext, Figma-first design handoff, Playwright MCP visual QA
+- 현재 사용 중: Figma-first design handoff, Playwright visual QA
+- 예정/검토: Cloudflare Workers/OpenNext
 
 ## 6. 지원 직무별 강조 포인트
 

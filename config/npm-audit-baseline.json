@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "reviewedAt": "2026-09-03",
+  "reviewBy": "2026-10-03",
+  "maxVulnerablePackages": {
+    "high": 15,
+    "critical": 1
+  },
+  "allowedAdvisories": [
+    { "source": 1099853, "package": "find-my-way", "severity": "high" },
+    { "source": 1101851, "package": "ip", "severity": "high" },
+    { "source": 1112322, "package": "@fastify/middie", "severity": "high" },
+    { "source": 1112877, "package": "fastify", "severity": "high" },
+    { "source": 1114184, "package": "@fastify/middie", "severity": "high" },
+    { "source": 1116760, "package": "@fastify/middie", "severity": "critical" },
+    { "source": 1116761, "package": "@fastify/middie", "severity": "high" },
+    { "source": 1124273, "package": "find-my-way", "severity": "high" },
+    { "source": 1138808, "package": "image-size", "severity": "high" },
+    { "source": 1138809, "package": "image-size", "severity": "high" }
+  ]
+}

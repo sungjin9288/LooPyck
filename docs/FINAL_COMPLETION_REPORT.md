@@ -1,5 +1,7 @@
 # LooPyck: Final Completion Report
 
+> **Evidence status:** Legacy planning artifact. Numeric outcomes are assumptions, not measured LooPyck results.
+
 **Project Status:** [MISSION ACCOMPLISHED]
 **Date:** 2026-02-10
 **Version:** 1.0.0 (Gold Master)

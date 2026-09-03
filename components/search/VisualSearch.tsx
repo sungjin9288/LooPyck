@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { pushAppNotification } from '@/lib/core/notifications';
 import { resolveItemQueries, groupResolvedItems, type ResolvedVisionItemGroup } from '@/lib/search/visionItemResolver';
 import type { VisionItem } from '@/lib/ai/visionItemNormalizer';
+import { Logger } from '@/lib/core/observability';
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
@@ -102,7 +103,7 @@ export default function VisualSearch({ onSearch }: { onSearch: (term: string) =>
                 setPicker({ summary, groups: groupResolvedItems(resolvedItems) });
             }
         } catch (error) {
-            console.error('Visual Search Failed', error);
+            Logger.error('[VisualSearch] analysis failed', error);
             pushAppNotification({
                 title: '분석 실패',
                 message: error instanceof Error ? error.message : '이미지 분석에 실패했습니다.',

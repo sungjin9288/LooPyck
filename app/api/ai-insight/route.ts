@@ -7,6 +7,9 @@ import { computePriceVerdict } from '@/lib/product/priceVerdict';
 import { ALLOWED_PRODUCT_SOURCES } from '@/lib/api/types';
 import { readPriceHistory } from '@/lib/server/priceHistoryStore';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
+import { buildAiInsightFallback, type AiInsightResult } from '@/lib/ai/aiInsightFallback';
+import { INVESTMENT_RATINGS } from '@/lib/product/investmentRating';
+import { Logger, toErrorMessage } from '@/lib/core/observability';
 
 const REQUEST_TIMEOUT_MS = 12_000;
 
@@ -30,7 +33,7 @@ const ReasoningItemSchema = z.object({
 const InsightResponseSchema = z.object({
     insight: z.object({
         score: z.coerce.number().finite().transform((value) => Math.max(0, Math.min(100, Math.round(value)))),
-        ratingEN: z.enum(['STRONG BUY', 'BUY', 'HOLD', 'WAIT']),
+        ratingEN: z.enum(INVESTMENT_RATINGS),
         advice: z.string().trim().min(1).max(40),
         reason: z.string().trim().min(1).max(240),
         reasoning: z.array(ReasoningItemSchema).min(1).max(5).optional().default([]),
@@ -41,6 +44,17 @@ const InsightResponseSchema = z.object({
         keywords: z.array(z.string().trim().min(1).max(30)).max(8).optional().default([]),
     }),
 });
+
+function buildFallbackResponse(verdict: ReturnType<typeof computePriceVerdict>, remaining: number, reason: string) {
+    return NextResponse.json(buildAiInsightFallback(verdict), {
+        headers: {
+            'X-RateLimit-Remaining': String(remaining),
+            'X-AI-Insight-Source': 'fallback',
+            'X-AI-Insight-Reason': reason,
+            'Cache-Control': 'private, max-age=60',
+        },
+    });
+}
 
 export async function POST(request: NextRequest) {
     const rateLimit = await checkRateLimit(getRateLimitKey(request, 'ai-insight'), 12, 60_000);
@@ -77,24 +91,24 @@ export async function POST(request: NextRequest) {
 
     const { title, price, brand, category, source, productId } = parsedRequest.data;
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        return NextResponse.json(
-            { error: 'API 키가 설정되지 않았습니다.' },
-            { status: 503, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
-        );
-    }
-
     // Ground the price judgment in REAL collected history when the product is
     // identifiable. Falls back to a conservative "insufficient" block on any
     // failure or when Firebase Admin is unavailable (graceful degradation).
-    let priceGrounding: string;
+    let priceVerdict: ReturnType<typeof computePriceVerdict>;
     try {
         const history = source && productId ? await readPriceHistory(source, productId, 30) : { points: [] };
-        priceGrounding = buildPriceGroundingBlock(computePriceVerdict(history.points, price));
+        priceVerdict = computePriceVerdict(history.points, price);
     } catch (historyError) {
-        console.error('[AI Insight] price history grounding failed:', historyError);
-        priceGrounding = buildPriceGroundingBlock(computePriceVerdict([], price));
+        Logger.warn('[AI Insight] price history grounding failed', {
+            error: toErrorMessage(historyError),
+        });
+        priceVerdict = computePriceVerdict([], price);
+    }
+    const priceGrounding = buildPriceGroundingBlock(priceVerdict);
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        return buildFallbackResponse(priceVerdict, rateLimit.remaining, 'missing_api_key');
     }
 
     const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
@@ -157,47 +171,44 @@ ${priceGrounding}
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
             body: JSON.stringify(requestBody),
-            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+            signal: AbortSignal.any([request.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
         });
 
         if (!response.ok) {
-            // Do not leak the upstream provider status to the client.
-            return NextResponse.json(
-                { error: 'AI 분석 중 오류가 발생했습니다.' },
-                { status: 502, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
-            );
+            return buildFallbackResponse(priceVerdict, rateLimit.remaining, `gemini_status_${response.status}`);
         }
 
         const data = (await response.json()) as unknown;
         const parsed = parseGeminiJson(data, InsightResponseSchema);
         if (!parsed.ok) {
-            return NextResponse.json(
-                { error: 'AI 응답 형식이 올바르지 않습니다.' },
-                { status: 502, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
-            );
+            return buildFallbackResponse(priceVerdict, rateLimit.remaining, 'gemini_parse_failed');
         }
 
-        return NextResponse.json(
-            {
-                insight: parsed.data.insight,
-                trend: {
-                    ...parsed.data.trend,
-                    keywords: normalizeKeywordList(parsed.data.trend.keywords, 3),
-                },
+        const result: AiInsightResult = {
+            analysisSource: 'ai',
+            insight: {
+                ...parsed.data.insight,
+                score: Number(parsed.data.insight.score),
+                reasoning: parsed.data.insight.reasoning.map((item) => ({
+                    ...item,
+                    score: Number(item.score),
+                })),
             },
-            { headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining), 'Cache-Control': 'private, max-age=300' } }
+            trend: {
+                ...parsed.data.trend,
+                score: Number(parsed.data.trend.score),
+                keywords: normalizeKeywordList(parsed.data.trend.keywords, 3),
+            },
+        };
+        return NextResponse.json(
+            result,
+            { headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining), 'X-AI-Insight-Source': 'ai', 'Cache-Control': 'private, max-age=300' } }
         );
     } catch (error) {
         if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
-            return NextResponse.json(
-                { error: 'AI 분석 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.' },
-                { status: 504, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
-            );
+            return buildFallbackResponse(priceVerdict, rateLimit.remaining, error.name === 'AbortError' ? 'request_aborted' : 'gemini_timeout');
         }
-        console.error('[AI Insight] Server Error:', error);
-        return NextResponse.json(
-            { error: '서버 오류가 발생했습니다.' },
-            { status: 500, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
-        );
+        Logger.warn('[AI Insight] Gemini request failed', { error: toErrorMessage(error) });
+        return buildFallbackResponse(priceVerdict, rateLimit.remaining, 'gemini_unknown_error');
     }
 }

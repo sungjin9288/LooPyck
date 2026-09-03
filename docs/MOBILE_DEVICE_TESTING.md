@@ -142,3 +142,14 @@ npm run cap:android:prod
 - If `npm run cap:android:prod` says Android Studio was not found, either install it in a common location or export `CAPACITOR_ANDROID_STUDIO_PATH`.
 - If `adb` is not on PATH but the SDK binary exists, verify devices with `~/Library/Android/sdk/platform-tools/adb devices`. The production Android opener will reuse that path automatically once a device is attached.
 - If Android Studio says the SDK root is invalid, move the broken SDK aside and let Android Studio recreate `~/Library/Android/sdk` before retrying.
+
+## 8. Apps in Toss Boundary
+
+Capacitor remote URL mode와 Apps in Toss WebView SDK artifact는 같은 배포 경로가 아니다.
+
+- Capacitor shell은 이 문서의 Netlify URL을 직접 로드한다.
+- Apps in Toss는 SDK가 포함된 web build artifact를 업로드하고 Toss CDN에서 호스팅한다.
+- 현재 `next.config.js`는 `output: 'standalone'`이며 API/dynamic route를 포함한다. `ait build`는 `dist/web/index.html`이 있는 CSR/SSG output만 허용하므로 현재 구조에서는 artifact 단계가 fail-closed한다.
+- redirect/iframe shell로 통과시키지 않는다. Apps in Toss 출시가 필요하면 static mini-app frontend와 Netlify API backend 경계를 별도 architecture decision으로 설계한다.
+
+근거: [기존 웹 프로젝트 SDK 연동](https://developers-apps-in-toss.toss.im/tutorials/webview.html), [Apps in Toss 개요](https://developers-apps-in-toss.toss.im/intro/overview.html).

@@ -11,6 +11,7 @@ import {
     type StyleRecommendResult,
 } from '@/lib/ai/styleRecommend';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
+import { Logger } from '@/lib/core/observability';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -131,7 +132,7 @@ keyItems는 반드시 무신사, 29cm 같은 쇼핑몰에서 실제 검색 가�
         });
 
         if (!res.ok) {
-            console.error('[Style Recommend API Error] Gemini status:', res.status);
+            Logger.warn('[Style Recommend] Gemini request rejected', { status: res.status });
             return buildFallbackResponse(parsedRequest.data, rateLimit.remaining, `gemini_status_${res.status}`);
         }
 
@@ -139,13 +140,13 @@ keyItems는 반드시 무신사, 29cm 같은 쇼핑몰에서 실제 검색 가�
         const parsed = parseGeminiJson(data, StyleRecommendLooseResponseSchema);
 
         if (parsed.ok === false) {
-            console.error('[Style Recommend API Error] Gemini parse failed:', parsed.error, parsed.rawText);
+            Logger.warn('[Style Recommend] Gemini response rejected', { reason: parsed.error });
             return buildFallbackResponse(parsedRequest.data, rateLimit.remaining, 'gemini_parse_failed');
         }
 
         const normalized = normalizeStyleRecommendResponse(parsed.data);
         if (!normalized) {
-            console.error('[Style Recommend API Error] Gemini normalized payload unusable');
+            Logger.warn('[Style Recommend] Gemini normalized payload unusable');
             return buildFallbackResponse(parsedRequest.data, rateLimit.remaining, 'gemini_normalize_failed');
         }
 
@@ -160,10 +161,10 @@ keyItems는 반드시 무신사, 29cm 같은 쇼핑몰에서 실제 검색 가�
         );
     } catch (error) {
         if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
-            console.error('[Style Recommend API Error] Gemini timeout');
+            Logger.warn('[Style Recommend] Gemini request timed out');
             return buildFallbackResponse(parsedRequest.data, rateLimit.remaining, 'gemini_timeout');
         }
-        console.error('[Style Recommend API Error]', error);
+        Logger.error('[Style Recommend] request failed', error);
         return buildFallbackResponse(parsedRequest.data, rateLimit.remaining, 'gemini_unknown_error');
     }
 }

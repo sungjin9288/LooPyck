@@ -37,9 +37,297 @@
 
 ## 🚧 In Progress (진행 중)
 
-## 🚧 In Progress (진행 중)
+### Phase 79: Optional Tool Release-Candidate Hygiene ✅ COMPLETED
 
-### Phase 37: Platform Audit & Comparison Quality Hardening 🧭 IN PROGRESS
+- [x] `tools/capacitor-assets/node_modules`가 untracked release candidate에 노출되는 ignore boundary 결함 재현
+- [x] nested optional-tool install directory를 Git에서 제외하고 manifest/lockfile만 추적 가능하게 유지
+- [x] dependency boundary contract 5건, adapter/domain 526건, status hygiene, build와 fingerprint-linked release evidence 재검증
+
+### Phase 78: Compare Entry Source-of-Truth Reconciliation ✅ COMPLETED
+
+- [x] 실제 gate artifact와 Compare Entry 운영 문서의 현재 상태 불일치 재현
+- [x] execution plan과 redesign brief를 `SUN-10 READY` / `SUN-11~13 complete` / active blocker `none`으로 동기화
+- [x] strict ready-check, Compare Entry/adapter-domain 525건, portfolio claims, typecheck, production build, fingerprint-linked local release evidence 재검증
+
+### Phase 77: Dependency Baseline Re-review and Safe Remediation ✅ COMPLETED
+
+- [x] 만료된 세 audit baseline과 2026-09-03 신규 advisory를 root/production/optional tool scope별로 재현
+- [x] 임시 lockfile에서 non-breaking `npm audit fix`와 broad semver update를 비교하고 더 작은 remediation 경로 선택
+- [x] `package.json` 변경 없이 root와 optional tool lockfile에 non-breaking audit fix 적용
+- [x] cyclic npm audit graph에서 traversal-order memoization이 advisory source를 누락하는 policy defect 회귀 수정
+- [x] production `0 high / 0 critical`을 복구하고 세 scope baseline을 현재 advisory·30일 review window로 재승인
+- [x] dependency/release contract 48건, adapter/domain 525건, typecheck, production build, fingerprint-linked local release QA/direct-source/stress evidence 재검증
+
+### Phase 76: Optional Capacitor Asset Tool Isolation ✅ COMPLETED
+
+- [x] `@capacitor/assets`를 root devDependency에서 분리하고 pinned optional tool package로 격리
+- [x] root cwd에서 기존 icon/splash generation semantics를 유지하는 setup/runner command 제공
+- [x] root full, production install, optional Capacitor asset tool graph를 각각 독립 baseline으로 audit
+- [x] tooling boundary와 release evidence contract로 scope 누락·baseline drift 차단
+- [x] tool setup/help와 Capacitor doctor, dependency policy 14건, release evidence 29건, adapter/domain 525건, typecheck, production build, local release QA/direct-source/stress evidence 재검증
+
+### Phase 75: Scoped Dependency Audit Baselines ✅ COMPLETED
+
+- [x] full build/dev graph와 production install graph의 baseline 파일을 분리
+- [x] production baseline을 allowed advisory 0개, package ceiling `0 high / 0 critical`로 fail-close
+- [x] scope별 baseline path와 독립 review metadata를 dependency evidence contract에 연결
+- [x] README, deploy/evidence docs, release report에 scoped baseline semantics 반영
+- [x] dependency/release contract 42건, adapter/domain 520건, audit verifier, portfolio audit, typecheck, build, local release evidence 재검증
+
+### Phase 74: Apps in Toss Runtime Dependency Split ✅ COMPLETED
+
+- [x] `@apps-in-toss/web-framework`를 build/dev-only dependency로 이동하고 runtime을 `@apps-in-toss/web-bridge` + `@apps-in-toss/bridge-core`로 축소
+- [x] Toss share adapter가 `@apps-in-toss/web-bridge`의 `share()`만 동적 import하도록 변경
+- [x] Apps in Toss dependency boundary contract로 runtime/dev role과 source import 회귀 차단
+- [x] production audit `10 moderate / 0 high / 0 critical`과 full audit `48 total / 18 high / 1 critical` known-debt baseline 유지 확인
+- [x] clean production install, native/dependency/provenance targeted 21건, Capacitor doctor, adapter/domain 519건, dual-audit verifier, typecheck, build, local release evidence 재검증
+
+### Phase 73: Non-breaking Lockfile Remediation ✅ COMPLETED
+
+- [x] `npm audit fix` 전후 package.json checksum 동일성과 direct dependency 불변 확인
+- [x] `--force` 없이 fixable transitive advisory lockfile 갱신
+- [x] 해결된 advisory 16개를 baseline에서 제거하고 full-graph ceiling을 `18 high / 1 critical`로 축소
+- [x] full `48 total / 18 high / 1 critical`, production `41 total / 12 high / 1 critical` 수치와 README·release evidence 동기화
+- [x] dependency/native/Firestore targeted 30건, Capacitor doctor, adapter/domain 514건, dual-audit verifier, typecheck, build, local release evidence 재검증
+
+### Phase 72: Runtime Dependency Hygiene ✅ COMPLETED
+
+- [x] `@capacitor/cli`를 runtime dependency에서 build-only devDependency로 재분류
+- [x] Firebase/Firebase Admin을 선언된 semver 범위 안에서 현재 patch/minor로 갱신
+- [x] 해결된 advisory 6개를 baseline에서 제거하고 full-graph ceiling을 `28 high / 1 critical`로 축소
+- [x] full `62 total / 28 high / 1 critical`, production `50 total / 19 high / 1 critical` 수치와 README·release evidence 동기화
+- [x] targeted 37건, Capacitor doctor, adapter/domain 514건, dual-audit verifier, typecheck, build, local release evidence 재검증
+
+### Phase 71: Dependency Exposure Boundary ✅ COMPLETED
+
+- [x] full dependency graph와 production install graph의 audit scope 분리
+- [x] 두 audit 모두 reviewed baseline으로 신규·상향 severe advisory fail-close
+- [x] dependency evidence schema에 `productionAudit` 결과와 command metadata 추가
+- [x] release closeout report에 full/production high·critical 수치 각각 노출
+- [x] targeted 39건, adapter/domain 514건, live dual-audit verifier, typecheck, build, local release evidence 재검증
+
+### Phase 70: Context and Hook Logging Boundary ✅ COMPLETED
+
+- [x] auth context, alert/favorites/search hook의 raw console 11개 전수 분류
+- [x] Firestore·OAuth·search error를 PII-safe structured `Logger`로 통합
+- [x] loading/error/fallback/rethrow semantics 유지
+- [x] runtime logging source contract를 `contexts`와 `hooks`까지 확장
+- [x] targeted 9건, adapter/domain 513건, typecheck, build, local release evidence 재검증
+
+### Phase 69: Client Runtime Logging PII Hardening ✅ COMPLETED
+
+- [x] login/error boundary/search/favorites/product/social client path의 raw `console.error` 전수 분류
+- [x] OAuth·Firebase·user content 관련 오류를 PII-safe structured `Logger`로 통합
+- [x] 기존 UI fallback, notification, permission-denied suppression semantics 유지
+- [x] `app`/`components` raw console 재유입을 차단하는 source contract 추가
+- [x] targeted 9건, adapter/domain 513건, typecheck, build, local runtime/release evidence 재검증
+
+### Phase 68: Standalone Runtime Contract ✅ COMPLETED
+
+- [x] production build 후 `public/`과 `.next/static/`을 `.next/standalone/` runtime에 deterministic copy
+- [x] `npm start`를 unsupported `next start` 대신 shared standalone launcher로 전환
+- [x] local system stress와 CI Playwright production server도 동일 launcher contract 사용
+- [x] missing build/assets, invalid port, fixture copy를 pure/isolated contract test로 검증
+- [x] targeted 22건, adapter/domain 512건, typecheck, build, standalone HTML/static/provenance/API HTTP 및 100-request stress 재검증
+
+### Phase 67: API Logging PII Hardening ✅ COMPLETED
+
+- [x] `app/api/**` production path의 raw `console.error/warn/info` 전수 분류
+- [x] provider raw response와 사용자 입력을 로그에서 제거하고 PII-safe structured `Logger`로 통합
+- [x] HTTP status, fallback reason, 축약된 error message만 보존해 운영 진단 가능성 유지
+- [x] raw provider payload 비기록 regression test와 source-level contract 추가
+- [x] targeted 8건, adapter/domain 508건, typecheck, Next 16.2.10 production build 재검증
+
+### Phase 66: Pre-commit Adversarial Review ✅ COMPLETED
+
+- [x] AI/search/PDP/release dirty diff를 goal·security·behavior·evidence 관점으로 교차 검토
+- [x] `Logger.maskPII()`가 nested array shape을 object로 변환하는 구현 결함 수정
+- [x] 변경된 AI insight/PDP enrichment 경로의 raw `console.error` 제거 및 PII-safe Logger 통합
+- [x] search interaction client에서 HTTP non-2xx를 network success로 무시하지 않고 telemetry warning 보존
+- [x] targeted 36건, adapter/domain 506건, typecheck, Next 16.2.10 production build 통과 및 fingerprint-linked local release evidence 재검증
+
+### Phase 65: Dependency Baseline Review Expiration ✅ COMPLETED
+
+- [x] npm audit baseline을 schema v2로 올리고 `reviewBy`를 필수 contract로 추가
+- [x] `reviewedAt -> reviewBy` 기간을 최대 31일로 제한해 영구적인 severe advisory 예외 차단
+- [x] 미래 review date, 만료 baseline, 과도한 review window를 deterministic contract test로 fail-close
+- [x] dependency audit artifact와 release closeout report에 reviewed/review-by/evaluated date를 노출
+- [x] README, Netlify deploy, implementation evidence, lessons에 periodic review 운영 규칙 동기화
+- [x] policy/release evidence targeted 36건, live audit `63 total / 29 high / 1 critical / 40 reviewed advisories`, adapter/domain 505건, typecheck, Next 16.2.10 production build 통과
+
+### Phase 64: Apps in Toss Dependency Debt Reduction ✅ COMPLETED
+
+- [x] isolated lockfile에서 검증한 `@apps-in-toss/web-framework 2.10.6` 공식 minor update 적용
+- [x] 신규 severe advisory 없이 해결된 high advisory 4개를 baseline에서 제거하고 ceiling을 `29 high / 1 critical`, reviewed advisory 40개로 축소
+- [x] Toss WebView/share/native adapter 16건, Capacitor doctor, adapter/domain 504건, typecheck, production build로 integration compatibility 검증
+- [x] `ait` CLI load 확인 후 `ait build` 실검증에서 Next standalone output과 CLI의 CSR/SSG `index.html` contract 불일치 확인
+- [x] Capacitor remote URL과 Apps in Toss Toss-CDN artifact 배포를 문서에서 분리하고 redirect/iframe shell 우회 금지
+- [x] Fastify 4용 `middie 8.x`를 Fastify 5 계열 `9.x`로 강제 override하지 않고 잔여 upstream critical debt를 명시
+- [ ] Apps in Toss artifact 출시가 필요하면 static mini-app frontend + hosted API backend 분리를 별도 architecture decision으로 승인 후 구현
+- [ ] 실제 production 배포와 provenance-linked UAT는 commit/push/deploy 승인 이후 수행
+
+### Phase 63: Dependency Audit Regression Gate ✅ COMPLETED
+
+- [x] 선언된 semver 범위 안에서 Next.js/PostCSS/Wrangler 및 fixable transitive dependency를 갱신해 audit를 74건(34 high/4 critical)에서 67건(31 high/1 critical)으로 축소
+- [x] upstream 미해결 high/critical advisory 44개를 source ID·package·severity와 package-count ceiling으로 명시한 reviewable baseline 추가
+- [x] 신규 advisory, severity 상승, unresolved advisory chain, vulnerable package count 증가를 blocking하는 dependency audit policy와 contract test 7건 추가
+- [x] GitHub Actions build job에서 audit policy를 `|| true` 없이 build 전에 실행하고 결과 artifact를 실패 시에도 보존; CI workflow contract 8건으로 command/order/upload 회귀 검증
+- [x] release evidence evaluator/report에 dependency audit artifact와 workspace fingerprint linkage 추가; release provenance contract 25건 통과
+- [x] adapter/domain 504건, typecheck, production build, manifest-linked system stress 100/100, local search/detail/favorites QA, screenshot 4개, direct-source required 4개, portfolio/CI/dependency self-audit 통과
+- [x] 잔여 31 high/1 critical package finding은 Apps in Toss/Capacitor 등 upstream debt로 명시. baseline은 해결/안전 판정이 아니며 신규 악화만 fail-close
+- [ ] 실제 production 배포와 provenance-linked UAT는 commit/push/deploy 승인 이후 수행. 현재 배포본 manifest 404 blocker 유지
+
+### Phase 62: CI Build Artifact Completeness ✅ COMPLETED
+
+- [x] GitHub Actions `build-output`에 `.next/`와 `public/deployment-provenance.json`을 동일 bundle로 포함
+- [x] build 실패 시에도 생성된 provenance diagnostics를 보존하도록 build artifact를 `always()` upload
+- [x] CI self-audit가 multi-path upload의 exact path set과 upload action을 검증하도록 parser/contract 보강
+- [x] missing manifest path, unexpected path, non-always upload regression test 추가
+- [x] CI workflow contract 7건, adapter/domain 501건, CI/portfolio self-audit, workflow YAML parse, typecheck, production build 통과. 임시 bundle에서 `.next/BUILD_ID`와 provenance manifest 존재, `.env` entry 0건 확인
+
+### Phase 61: CI Run Identity Linkage ✅ COMPLETED
+
+- [x] GitHub Actions stress evidence가 manifest `runId`와 현재 runner `GITHUB_RUN_ID` 일치 없이는 통과하지 못하도록 강제
+- [x] local runner에서 복사된 GitHub Actions manifest, GHA runner에서 local manifest를 cross-environment mismatch로 차단
+- [x] runner identity를 secret-free stress artifact에 기록하고 release closeout에서 동일 contract로 재검증
+- [x] simulated GHA runner + local manifest 실검증에서 environment mismatch, stress target `0`건, exit 1 확인
+- [x] local/GHA/stale/cross-environment stress contract 10건, release provenance 22건, adapter/domain 501건, CI workflow contract/self-audit, portfolio audit, typecheck, production build 통과
+
+### Phase 60: CI Provenance-linked System Stress ✅ COMPLETED
+
+- [x] production-build stress 시작 전 `/deployment-provenance.json`을 HTTP로 읽고 strict schema를 검증
+- [x] manifest의 commit/workspace fingerprint가 stress runner와 동일한 build identity인지 fail-closed 판정
+- [x] stress evidence와 release closeout이 valid manifest linkage 없이는 통과하지 못하도록 contract test 보강
+- [x] stale build 실검증에서 fingerprint mismatch, stress target `0`건, exit 1을 확인하고 rebuild 후 manifest-linked 100/100 pass 확인
+- [x] stress contract 7건, release provenance 22건, adapter/domain 501건, CI workflow contract/self-audit, typecheck, production build 통과. 최종 p95/RSS 실측치는 `local-system-stress-smoke.json`에 기록하며 production capacity claim으로 사용하지 않음
+
+### Phase 59: Provenance-linked Release QA ✅ COMPLETED
+
+- [x] release QA browser flow 시작 전 target `deployment-provenance.json`을 blocking 검증하고 결과를 동일 summary에 포함
+- [x] local/deployed release evidence와 demo screenshot evidence가 valid manifest·commit·target·workspace linkage 없이 통과하지 못하도록 강제
+- [x] legacy QA packet, mismatched manifest/workspace, dirty deployed manifest regression test 추가
+- [x] release provenance 21건, adapter/domain 500건, typecheck, production build, embedded-provenance local QA·screenshot 4개 통과. 현재 production은 manifest 404로 browser open 전 fail-fast exit 1 확인
+
+### Phase 58: Provider Signal Authenticity ✅ COMPLETED
+
+- [x] `NETLIFY=true` / `GITHUB_ACTIONS=true` 명시적 platform signal로만 hosted provider를 판정해 metadata-only spoof 차단
+- [x] `netlify.toml` build command의 repo-owned marker로 local Netlify CLI를 hosted/local과 분리
+- [x] commit/branch/context/identifier를 provider namespace별로 선택해 cross-provider environment contamination 차단
+- [x] Netlify/GitHub 동시 signal 또는 GitHub/Netlify CLI marker 혼합을 invalid manifest로 fail-closed 처리
+- [x] provenance contract 14건, adapter/domain 497건, typecheck, production build, actual Netlify CLI production-context build, local runtime/evidence, failure-safe production closeout `[1,0,0]` 통과
+
+### Phase 57: Secret-free Provenance Schema ✅ COMPLETED
+
+- [x] public `deployment-provenance.json`을 정확한 11-field allowlist schema로 고정해 예상하지 않은 metadata 노출 차단
+- [x] extra token/env field가 값을 로그에 노출하지 않고 field name violation으로 차단되는 regression test 추가
+- [x] secret-free manifest contract 문서화. provenance contract 11건, adapter/domain 497건, typecheck, production build, local runtime/evidence, failure-safe production closeout `[1,0,0]` 통과
+
+### Phase 56: Deployment Evidence Identity Linkage ✅ COMPLETED
+
+- [x] standalone provenance smoke·UAT summary·UAT step parsed payload가 동일 manifest identity·current HEAD·target URL을 가리키는지 promotion contract에서 강제
+- [x] 이전 deploy ID의 stale UAT packet과 다른 preview target UAT packet으로 promotion이 오판되는 regression fixture 추가
+- [x] release report에 standalone/UAT deployment identity linkage 판정을 명시. provenance contract 10건, adapter/domain 497건, typecheck, production build, local runtime/evidence, failure-safe production closeout `[1,0,0]` 통과
+
+### Phase 55: Provider Identifier Semantics ✅ COMPLETED
+
+- [x] Netlify hosted `deployId`와 GitHub Actions `runId`를 별도 manifest field로 분리
+- [x] provider/buildEnvironment compatibility와 environment별 identifier nullability를 strict validation
+- [x] malformed cross-provider manifest와 GitHub Actions metadata regression test 추가
+- [x] provenance contract 8건, adapter/domain 497건, typecheck, production build와 Netlify CLI build 통과. CLI/local은 두 identifier를 `null`, GitHub Actions는 `runId`만 기록하도록 검증
+
+### Phase 54: Netlify CLI Provenance Semantics ✅ COMPLETED
+
+- [x] actual `netlify build --context production`에서 확인된 `DEPLOY_ID=0` placeholder를 real deploy ID로 기록하지 않도록 정규화
+- [x] `netlify-hosted` / `netlify-cli` / `github-actions` / `local` build environment를 manifest에 명시하고 hosted-only deploy ID contract 적용
+- [x] clean Netlify CLI build도 commit-linked promotion 대상이 되도록 provider/dirty/UAT 경계 유지
+- [x] provenance contract 6건, adapter/domain 497건, typecheck, production build 및 Netlify CLI production-context build 통과. CLI manifest가 full commit, `buildEnvironment=netlify-cli`, `deployId=null`을 기록함
+
+### Phase 53: Failure-safe Release Closeout ✅ COMPLETED
+
+- [x] UAT 실패에도 runtime readiness와 release report를 계속 실행하는 Node closeout orchestrator 구현
+- [x] step별 exit code/duration을 `netlify-release-closeout-execution.json`에 기록하고 전체 실패 exit code는 보존
+- [x] UAT/runtime/report 각각의 실패와 전체 성공 순서를 pure runner contract test로 고정하고 CI integrity gate에 연결
+- [x] closeout contract 4건 + CI contract 6건, adapter/domain 497건, typecheck, production build 통과. 현재 production provenance 404 시 실제 closeout이 `[1,0,0]`으로 세 단계를 모두 실행하고 최종 exit 1을 보존함
+
+### Phase 52: Deployment Provenance Gate 🚧 DEPLOYMENT PENDING
+
+- [x] build-time Netlify/GitHub/local commit metadata를 secret-free 정적 `deployment-provenance.json`으로 생성
+- [x] Netlify UAT 첫 blocking step에서 deployed manifest schema와 expected commit 일치를 검증하고 target-aware artifact 생성
+- [x] release closeout에 deployed commit/current HEAD/post-deploy UAT 결합 판정을 추가해 runner HEAD 오표기 차단
+- [x] pure contract 5건, CI contract 6건, adapter/domain 497건, typecheck, production build, local manifest HTTP smoke 통과 및 문서/evidence 동기화
+- [ ] 실제 production 배포와 provenance-linked UAT는 commit/push/deploy 승인 이후 수행. 현재 Netlify manifest는 HTTP 404이며 새 UAT는 첫 provenance step에서 의도대로 차단됨
+
+### Phase 51: CI Self-Audit Enforcement ✅ COMPLETED
+
+- [x] GitHub Actions test job에서 현재 `.github/workflows/deploy.yml`을 `verify:ci-workflow`로 직접 검사하고 failure artifact를 always-upload
+- [x] CI contract를 command 존재 여부가 아니라 test/e2e job scope, 실행 순서, upload action/path 기준으로 강화
+- [x] wrong-job/comment-only/missing-upload-action 회귀 fixture를 추가해 textual false positive 차단
+- [x] CI workflow contract 6건, stress contract 4건, portfolio policy 4건, adapter/domain 497건, typecheck, production build, workflow YAML parse, current-workflow verifier 통과 후 fingerprint evidence 재생성
+
+### Phase 50: CI Evidence Gate Integration ✅ COMPLETED
+
+- [x] GitHub Actions test job에 portfolio claim audit·stress contract gate와 claim artifact upload 추가
+- [x] production build를 사용하는 e2e job에 실제 100-request system stress와 artifact upload 추가
+- [x] CI workflow에서 gate 명령·실행 순서·artifact path drift를 검증하는 pure contract + CLI verifier 구현
+- [x] CI workflow contract 4건 + release provenance 18건, adapter/domain 497건, production E2E 11건, typecheck, production build, portfolio/CI verifier 통과. local production-build stress에서 100/100 요청과 bounded p95/RSS evidence를 workspace fingerprint로 release report에 연결
+
+### Phase 49: Portfolio Claim Integrity Gate ✅ COMPLETED
+
+- [x] current portfolio-facing docs의 unsupported outcome/status claim을 검사하는 pure policy + CLI verifier 구현
+- [x] historical proposal/whitepaper에 fixed legacy-assumption marker를 요구해 현재 성과와 분리
+- [x] `project_index.md`의 mission-accomplished 상태와 삭제된 module link를 현재 architecture/evidence link로 정정하고 architecture/glossary의 미검증 SLA·cost·accuracy 수치 제거
+- [x] policy 4건 + release provenance 15건, adapter/domain 494건, typecheck, production build 통과. current docs 9개 + legacy docs 9개 audit violations 0건을 workspace fingerprint로 release report에 연결
+
+### Phase 48: System Validation Evidence Repair ✅ COMPLETED
+
+- [x] production Next server에 100-request concurrent HTTP smoke를 수행하는 재현 가능 runner와 pure pass/fail contract 구현
+- [x] success rate·p95 latency·server process-tree RSS before/peak/after·workspace fingerprint를 `output/playwright/local-system-stress-smoke.json`에 기록하고 release closeout report에 current/stale/fail 판정 통합
+- [x] 삭제된 fake simulation을 근거로 남은 Phase 22 완료 표기를 폐기하고 `walkthrough.md`·architecture readiness·consulting case study의 `10,000 concurrent users`·`99.8%`·enterprise-ready 미검증 claim을 현재 evidence boundary에 맞게 정정
+- [x] system stress contract 4건, release provenance 12건, adapter/domain 491건, typecheck, production build 통과. local production-build stress에서 four deterministic route contract 100/100, concurrency 100, bounded p95/RSS evidence 확인
+
+### Phase 47: Provenance-linked Release Evidence Refresh ✅ COMPLETED
+
+- [x] local release QA와 direct-source integration smoke를 현재 working-tree fingerprint로 재생성
+- [x] direct-source smoke에 workspace provenance를 기록하고 stale/fail/pass 판정을 release evidence evaluator와 closeout report에 통합
+- [x] provenance targeted test 9건, adapter/domain test 488건, typecheck, production build 통과. local release QA에서 검색 56건·detail/favorites·screenshot 4개를 확인했고 direct-source smoke에서 full mode·active source 9/9·필수 4 source 각 10건을 확인한 뒤 closeout report의 local QA/demo/direct-source fingerprint 판정을 모두 `pass`로 갱신
+
+### Phase 46: Realtime Search Direct-Source Integration Smoke ✅ COMPLETED
+
+- [x] Phase 45 adapter를 로컬 `/api/realtime-search?debug=1`에서 통합 검증하고, active registry 유일 0건인 LF몰의 client-only HTML adapter를 공식 `nxapi.lfmall.co.kr/exhibition/search/v1` JSON adapter로 복구. reusable `ntl:direct-source-smoke`와 target-aware evidence를 추가해 local full mode, active direct source 9/9, 필수 4 source 각 10건, 검색 결과 75건을 확인. public browser smoke 연속 검색 56건/43건, targeted test 23건, adapter/domain test 485건, typecheck, production build 통과
+
+### Phase 45: Direct Search Source Contract Recovery ✅ COMPLETED
+
+- [x] 2026-07-15 live QA에서 확인된 direct source 404/403/429를 현재 공식 search contract와 대조해 SSF·EQL URL/markup과 Handsome JSON search API를 복구. client-only/차단/폐기 경로는 NAVER classified fallback을 유지한 채 direct registry에서 제외. SSF·EQL·Handsome live probe 각 10건, targeted test 22건, adapter/domain test 484건, typecheck, production build 통과
+
+### Phase 44: Search Quality Observation Report ✅ COMPLETED
+
+- [x] badge cohort와 compare-ready/source health를 cohort당 30 impressions directional floor 기반 `HOLD/CANDIDATE/WATCH` model로 통합하고 admin readout, privacy-trimmed local/Netlify report runner, target-aware artifacts를 구현. 부수 발견한 browser `process.memoryUsage()` runtime failure와 duplicate interaction React key를 수정하고 targeted test 19건, adapter test 482건, typecheck, build, local authenticated admin browser smoke 및 console error 0건 통과. 현재 local cohort는 HOLD이며 production cohort는 변경 배포 후 재수집 필요
+
+### Phase 43: Fingerprint-linked Demo Flow Capture ✅ COMPLETED
+
+- [x] provenance-aware local release QA 세션에 home/search/detail/favorites 캡처를 통합하고 네 실파일 존재와 current working-tree fingerprint 일치를 closeout gate로 검증. 캡처 중 발견한 `ko-KR` 서버/브라우저 day-period 차이 hydration mismatch를 서울 시간대 24시간 포맷으로 고정하고 console error 0건, targeted test 10건, adapter test 476건, `npm run typecheck`, `npm run build`, local search/detail/favorites QA를 통과
+
+### Phase 42: PDP Action-Control Option Hygiene ✅ COMPLETED
+
+- [x] HAGO PDP의 찜/장바구니/구매 button label이 option/variant identity로 유입되는 오염을 공통 option sanitizer에서 제거하고 실제 HTML 구조를 regression fixture로 고정. release QA에 polluted `variantKey` hard-fail을 추가하고 targeted test 23건, adapter test 474건, `npm run typecheck`, `npm run build`, local/Netlify detail clean identity smoke 통과
+
+### Phase 41: Release Evidence Provenance ✅ COMPLETED
+
+- [x] production UAT와 dirty working-tree pre-release smoke를 Git diff/untracked content fingerprint로 분리해 배포되지 않은 변경을 production 통과로 오표기하지 않는 release evidence contract 구축. matching/stale/fail evaluator test 3건과 adapter test 472건, local search/detail/favorites QA, Netlify public release QA, authenticated UAT 4개 step, Playwright runtime `fully-ok`를 재검증하고 provenance-aware closeout report 생성
+
+### Phase 40: Badge Conversion Temporal Integrity ✅ COMPLETED
+
+- [x] badge cohort open-rate가 나중에 기록된 impression으로 과거 product open을 역매칭하지 않도록 query/product/cohort identity에 event timestamp 경계를 추가. 입력 배열 순서와 무관하게 impression 이후 open만 인정하는 regression test를 추가하고 targeted test 13건, adapter test 469건, `npm run typecheck`, `npm run build` 통과
+
+### Phase 39: Commerce Signal Data Hygiene ✅ COMPLETED
+
+- [x] HAGO coupon title의 unresolved template 문법과 PDP option으로 유입된 CSS image dimension을 ingestion boundary에서 제거. HAGO/W컨셉 regression test 2건을 추가하고 targeted test 36건, adapter test 468건, `npm run typecheck`, `npm run build` 통과. 로컬 live API에서 template 오염 0건과 dimension option 오염 0건, Playwright snapshot에서 동일 문자열 미노출을 확인
+
+### Phase 38: AI Chat Response Reliability ✅ COMPLETED
+
+- [x] `/api/ai-chat`의 missing key, timeout, upstream failure, schema parse failure를 사용자에게 유효한 deterministic style fallback으로 복구하고 API/UI에 response source를 명시. 과거 잘린 Gemini JSON evidence를 parser regression test로 고정하고 fallback/API targeted test 7건, adapter test 466건, `npm run typecheck`, `npm run build` 통과. 로컬 API source/reason header와 브라우저 fallback badge, keyword 3개, 검색 결과 재진입 확인
+
+### Phase 37: Platform Audit & Comparison Quality Hardening ✅ COMPLETED
 
 **[1] Audit Baseline**
 - [x] `npm run typecheck`
@@ -54,6 +342,13 @@
 - [x] `app/api/product-detail-enrichment/route.ts` rate limit + abuse guard 추가
 - [x] `app/api/alert-tuning/route.ts` GET 관리자 보호 및 캐시 정책 재검토
 - [x] realtime-search degraded 상태를 `pushAppNotification()` 외에도 `InfiniteProductGrid` Search Fit 패널에 지속 노출해 fallback / partial source count를 transient toast 없이도 확인 가능하게 정리
+- [x] 검색 결과 커머스 배지 효과 관찰 loop 완성: `product_impression`을 badge cohort별 product ID batch로 기록하고, 최근 노출 ID와 매칭된 고유 `product_open` 기준 open rate를 admin diagnostics에 노출해 단순 open count를 전환율로 오해하지 않도록 정리. 로컬 Playwright에서 4개 cohort batch와 `product_open`의 product ID/cohort 일치 및 interaction API `200` 확인. `npm run typecheck`, adapter test 441건, `npm run build` 통과
+- [x] `ProductDetailModal`의 nullable early return이 hook 호출보다 앞에 있어 모달 최초 진입 시 React static flag 오류가 발생하던 구조를 hook-free wrapper와 non-null content component로 분리. 동일 검색 결과에서 상세 모달 재진입 시 React 오류 미재현 확인
+- [x] `/api/ai-insight` Gemini timeout/누락/비정상 응답 시 실제 가격 이력 기반 deterministic fallback을 `200`으로 반환하고 `X-AI-Insight-Source`/reason header와 `analysisSource`로 출처를 명시. `FutureValueInsight`는 abort cleanup과 product identity dependency를 적용하고 fallback UI를 AI 결과와 구분. 로컬 Playwright에서 `gemini_timeout` fallback, 실제 수집 30회 기반 응답, 화면 label 확인
+- [x] PDP detail persistence의 nested `variantCandidates` optional field를 Firestore-safe `null`로 직렬화하고, 읽기 normalization과 저장 serializer를 alias-free pure module로 분리. serializer/PDP targeted test 20건, adapter test 452건, `npm run typecheck`, `npm run build` 통과
+- [x] runtime hardening adversarial review에서 badge cohort open rate의 cross-query `productId` 오귀속을 발견해 query-product identity로 집계 경계를 강화하고 negative regression test 추가. diagnostics targeted test 15건과 adapter test 452건 통과
+- [x] AI insight fallback의 source-label drift 제거: fallback에서는 trend 임의 점수를 숨기고 `가격 이력 근거`/`가격 이력 구매 가치`로 표시. `InvestmentReport`가 score로 등급을 재계산하던 계약 불일치를 제거하고 API `ratingEN` 단일 enum mapping을 사용. missing-key API fallback과 상세 모달 문구를 로컬 Playwright로 확인하고 rating/fallback targeted test 8건 통과
+- [x] search interaction API의 event별 필수 payload contract를 pure parser로 통합하고 malformed JSON/불완전 이벤트를 400으로 차단해 diagnostics 지표 오염 방지. contract test 7건과 adapter test 459건, `npm run typecheck`, `npm run build` 통과. 로컬 HTTP에서 malformed JSON `400`, product ID 없는 `product_open` `400`, 정상 `suggestion_click` `200` 확인
 
 **[3] Search Architecture Simplification**
 - [x] `components/admin/SearchDiagnosticsDashboard.tsx`를 기능 단위 섹션/훅/상태 화면으로 분리해 top-level orchestration shell로 축소
@@ -157,7 +452,7 @@
 - [x] 즐겨찾기/알림 이전에 guest 사용자용 compare shortlist 저장 흐름 추가
 - [x] 브랜드/카테고리 랜딩을 SEO 페이지가 아니라 비교 funnel entry로 재설계
 
-### Phase 36: Netlify Migration ✅ IN PROGRESS
+### Phase 36: Netlify Migration 🚧 OPERATIONAL FOLLOW-UPS
 
 **[1] Execute**
 - [x] `netlify.toml` 추가
@@ -186,7 +481,7 @@
 - [ ] Netlify Functions는 AWS Lambda env 4 KB limit이 있어 runtime env allowlist 유지 필요
 - [ ] 실제 운영 계정으로 최종 시각적 폴리싱만 수동 확인
 
-### Phase 37: Mobile Real-Device Testing ✅ IN PROGRESS
+### Phase 37: Mobile Real-Device Testing ✅ COMPLETED
 
 **[1] Execute**
 - [x] Capacitor production doctor script 추가
@@ -318,7 +613,7 @@
 - [ ] 실제 `npm run cf:deploy`는 Cloudflare 인증 후 진행
 - [x] production `/admin` terminal surface 최종 검증
 
-### Phase 34: Search Learning Ops Automation 🧠 🚧 IN PROGRESS
+### Phase 34: Search Learning Ops Automation 🧠 ✅ COMPLETED
 
 **[1] Execute - Search Learning Ops Layer**
 - [x] `Search Learning Queue` + `Draft Review Queue`
@@ -602,24 +897,11 @@
 
 ---
 
-### Phase 22: Ultimate System Validation & Stress Test 🏗️ ✅ COMPLETED
+### Phase 22: Historical Simulated System Validation ⚠️ SUPERSEDED
 
-**[1] Plan**
-- [x] `tasks/todo.md` 업데이트 (MANDATORY)
-
-**[2] Execute - System Validation**
- - [x] `lib/tests/systemValidation.ts` - Full-Cycle E2E Test Suite (Type/Null Check) 실행 경로를 현재 Node strip-types 기준으로 정리하고 functional validation `50/50` 통과
- - [x] `lib/core/performanceMonitor.ts` - Latency Monitor (> 500ms) export type 정리와 admin diagnostics polling metric 연동 완료
- - [x] `components/admin/DebugConsole.tsx` - Real-time Error Log & Health Check Dashboard를 admin session telemetry + storage fallback console로 구현 완료
-
-**[3] Execute - Stress & Domain Porting**
-- [ ] Stress Test: 100+ concurrent requests (Memory/Cache Check)
-- [ ] Domain Porting: Virtual Stock Data Injection into `predictiveEngine.ts`
-
-**[4] Verify**
-- [ ] Success Rate > 98% (50 runs)
-- [ ] Prediction Error < 5% (Virtual Data)
-- [ ] `walkthrough.md` Update - [STABLE & REPLICABLE] Declaration
+- 2026-07-06 commit `d4c1bd6`에서 `systemValidation.ts`, `predictiveEngine.ts`, simulated load test를 실제 fetch 없는 검증 연극으로 판정해 제거했다.
+- 기존 50-run success, virtual prediction error, 10,000-user scalability claim은 현재 구현/검증 근거가 없으므로 폐기한다.
+- 현재 system validation evidence는 Phase 48의 실제 local production-build HTTP stress와 `output/playwright/local-system-stress-smoke.json`을 source of truth로 사용한다.
 
 ---
 
@@ -1181,7 +1463,7 @@ _Last updated: 2026-02-05_
 - [x] `SUN-10` 첫 slice 이후 `npm run ntl:compare-entry-review-ready-check` 재실행 완료. total pending은 `119 -> 118` 로 감소했고 strict gate는 의도대로 `BLOCKED` 유지, 다음 recommended slice는 `Category-Sneakers -> CompareEntry/Desktop/Category-Sneakers -> TopNav/Context` 로 이동함.
 - [x] `SUN-10` 두 번째 manual Figma slice 진행. 같은 Figma page에 `CompareEntry/Desktop/Category-Sneakers` frame과 `TopNav/Context` section(`frameId 7:2`, `sectionId 7:3`)을 생성하고 manual build worksheet의 해당 항목만 체크함.
 - [x] `SUN-10` 두 번째 slice 이후 `npm run ntl:compare-entry-review-ready-check` 재실행 완료. total pending은 `118 -> 117` 로 감소했고 strict gate는 의도대로 `BLOCKED` 유지, 다음 recommended slice는 `Brand-Musinsa -> CompareEntry/Mobile/Brand-Musinsa -> TopNav/Context` 로 이동함.
-- [ ] `SUN-10` 다음 manual Figma slice 대기. `Brand-Musinsa -> CompareEntry/Mobile/Brand-Musinsa -> TopNav/Context` 진행을 재시도했지만 Figma MCP Starter plan tool-call limit에 도달해 실제 Figma write가 차단됨. worksheet는 임의 체크하지 않았고, limit 해제 후 `scripts/figmaCompareEntryMobileBrandTopNavTemplate.mjs` 의 `fileKey` / `description` / `code` 로 같은 slice를 바로 재실행하도록 준비함.
+- [x] Historical blocker resolved: `SUN-10`의 `Brand-Musinsa -> CompareEntry/Mobile/Brand-Musinsa -> TopNav/Context` slice는 당시 Figma MCP Starter plan 제한으로 대기했으나, 2026-06-12 데스크톱 Plugin API 전체 빌드로 후속 slice와 review를 완료함. 2026-07-15 `npm run ntl:compare-entry-review-ready-check` 재검증에서 gate/artifact audit `READY`, active blocker `none` 확인.
 - [x] Figma limit fallback preview 추가 완료. `npm run ntl:compare-entry-mobile-brand-topnav-preview` 로 `output/playwright/compare-entry-mobile-brand-topnav-preview.{html,json}` 을 생성해 다음 mobile Brand `TopNav/Context` 시각 기준을 고정하되, 실제 Figma node가 없으므로 worksheet/gate는 변경하지 않도록 문서화함.
 - [x] Figma limit fallback preview를 next-section action card에 연결 완료. `output/playwright/compare-entry-review-next-section-action-card.{html,md,json}` 이 `CompareEntry/Mobile/Brand-Musinsa -> TopNav/Context` 추천 시 preview/template/generator command와 worksheet 미체크 정책을 함께 노출하도록 보강함.
 - [x] 2026-04-29 Figma MCP 재시도 결과, read-only inspection도 Starter plan tool-call limit에 계속 차단됨을 확인. 대신 `npm run ntl:compare-entry-figma-retry-packet` 을 추가해 `output/playwright/compare-entry-figma-retry-packet.{md,json}` 에 target slice, Figma fileKey/template, fallback preview, worksheet policy를 `ready-for-figma-mcp-retry` 상태로 고정함.

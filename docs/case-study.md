@@ -5,7 +5,7 @@
 - 이 프로젝트를 시작한 배경: 패션 상품은 동일하거나 유사한 상품이 여러 쇼핑몰에 흩어져 있고, 표시 가격만으로 실제 구매 조건을 판단하기 어렵다.
 - 해결하려는 사용자 문제: 사용자가 쇼핑몰별 가격, 옵션, 배송비, 회원가, 재고 상태를 직접 비교해야 하는 번거로움
 - 이 문제가 중요한 이유: 최저가처럼 보이는 상품도 배송비, 쿠폰 조건, 품절, 옵션 불일치 때문에 실제 구매 판단이 달라질 수 있다.
-- 현재 개발 진행 상태: MVP 기능은 구현되어 있고, Compare Entry funnel과 검색/운영 진단 기능을 고도화 중이다. 2026-06-09 기준 최신 커밋은 `e036792`이며 현재 워킹트리에 미커밋 변경이 많아, 구현 상태는 현재 파일 내용 기준으로만 판단한다.
+- 현재 개발 진행 상태: MVP 기능과 Compare Entry gate/landing/search hierarchy는 구현·검증 완료됐고, 검색/운영 진단과 runtime reliability를 고도화 중이다. 2026-07-15 기준 최신 커밋은 `0edd82a`이며 현재 working tree의 미커밋 변경은 현재 파일과 검증 결과 기준으로 판단한다.
 
 ## 2. 문제 정의
 
@@ -50,7 +50,7 @@
 - AI/IT 기술을 어디에 적용했는가? Gemini 2.5 Flash를 스타일 상담, 이미지 기반 검색 키워드 생성, 체형 기반 스타일 추천에 적용했다.
 - 왜 이 기술스택을 선택했는가? Next.js App Router는 UI와 API Route를 한 프로젝트에서 관리하기 쉽고, Firebase는 Auth/Firestore/Admin 기능을 빠르게 구성할 수 있으며, Netlify는 현재 primary 배포 경로로 문서화되어 있다.
 - 현재 구현된 접근: `app/api/realtime-search/route.ts`에서 검색 aggregate와 diagnostics를 처리하고, `lib/product/*`에서 비교 판단 로직을 담당한다.
-- 향후 목표 접근: Compare Entry funnel을 Figma-first gate로 승인한 뒤 landing/search/detail hierarchy를 정리하고, search-learning 운영 대시보드로 품질 개선 루프를 강화한다.
+- 현재 고도화 접근: 완료된 Compare Entry landing/search hierarchy를 기준으로 badge cohort와 compare-ready 지표를 관찰하고, search-learning 운영 대시보드와 runtime fallback을 통해 품질 개선 루프를 강화한다.
 
 ## 5. 구현 범위
 
@@ -64,10 +64,10 @@
 - Firebase Auth/Firestore favorites: `contexts/UserContext.tsx`, `hooks/useCloudStorage.ts`
 - 가격 이력/목표가 알림 서버 로직: `lib/server/priceHistoryStore.ts`, `lib/server/priceAlertScanner.ts`
 - Netlify deploy/smoke 경로: `netlify.toml`, `docs/NETLIFY_DEPLOY.md`, `package.json`
+- Compare Entry Figma gate, brand/category landing, search-result compare hierarchy, release QA closure: `output/playwright/compare-entry-review-gate.json`, `components/landing/*`, `components/product/searchResultSections.tsx`
 
 ### 개발 중
 
-- Compare Entry funnel redesign gate
 - 검색 학습/운영 대시보드 분리와 고도화
 - alert tuning 운영 흐름
 - 모바일/Capacitor production QA 흐름
@@ -77,7 +77,7 @@
 - 검증된 운영 성과 수치 공개
 - 실제 사용자 기반 전환율/사용량 분석
 - 외부 쇼핑몰별 데이터 정확도 정량 검증
-- 디자인 승인 완료 후 Compare Entry visual implementation
+- 최신 working-tree 변경의 production 재배포와 release evidence 갱신
 
 ### 이번 MVP에서 제외한 범위
 

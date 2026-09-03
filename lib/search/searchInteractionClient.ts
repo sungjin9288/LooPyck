@@ -1,18 +1,9 @@
-import { Logger, toErrorMessage } from '@/lib/core/observability';
-type SearchInteractionPayload = {
-    type: 'suggestion_click' | 'product_open' | 'store_click';
-    query: string;
-    selectedQuery?: string;
-    source?: string;
-    productId?: string;
-    productTitle?: string;
-    brand?: string;
-    context?: string;
-};
+import { Logger } from '@/lib/core/observability';
+import type { SearchInteractionClientPayload } from '@/lib/search/searchInteractionContract';
 
-export async function logSearchInteraction(payload: SearchInteractionPayload): Promise<void> {
+export async function logSearchInteraction(payload: SearchInteractionClientPayload): Promise<void> {
     try {
-        await fetch('/api/realtime-search/interactions', {
+        const response = await fetch('/api/realtime-search/interactions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -20,6 +11,12 @@ export async function logSearchInteraction(payload: SearchInteractionPayload): P
             body: JSON.stringify(payload),
             keepalive: true,
         });
+        if (!response.ok) {
+            Logger.warn('[searchInteractionClient] log rejected', {
+                status: response.status,
+                type: payload.type,
+            });
+        }
     } catch (error) {
         Logger.error('[searchInteractionClient] log failed', error);
     }

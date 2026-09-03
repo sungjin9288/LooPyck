@@ -7,6 +7,12 @@ import { groupProducts } from '../product/productMatching.ts';
 import { getGroupPurchaseMetrics } from '../product/purchasePricing.ts';
 import { analyzeVariantAlignment } from '../product/variantAlignment.ts';
 import { Logger, toErrorMessage } from '../core/observability.ts';
+import type {
+    SearchInteractionEvent,
+    SearchInteractionType,
+} from '../search/searchInteractionContract.ts';
+
+export type { SearchInteractionEvent, SearchInteractionType } from '../search/searchInteractionContract.ts';
 
 const MAX_RECENT_SNAPSHOTS = 120;
 const MAX_RECENT_INTERACTIONS = 200;
@@ -36,25 +42,20 @@ const DIRECT_ADAPTER_SOURCES = new Set<SearchSourceDiagnostic['source']>([
 
 type SearchCollectionMode = 'api' | 'direct' | 'classified';
 
-export type SearchInteractionType = 'suggestion_click' | 'product_open' | 'store_click';
-
-export interface SearchInteractionEvent {
-    type: SearchInteractionType;
-    query: string;
-    generatedAt: string;
-    selectedQuery?: string;
-    source?: ProductSource;
-    productId?: string;
-    productTitle?: string;
-    brand?: string;
-    context?: string;
-}
+export type CommerceBadgeCohort = 'none' | 'shipping' | 'benefit' | 'shipping+benefit';
 
 export type SearchInteractionSummary = {
     total: number;
     suggestionClicks: number;
+    productImpressions: number;
     productOpens: number;
     storeClicks: number;
+    badgeCohorts: Array<{
+        cohort: CommerceBadgeCohort;
+        impressions: number;
+        opens: number;
+        openRate: number;
+    }>;
     topSelectedQueries: Array<{ query: string; count: number }>;
     topOpenedBrands: Array<{ brand: string; count: number }>;
 };
@@ -217,6 +218,17 @@ function toRate(numerator: number, denominator: number): number {
     return Math.round((numerator / denominator) * 1000) / 10;
 }
 
+const COMMERCE_BADGE_COHORTS: CommerceBadgeCohort[] = ['shipping+benefit', 'shipping', 'benefit', 'none'];
+
+function parseCommerceBadgeCohort(context: string | undefined): CommerceBadgeCohort | null {
+    if (!context) {
+        return null;
+    }
+
+    const match = context.match(/(?:^|:)badges=(shipping\+benefit|shipping|benefit|none)(?:$|:)/);
+    return match ? match[1] as CommerceBadgeCohort : null;
+}
+
 export function buildSearchComparisonSnapshot(products: UnifiedProduct[]): SearchComparisonSnapshot {
     const groups = groupProducts(products);
     const comparableGroups = groups.filter((group) => group.mallCount > 1);
@@ -291,11 +303,60 @@ export function buildSearchQualitySummary(snapshots: SearchAggregationDiagnostic
 }
 
 export function buildSearchInteractionSummary(interactions: SearchInteractionEvent[]): SearchInteractionSummary {
+    const impressionTimesByCohort = new Map<CommerceBadgeCohort, Map<string, number>>();
+    const openTimesByCohort = new Map<CommerceBadgeCohort, Map<string, number>>();
+
+    COMMERCE_BADGE_COHORTS.forEach((cohort) => {
+        impressionTimesByCohort.set(cohort, new Map());
+        openTimesByCohort.set(cohort, new Map());
+    });
+
+    interactions.forEach((entry) => {
+        const cohort = parseCommerceBadgeCohort(entry.context);
+        const eventTime = Date.parse(entry.generatedAt);
+        if (!cohort || !Number.isFinite(eventTime)) {
+            return;
+        }
+
+        if (entry.type === 'product_impression') {
+            const impressionTimes = impressionTimesByCohort.get(cohort)!;
+            const productIds = [...(entry.productIds || []), ...(entry.productId ? [entry.productId] : [])];
+            productIds.forEach((productId) => {
+                const identity = `${entry.query}\u0000${productId}`;
+                const previousTime = impressionTimes.get(identity);
+                impressionTimes.set(identity, previousTime === undefined ? eventTime : Math.min(previousTime, eventTime));
+            });
+        } else if (entry.type === 'product_open' && entry.productId) {
+            const openTimes = openTimesByCohort.get(cohort)!;
+            const identity = `${entry.query}\u0000${entry.productId}`;
+            const previousTime = openTimes.get(identity);
+            openTimes.set(identity, previousTime === undefined ? eventTime : Math.max(previousTime, eventTime));
+        }
+    });
+
+    const badgeCohorts = COMMERCE_BADGE_COHORTS.map((cohort) => {
+        const impressionTimes = impressionTimesByCohort.get(cohort)!;
+        const openTimes = openTimesByCohort.get(cohort)!;
+        const matchedOpens = Array.from(impressionTimes).filter(([identity, impressionTime]) => {
+            const openTime = openTimes.get(identity);
+            return openTime !== undefined && openTime >= impressionTime;
+        }).length;
+
+        return {
+            cohort,
+            impressions: impressionTimes.size,
+            opens: matchedOpens,
+            openRate: toRate(matchedOpens, impressionTimes.size),
+        };
+    });
+
     return {
         total: interactions.length,
         suggestionClicks: interactions.filter((entry) => entry.type === 'suggestion_click').length,
+        productImpressions: badgeCohorts.reduce((sum, entry) => sum + entry.impressions, 0),
         productOpens: interactions.filter((entry) => entry.type === 'product_open').length,
         storeClicks: interactions.filter((entry) => entry.type === 'store_click').length,
+        badgeCohorts,
         topSelectedQueries: countBy(interactions.map((entry) => entry.selectedQuery).filter(Boolean) as string[])
             .slice(0, 6)
             .map((entry) => ({ query: entry.value, count: entry.count })),
@@ -497,6 +558,7 @@ function serializeInteraction(event: SearchInteractionEvent): Record<string, unk
         selectedQuery: event.selectedQuery || null,
         source: event.source || null,
         productId: event.productId || null,
+        productIds: event.productIds || [],
         productTitle: event.productTitle || null,
         brand: event.brand || null,
         context: event.context || null,
@@ -509,7 +571,12 @@ export async function persistSearchInteraction(event: SearchInteractionEvent): P
         return { enabled: false, persisted: false };
     }
 
-    const interactionId = toSafeDocId(`${event.generatedAt}_${event.type}_${event.query}_${event.productId || event.selectedQuery || ''}`);
+    const interactionIdentity = event.productId
+        || event.selectedQuery
+        || event.productIds?.[0]
+        || event.context
+        || '';
+    const interactionId = toSafeDocId(`${event.generatedAt}_${event.type}_${event.query}_${interactionIdentity}`);
     const interactionRef = db.collection(INTERACTION_COLLECTION).doc(interactionId);
 
     await interactionRef.set({
@@ -599,6 +666,9 @@ function parseInteraction(raw: Record<string, unknown>): SearchInteractionEvent 
         selectedQuery: typeof raw.selectedQuery === 'string' ? raw.selectedQuery : undefined,
         source: typeof raw.source === 'string' ? raw.source as ProductSource : undefined,
         productId: typeof raw.productId === 'string' ? raw.productId : undefined,
+        productIds: Array.isArray(raw.productIds)
+            ? raw.productIds.filter((entry): entry is string => typeof entry === 'string')
+            : undefined,
         productTitle: typeof raw.productTitle === 'string' ? raw.productTitle : undefined,
         brand: typeof raw.brand === 'string' ? raw.brand : undefined,
         context: typeof raw.context === 'string' ? raw.context : undefined,

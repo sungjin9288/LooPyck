@@ -1,5 +1,7 @@
 # LooPyck Strategic Roadmap 2026-2027
 
+> **Evidence status:** Legacy planning artifact. Numeric outcomes are assumptions, not measured LooPyck results.
+
 ## Executive Summary
 
 LooPyck이 **차세대 패션 커머스 AI 에이전트**로 진화하기 위한 3단계 확장 전략을 정의합니다.

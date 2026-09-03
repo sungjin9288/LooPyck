@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Logger } from '@/lib/core/observability';
 
 interface ErrorProps {
     error: Error & { digest?: string };
@@ -9,7 +10,7 @@ interface ErrorProps {
 
 export default function Error({ error, reset }: ErrorProps) {
     useEffect(() => {
-        console.error('[Error Boundary]', error);
+        Logger.error('[Error Boundary] render failed', error);
     }, [error]);
 
     return (

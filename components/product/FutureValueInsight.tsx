@@ -5,42 +5,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UnifiedProduct } from '@/lib/api/realtimeAggregator';
 import InvestmentReport from './InvestmentReport';
 import { designTokens } from '@/styles/designTokens';
+import type { AiInsightResult } from '@/lib/ai/aiInsightFallback';
 
 interface FutureValueInsightProps {
     product: UnifiedProduct;
 }
 
-interface ReasoningItem {
-    factor: string;
-    score: number;
-    note: string;
-}
-
-interface AIAnalysisResult {
-    insight: {
-        score: number;
-        ratingEN: string;
-        advice: string;
-        reason: string;
-        reasoning?: ReasoningItem[];
-    };
-    trend: {
-        score: number;
-        label: string;
-        keywords: string[];
-    };
-}
-
 export default function FutureValueInsight({ product }: FutureValueInsightProps) {
-    const [result, setResult] = useState<AIAnalysisResult | null>(null);
+    const [result, setResult] = useState<AiInsightResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [showReasoning, setShowReasoning] = useState(false);
 
     useEffect(() => {
+        const controller = new AbortController();
+
         const fetchAnalysis = async () => {
             setLoading(true);
             setError(false);
+            setResult(null);
             try {
                 const res = await fetch('/api/ai-insight', {
                     method: 'POST',
@@ -53,22 +36,28 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
                         // identity lets the server ground the price judgment in real history
                         source: product.source,
                         productId: product.id,
-                    })
+                    }),
+                    signal: controller.signal,
                 });
 
                 if (!res.ok) throw new Error('API Error');
-                const data = await res.json();
+                const data = await res.json() as AiInsightResult;
+                if (controller.signal.aborted) return;
                 setResult(data);
             } catch (err) {
-                console.error(err);
+                if (controller.signal.aborted) return;
                 setError(true);
             } finally {
-                setLoading(false);
+                if (!controller.signal.aborted) {
+                    setLoading(false);
+                }
             }
         };
 
         fetchAnalysis();
-    }, [product.title, product.price, product.brand, product.category1]);
+
+        return () => controller.abort();
+    }, [product.id, product.source, product.title, product.price, product.brand, product.category1]);
 
     if (loading) {
         return (
@@ -85,6 +74,7 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
     }
 
     const { insight, trend } = result;
+    const isAiResult = result.analysisSource === 'ai';
 
     const trendColor = insight.ratingEN.includes('BUY') ? designTokens.colors.success :
         insight.ratingEN === 'WAIT' ? designTokens.colors.error :
@@ -96,12 +86,12 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
             <div className="flex justify-between items-start mb-6">
                 <div>
                     <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.18em] mb-1">
-                        LooPyck AI 구매 인사이트
+                        {isAiResult ? 'LooPyck AI 구매 인사이트' : '실제 가격 이력 인사이트'}
                     </h3>
                     <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 flex-wrap">
                         <span className="line-clamp-1">{product.title}</span>
                         <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600 font-medium flex-shrink-0">
-                            {trend.label} ({trend.score}pt)
+                            {isAiResult ? `${trend.label} (${trend.score}pt)` : trend.label}
                         </span>
                     </h2>
                     {trend.keywords.length > 0 && (
@@ -125,6 +115,8 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
             <InvestmentReport
                 score={insight.score}
                 reason={insight.reason}
+                rating={insight.ratingEN}
+                label={isAiResult ? 'AI 구매 가치' : '가격 이력 구매 가치'}
             />
 
             {/* Reasoning Breakdown */}
@@ -140,7 +132,9 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
                         >
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                         </svg>
-                        {showReasoning ? 'AI 분석 근거 접기' : 'AI 분석 근거 보기'}
+                        {showReasoning
+                            ? `${isAiResult ? 'AI 분석' : '가격 이력'} 근거 접기`
+                            : `${isAiResult ? 'AI 분석' : '가격 이력'} 근거 보기`}
                     </button>
 
                     <AnimatePresence>
@@ -184,7 +178,7 @@ export default function FutureValueInsight({ product }: FutureValueInsightProps)
 
             {/* Footer */}
             <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400">
-                <span>AI 분석은 참고용입니다.</span>
+                <span>{isAiResult ? 'AI 분석은 참고용입니다.' : 'AI 응답 없이 실제 가격 이력만 반영했습니다.'}</span>
                 <span>실제 최저가와 함께 판단하세요.</span>
             </div>
         </div>

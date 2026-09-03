@@ -215,15 +215,18 @@ Redesign the LooPyck Compare Entry Funnel so users can understand compare readin
 ## Figma Kickoff Status
 
 - Figma file created: [LooPyck Compare Entry Funnel Redesign Kickoff](https://www.figma.com/design/Oj35jzmgbwnxzpTTqTcxLi)
-- Current plan key: `team::1594898637194729607`
-- Constraint discovered during kickoff:
+- Final review state: build `84/84`, review `35/35`, decision `Approved With Follow-up`
+- Gate state: `READY`, artifact audit `READY`, active blocker `none`
+- Protected manual evidence: `CompareEntry/Mobile/Brand-Musinsa` frame `14:2`, `TopNav/Context` section `14:3`
+- Historical constraint discovered during kickoff:
   - team tier is `starter`
   - `Starter` page limit blocked the intended 4-page structure
   - subsequent `use_figma` call hit the `Figma MCP tool call limit on the Starter plan`
+- Resolution: desktop Plugin API build와 guarded manual evidence 적용으로 desktop/mobile 6개 frame을 완료하고 `SUN-11` / `SUN-12`를 unblock했다.
 
-### Adjusted Structure For Starter Plan
+### Historical Starter-Plan Fallback
 
-자동 write가 다시 가능해지면 page structure는 아래 3-page fallback으로 압축한다.
+초기 자동 write 복구안은 page structure를 아래 3-page fallback으로 압축하는 것이었다.
 
 - `Compare Entry`
 - `Product Detail Compare`
@@ -231,12 +234,14 @@ Redesign the LooPyck Compare Entry Funnel so users can understand compare readin
 
 `Shared Components` 와 `Tokens / Variables` 는 `Design System Notes` page 안의 section으로 합친다.
 
-### Next Action When Figma Limit Clears
+이 fallback은 현재 blocker가 아니다. 현재 상태 확인은 아래 command와 artifact를 기준으로 한다.
 
-1. `Compare Entry` page 생성/확인
-2. desktop/mobile kickoff frame 생성
-3. `Product Detail Compare` placeholder page 생성
-4. `Design System Notes` page에 tokens/components checklist 생성
+```bash
+npm run ntl:compare-entry-review-ready-check
+```
+
+- `output/playwright/compare-entry-review-gate.json`
+- `output/playwright/compare-entry-review-artifact-audit.json`
 
 세부 frame/section/node naming은 `docs/COMPARE_ENTRY_FUNNEL_FIGMA_MANIFEST.md` 를 기준으로 맞춘다.
 실제 frame copy source와 dynamic placeholder는 `docs/COMPARE_ENTRY_FUNNEL_CONTENT_MATRIX.md` 를 기준으로 맞춘다.

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { resolveAlertTuningConfig, type AlertTuningConfig } from '@/lib/favorites/alertPersonalization';
+import { Logger } from '@/lib/core/observability';
 
 type AlertTuningResponse = {
     config?: unknown;
@@ -55,7 +56,7 @@ async function fetchAlertTuningState(): Promise<AlertTuningState> {
                 return cachedState;
             }
 
-            console.error('[useAlertTuningSettings] failed to fetch tuning config:', error);
+            Logger.error('[useAlertTuningSettings] tuning config fetch failed', error);
             return {
                 config: resolveAlertTuningConfig(),
                 updatedAt: null,

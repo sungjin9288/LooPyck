@@ -181,6 +181,21 @@ test('hago commerce parser falls back to generic benefit text when coupon_title 
     assert.equal(parsed.benefitText, 'HAGO 할인가');
 });
 
+test('hago commerce parser rejects unresolved template syntax in coupon titles', () => {
+    const parsed = parseHagoCommerceData({
+        sell_price: 43900,
+        dc_1_price: 35998,
+        is_soldout: false,
+        discount_step1_v2: {
+            coupon_title: '최대 할인적용가 {{ goods.final_sale_percent | comma }}%',
+        },
+    }, 43900);
+
+    assert.equal(parsed.benefitPrice, 35998);
+    assert.equal(parsed.benefitText, 'HAGO 할인가');
+    assert.doesNotMatch(parsed.benefitText || '', /\{\{/);
+});
+
 test('ably commerce parser maps delivery_type to a descriptive shipping label', () => {
     const parsedStandard = parseAblyCommerceData({ delivery_type: 'standard' }, 30400);
     assert.equal(parsedStandard.shippingText, '일반배송');

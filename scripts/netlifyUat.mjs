@@ -7,6 +7,12 @@ const outputPath = resolve('output/playwright/netlify-uat-summary.json');
 
 const steps = [
     {
+        id: 'deployment-provenance',
+        label: 'Netlify deployment provenance',
+        command: process.execPath,
+        args: ['scripts/netlifyDeploymentProvenanceSmoke.mjs', baseUrl],
+    },
+    {
         id: 'public-api-smoke',
         label: 'Netlify public API smoke',
         command: 'npm',
@@ -102,6 +108,7 @@ async function main() {
         generatedAt: new Date().toISOString(),
         baseUrl,
         ok: results.length === steps.length && results.every((result) => result.ok),
+        deploymentProvenance: results.find(({ id }) => id === 'deployment-provenance')?.parsed ?? null,
         steps: results.map(({ stdout, stderr, ...rest }) => ({
             ...rest,
             stdoutPreview: stdout.slice(0, 800),

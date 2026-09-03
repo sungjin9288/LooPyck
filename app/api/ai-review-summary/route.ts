@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { parseGeminiJson } from '@/lib/ai/geminiJson';
 import { sanitizePromptText, wrapUntrustedBlock } from '@/lib/ai/promptSafety';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
+import { Logger } from '@/lib/core/observability';
 
 const REQUEST_TIMEOUT_MS = 12_000;
 
@@ -133,7 +134,7 @@ ${wrapUntrustedBlock(reviewTexts, 'REVIEWS')}
                 { status: 504, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
             );
         }
-        console.error('[AI Review Summary] Server Error:', error);
+        Logger.error('[AI Review Summary] request failed', error);
         return NextResponse.json(
             { error: '서버 오류가 발생했습니다.' },
             { status: 500, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }

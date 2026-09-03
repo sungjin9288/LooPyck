@@ -129,6 +129,23 @@ test('W컨셉 PDP parser keeps generic option list when size/color selectors are
     assert.equal(parsed.optionSummary, '옵션 베이지/FREE, 블랙/FREE');
 });
 
+test('W컨셉 PDP parser rejects image dimensions collected through generic data-size attributes', () => {
+    const html = `
+        <img src="look-1.jpg" data-size="960px/5749px" />
+        <img src="look-2.jpg" data-size="960px/4174px" />
+        <div class="size-list"><button>M</button><button>L</button></div>
+    `;
+
+    const parsed = parseWConceptProductDetailHtml(html, product({
+        source: 'W_CONCEPT',
+        price: 129000,
+        link: 'https://www.wconcept.co.kr/Product/301000002',
+    }));
+
+    assert.deepEqual(parsed.sizeOptions, ['M', 'L']);
+    assert.doesNotMatch(parsed.optionSummary || '', /px/i);
+});
+
 test('zigzag PDP parser extracts shipping, benefit and option detail signals', () => {
     const html = `
         <div class="delivery-info">배송비 3,000원 / 30,000원 이상 무료</div>
@@ -313,6 +330,28 @@ test('HAGO PDP parser extracts benefit and options', () => {
     assert.equal(parsed.shippingFreeThreshold, 50000);
     assert.equal(parsed.benefitPrice, 189000);
     assert.equal(parsed.optionSummary, '색상 크림 · 사이즈 S, M');
+});
+
+test('HAGO PDP parser rejects purchase controls nested inside broad option containers', () => {
+    const html = `
+        <div class="m_prodetail-head-option m_prodetail-option">
+            <div class="mm_btnbox">
+                <button class="mm_like"><b>찜한 아이템에 추가하기</b></button>
+                <button class="btn_cart"><b>장바구니</b></button>
+                <button class="btn_buy"><b>구매하기</b></button>
+            </div>
+        </div>
+    `;
+
+    const parsed = parseHagoProductDetailHtml(html, product({
+        source: 'HAGO',
+        price: 97300,
+        link: 'https://www.hago.kr/goods/detail/674868',
+    }));
+
+    assert.equal(parsed.optionValues, undefined);
+    assert.equal(parsed.variantCandidates, undefined);
+    assert.equal(parsed.optionSummary, undefined);
 });
 
 test('EQL PDP parser extracts options and stock state', () => {

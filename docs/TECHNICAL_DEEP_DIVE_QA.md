@@ -1,5 +1,7 @@
 # LooPyck Technical Deep Dive Q&A
 
+> **Evidence status:** Legacy planning artifact. Numeric outcomes are assumptions, not measured LooPyck results.
+
 ## 20 Core Technical Questions & Answers
 
 > 기술 면접 및 인터뷰 대응을 위한 핵심 질문과 답변입니다.

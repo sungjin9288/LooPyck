@@ -1,4 +1,4 @@
-import { Logger } from './observability';
+import { Logger } from './observability.ts';
 /**
  * Performance Monitor
  * 시스템 병목 현상을 실시간으로 추적하고 로깅하는 모듈.
@@ -22,13 +22,25 @@ const metricsHistory: PerformanceMetric[] = [];
 const SLOW_THRESHOLD_MS = 500;
 const MAX_HISTORY_SIZE = 1000;
 
+type RuntimeMemoryProvider = {
+    memoryUsage?: () => NodeJS.MemoryUsage;
+};
+
+export function readRuntimeMemoryUsage(
+    runtimeProcess: RuntimeMemoryProvider | undefined = typeof process !== 'undefined' ? process : undefined
+): NodeJS.MemoryUsage | undefined {
+    return typeof runtimeProcess?.memoryUsage === 'function'
+        ? runtimeProcess.memoryUsage()
+        : undefined;
+}
+
 export const performanceMonitor = {
     /**
      * 비동기 작업의 실행 시간을 측정합니다.
      */
     async trackAsync<T>(operationName: string, fn: () => Promise<T>): Promise<T> {
         const startTime = Date.now();
-        const startMemory = typeof process !== 'undefined' ? process.memoryUsage() : undefined;
+        const startMemory = readRuntimeMemoryUsage();
 
         try {
             const result = await fn();
@@ -55,7 +67,7 @@ export const performanceMonitor = {
      */
     trackSync<T>(operationName: string, fn: () => T): T {
         const startTime = Date.now();
-        const startMemory = typeof process !== 'undefined' ? process.memoryUsage() : undefined;
+        const startMemory = readRuntimeMemoryUsage();
 
         try {
             return fn();

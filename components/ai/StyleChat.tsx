@@ -11,12 +11,14 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { resolveItemQueries, groupResolvedItems, type ResolvedVisionItemGroup } from '@/lib/search/visionItemResolver';
 import type { VisionItem } from '@/lib/ai/visionItemNormalizer';
+import type { AiChatResponseSource } from '@/lib/ai/aiChatFallback';
 
 type ChatLocale = 'ko' | 'en';
 
 interface ChatMessage {
     text: string;
     isBot: boolean;
+    responseSource?: AiChatResponseSource;
     searchKeywords?: string[];
     itemGroups?: ResolvedVisionItemGroup[];
 }
@@ -25,13 +27,21 @@ interface StyleChatProps {
     onSearch?: (keyword: string) => void;
 }
 
-const COPY: Record<ChatLocale, { title: string; welcome: string; placeholder: string; networkError: string; defaultError: string }> = {
+const COPY: Record<ChatLocale, {
+    title: string;
+    welcome: string;
+    placeholder: string;
+    networkError: string;
+    defaultError: string;
+    fallbackLabel: string;
+}> = {
     ko: {
         title: 'AI 스타일리스트',
         welcome: '안녕하세요! AI 패션 스타일리스트입니다 ✨\n원하는 스타일이나 아이템을 편하게 물어보세요.',
         placeholder: '예: 올드머니룩 추천해줘, 키 큰 남자 코디',
         networkError: '네트워크 오류가 발생했습니다.',
         defaultError: '오류가 발생했습니다.',
+        fallbackLabel: 'AI 연결 지연 · 기본 스타일 가이드',
     },
     en: {
         title: 'AI Stylist',
@@ -39,6 +49,7 @@ const COPY: Record<ChatLocale, { title: string; welcome: string; placeholder: st
         placeholder: 'e.g. old money look, tall guy outfit ideas',
         networkError: 'A network error occurred.',
         defaultError: 'Something went wrong.',
+        fallbackLabel: 'AI delayed · Essential style guide',
     },
 };
 
@@ -170,6 +181,7 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
 
             const replyText = typeof data.text === 'string' ? data.text.trim() : '';
             const replyKeywords = dedupeKeywords(data.searchKeywords);
+            const responseSource: AiChatResponseSource = data.responseSource === 'fallback' ? 'fallback' : 'ai';
             if (!replyText) {
                 setMessages((prev) => [...prev, { text: COPY[locale].defaultError, isBot: true }]);
                 return;
@@ -180,6 +192,7 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                 {
                     text: replyText,
                     isBot: true,
+                    responseSource,
                     searchKeywords: replyKeywords,
                 },
             ]);
@@ -340,6 +353,11 @@ export default function StyleChat({ onSearch }: StyleChatProps) {
                             {messages.map((msg, idx) => (
                                 <div key={idx} className={`flex ${msg.isBot ? 'justify-start' : 'justify-end'}`}>
                                     <div className="max-w-[85%] space-y-2">
+                                        {msg.isBot && msg.responseSource === 'fallback' && (
+                                            <div className="pl-1 text-[10px] font-semibold tracking-[0.08em] text-amber-700">
+                                                {COPY[locale].fallbackLabel}
+                                            </div>
+                                        )}
                                         <div
                                             className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.isBot
                                                 ? 'bg-slate-100 text-slate-800 rounded-tl-none'

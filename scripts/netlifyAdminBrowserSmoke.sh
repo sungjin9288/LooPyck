@@ -5,6 +5,7 @@ BASE_URL="${1:-${SMOKE_BASE_URL:-https://loo-pyck.netlify.app}}"
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
 SESSION="${PLAYWRIGHT_CLI_SESSION:-na-$(date +%s)}"
+SCREENSHOT_PATH="${ADMIN_BROWSER_SCREENSHOT_PATH:-}"
 
 pw() {
   PLAYWRIGHT_CLI_SESSION="$SESSION" CODEX_HOME="$CODEX_HOME" "$PWCLI" "$@"
@@ -60,6 +61,7 @@ poll_terminal_surface() {
         'Search Learning Terminal Handoff',
         'Search Learning Terminal Command Center',
         'Admin runtime telemetry',
+        '검색 품질 운영 판단',
       ].every((needle) => headings.includes(needle));
       process.exit(hasAll ? 0 : 1);
     " "$headings"; then
@@ -153,6 +155,29 @@ require_button_text "선택 AI 제안" "$BUTTON_TEXTS_JSON"
 echo "[ntl:admin-browser-smoke] verify -> debug console" >&2
 DEBUG_CONSOLE_HEADINGS_JSON="$(poll_heading_text "Recent Diagnostics Polls")"
 
+if [ -n "$SCREENSHOT_PATH" ]; then
+  mkdir -p "$(dirname "$SCREENSHOT_PATH")"
+  SCREENSHOT_PATH="$(cd "$(dirname "$SCREENSHOT_PATH")" && pwd)/$(basename "$SCREENSHOT_PATH")"
+  eval_result "() => {
+    const heading = Array.from(document.querySelectorAll('h2, h3')).find((el) => el.textContent?.trim() === '검색 품질 운영 판단');
+    if (!heading) return false;
+    heading.closest('section')?.scrollIntoView({ block: 'start' });
+    return true;
+  }" >/dev/null
+  pw screenshot --filename "$SCREENSHOT_PATH" >/dev/null
+  if [ ! -s "$SCREENSHOT_PATH" ]; then
+    echo "Admin search quality screenshot was not created: $SCREENSHOT_PATH" >&2
+    exit 1
+  fi
+fi
+
+CONSOLE_ERRORS="$(pw console error)"
+if ! printf '%s' "$CONSOLE_ERRORS" | grep -q 'Errors: 0'; then
+  printf '%s\n' "$CONSOLE_ERRORS" >&2
+  echo "Admin browser smoke found console errors" >&2
+  exit 1
+fi
+
 echo "[ntl:admin-browser-smoke] verify -> advanced chain toggles" >&2
 click_button_by_text "Advanced Chain 펼치기"
 ADVANCED_CHAIN_BUTTONS_JSON="$(poll_button_label "Advanced Chain 접기")"
@@ -168,12 +193,15 @@ cat <<EOF
 {
   "baseUrl": "$(printf '%s' "$BASE_URL")",
   "session": "$(printf '%s' "$SESSION")",
+  "screenshot": $(if [ -n "$SCREENSHOT_PATH" ]; then printf '"%s"' "$SCREENSHOT_PATH"; else printf 'null'; fi),
   "terminalSurface": {
     "overview": true,
     "validation": true,
     "handoff": true,
     "commandCenter": true,
     "debugConsole": true,
+    "searchQualityObservation": true,
+    "consoleErrors": 0,
     "queueActions": true,
     "advancedSearchChainToggle": true,
     "advancedPlaybookChainToggle": true

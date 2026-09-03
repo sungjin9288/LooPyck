@@ -194,16 +194,16 @@ test('buildAggregationDiagnostics classifies NAVER-only non-direct sources as cl
 });
 
 // ── 프로덕션 실측 기반 소스 비활성화 (2026-07-10 관찰 리뷰) ─────────────
-// COUPANG·SSENSE는 로컬 IP에서만 수확되던 스크레이퍼 — Netlify에서 33~35회
-// 연속 무수확(403) 실측 후 배선 해제. 실행 레지스트리에서만 제외하고
+// Netlify/IP 차단 또는 공식 검색 contract 폐기가 확인된 source는 배선 해제.
+// 실행 레지스트리에서만 제외하고
 // DIRECT_SOURCE_ORDER(머지·진단 순서 의미)는 그대로 둔다.
 
-test('DISABLED_DIRECT_SOURCES: COUPANG·SSENSE가 실측 사유와 함께 등재', () => {
-    assert.ok(DISABLED_DIRECT_SOURCES.COUPANG, 'COUPANG 비활성 사유 필요');
-    assert.ok(DISABLED_DIRECT_SOURCES.SSENSE, 'SSENSE 비활성 사유 필요');
-    // 사유는 복원 판단이 가능하도록 실측 근거를 포함해야 한다
-    assert.match(DISABLED_DIRECT_SOURCES.COUPANG ?? '', /무수확|403|Netlify/);
-    assert.match(DISABLED_DIRECT_SOURCES.SSENSE ?? '', /무수확|403|Netlify/);
+test('DISABLED_DIRECT_SOURCES: 회복 불가 source가 실측 사유와 함께 등재', () => {
+    const expectedDisabled: ProductSource[] = ['COUPANG', 'SSENSE', 'ZIGZAG', 'FARFETCH', 'SIVILLAGE'];
+    for (const source of expectedDisabled) {
+        assert.ok(DISABLED_DIRECT_SOURCES[source], `${source} 비활성 사유 필요`);
+        assert.match(DISABLED_DIRECT_SOURCES[source] ?? '', /2026|403|429|client-only|redirect|Netlify/);
+    }
 });
 
 test('buildDirectRegistry: 비활성 소스는 실행 레지스트리에서 제외된다', () => {
@@ -222,7 +222,7 @@ test('buildDirectRegistry: 비활성 소스는 실행 레지스트리에서 제�
         (source) => !(source in DISABLED_DIRECT_SOURCES)
     );
     assert.deepEqual(sources, expected);
-    assert.equal(sources.length, 12);
+    assert.equal(sources.length, 9);
 });
 
 test('비활성 소스의 NAVER 분류 상품은 classified_naver 행으로 진단에 남는다', () => {

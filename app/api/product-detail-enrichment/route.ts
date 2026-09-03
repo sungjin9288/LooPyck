@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { UnifiedProductSchema } from '@/lib/types/schema';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 import { enrichProductsWithPdpDetails } from '@/lib/server/pdpDetailService';
+import { Logger } from '@/lib/core/observability';
 
 const EnrichmentRequestSchema = z.object({
     products: z.array(UnifiedProductSchema).min(1).max(8),
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
             }
         );
     } catch (error) {
-        console.error('[product-detail-enrichment] request failed:', error);
+        Logger.error('[product-detail-enrichment] request failed', error);
         return NextResponse.json(
             { error: 'internal_error' },
             {

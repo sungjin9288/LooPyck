@@ -4,6 +4,7 @@ import { analyzeFashionQuery, rerankProductsByFashionRelevance } from '@/lib/sea
 import { isPlausibleCrossMallPrice } from '@/lib/search/priceOutlierFilter';
 import { checkRateLimit, getRateLimitKey, normalizeQuery } from '@/lib/security/requestGuards';
 import { isFashionRelated } from '@/lib/core/domainGuard';
+import { Logger } from '@/lib/core/observability';
 
 export const runtime = 'nodejs';
 
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
             }
         );
     } catch (error) {
-        console.error('[affordable-alternatives]', error);
+        Logger.error('[affordable-alternatives] search failed', error);
         return NextResponse.json({ alternatives: [] });
     }
 }

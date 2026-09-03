@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Logger } from '@/lib/core/observability';
 
 interface AIReviewSummaryProps {
     reviews: { text: string; rating: number; fit: string | null }[];
@@ -46,7 +47,7 @@ export default function AIReviewSummary({ reviews }: AIReviewSummaryProps) {
                 const data = await res.json();
                 setSummary(data);
             } catch (err) {
-                console.error('리뷰 요약 실패:', err);
+                Logger.error('[AIReviewSummary] request failed', err);
                 setError(true);
             } finally {
                 setLoading(false);

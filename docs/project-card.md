@@ -12,7 +12,7 @@
 - 핵심 기술스택: Next.js App Router, React, TypeScript, Tailwind CSS, Firebase Auth/Firestore/Admin, Gemini 2.5 Flash, Naver Shopping API, Cheerio, Netlify, Capacitor
 - 이력서 반영 가능 여부: 조건부 가능
 - 판단 이유: 검색, 비교, AI 스타일 추천, 즐겨찾기, 가격 이력, 알림, 관리자 진단, 배포/검증 스크립트의 코드 근거가 있다. 다만 README와 일부 문서의 성과 수치, 정확도, 비용 절감 수치는 현재 코드만으로 검증되지 않아 이력서에서는 제외해야 한다.
-- 분석 기준: 2026-06-09 현재 워킹트리와 최신 커밋 `e036792`(`feat: Apps in Toss (앱인토스) 통합 기반 설정`, 2026-03-18)을 함께 참고했다. 워킹트리에 기존 미커밋 변경이 많아, 포트폴리오 표현은 현재 파일 내용 기준으로만 작성한다.
+- 분석 기준: 2026-07-15 현재 워킹트리와 최신 커밋 `0edd82a`(2026-07-10)를 함께 참고했다. 워킹트리의 runtime hardening 변경은 아직 커밋되지 않았으므로 포트폴리오 표현은 현재 파일과 검증 결과 기준으로 작성한다.
 
 ## 2. One-liner
 
@@ -40,8 +40,9 @@
   - Firebase Auth 및 Firestore 즐겨찾기 동기화
   - Gemini 2.5 Flash 기반 AI chat, vision, style recommendation API
   - Netlify 배포 스크립트와 smoke/UAT 스크립트
+- 구현 완료된 비교 진입면:
+  - Compare Entry Figma-first gate, brand/category landing, search-result compare hierarchy와 release QA closure
 - 개발 중인 기능:
-  - Compare Entry funnel의 Figma-first redesign gate
   - 검색 학습/운영 대시보드 고도화
   - price history, variant history, alert tuning 운영 안정화
 - 아직 할 수 없는 기능:
@@ -99,7 +100,7 @@ User
 - 주요 데이터 흐름: 검색 query가 `app/api/realtime-search/route.ts`로 들어가고, `aggregateRealtimeSearchDetailed()`가 직접 소스와 Naver fallback을 합친 뒤 `rerankProductsByFashionRelevance()`와 diagnostics 저장을 수행한다.
 - 주요 모듈 구성: `app/`은 route와 page, `components/`는 UI, `hooks/`는 client state, `lib/api`는 search adapter, `lib/product`는 비교/가격/옵션 판단, `lib/ai`는 Gemini 응답 처리, `lib/server`는 Firebase Admin 의존 기능을 담당한다.
 - API 구조: `/api/search`, `/api/realtime-search`, `/api/ai-chat`, `/api/ai-vision`, `/api/style-recommend`, `/api/price-history`, `/api/jobs/scan-price-alerts`, `/api/admin/access` 등.
-- AI/LLM 처리 흐름: route별 Zod schema와 rate limit을 통과한 요청이 Gemini 2.5 Flash로 전달되고, `parseGeminiJson()`으로 JSON 응답을 검증한다. `style-recommend`는 실패 시 deterministic fallback을 반환한다.
+- AI/LLM 처리 흐름: route별 Zod schema와 rate limit을 통과한 요청이 Gemini 2.5 Flash로 전달되고 JSON response contract를 검증한다. `ai-chat`, `ai-insight`, `style-recommend`는 key 누락, timeout, parse failure에 deterministic fallback을 반환하며 source를 명시한다.
 - DB 또는 저장소 구조: Firestore `artifacts/{appId}/users/{userId}/favorites`, alerts, devices와 server-side price history collection을 사용한다.
 - 인증/보안/환경변수 처리 방식: Firebase client auth, Firebase Admin token verification, `ADMIN_UIDS`, `CRON_SECRET`, `GEMINI_API_KEY`, Naver API keys, rate limit, timeout, URL sanitization을 사용한다.
 - 배포 구조가 있다면 설명: Netlify가 primary 배포 경로이고, Vercel cron은 fallback 형태로 설정되어 있다. Docker standalone image도 존재한다.
@@ -120,9 +121,9 @@ User
 | 구현 완료 | Naver Shopping API 검색 | 구현 완료 | `app/api/search/route.ts` | 가능 |
 | 구현 완료 | 다중 소스 실시간 검색과 fallback | 구현 완료 / 고도화 중 | `app/api/realtime-search/route.ts`, `lib/api/realtimeAggregator.ts` | 가능 |
 | 구현 완료 | 상품 그룹핑/비교 근거 | 구현 완료 / 품질 고도화 중 | `lib/product/productMatching.ts`, `lib/product/purchasePricing.ts` | 가능 |
-| 구현 완료 | AI chat/vision/style recommendation | 구현 완료 / 운영 품질 검증 필요 | `app/api/ai-chat/route.ts`, `app/api/ai-vision/route.ts`, `app/api/style-recommend/route.ts` | 가능 |
+| 구현 완료 | AI chat/vision/style recommendation | fallback 흐름 검증 완료 / live AI 품질 검증 필요 | `app/api/ai-chat/route.ts`, `app/api/ai-vision/route.ts`, `app/api/style-recommend/route.ts` | 가능, 운영 품질 수치 제외 |
 | 구현 완료 | Firestore 즐겨찾기 동기화 | 구현 완료 | `hooks/useCloudStorage.ts` | 가능 |
-| 개발 중 | Compare Entry funnel redesign | 개발 중 | `docs/COMPARE_ENTRY_FUNNEL_EXECUTION_PLAN.md`, `components/landing/CompareEntryPage.tsx` | 조건부 가능 |
+| 구현 완료 | Compare Entry funnel redesign | gate/landing/search hierarchy/release closure 완료 | `output/playwright/compare-entry-review-gate.json`, `components/landing/CompareEntryPage.tsx`, `components/product/searchResultSections.tsx` | 가능, 성과 수치 제외 |
 | 개발 중 | 검색 학습/운영 진단 대시보드 | 고도화 중 | `components/admin/SearchDiagnosticsDashboard.tsx`, `lib/search/searchLearning*.ts` | 조건부 가능 |
 | 미구현 | 검증된 사업 성과 수치 | 미구현 | 코드 근거 없음 | 보류 |
 | 검증 필요 | 운영 배포 상태와 실제 사용자 트래픽 | 검증 필요 | `docs/NETLIFY_DEPLOY.md`, smoke artifact는 별도 확인 필요 | 조건부 가능 |
@@ -137,7 +138,7 @@ User
 - 실행 파일: `scripts/netlifySmokeCheck.mjs`, `scripts/netlifyUat.mjs`, `scripts/netlifyCompareEntryReviewPrep.sh`
 - 테스트 파일: `tests/productMatching.test.ts`, `tests/purchasePricing.test.ts`, `tests/purchaseDecision.test.ts`, `tests/styleRecommend.test.ts`, `tests/compareShortlist.test.ts`, `tests/searchDiagnostics.test.ts`
 - README 또는 문서 근거: `README.md`, `docs/NETLIFY_DEPLOY.md`, `docs/HANDOVER_MANUAL.md`, `docs/COMPARE_ENTRY_FUNNEL_EXECUTION_PLAN.md`
-- 최근 git 근거: 최신 커밋은 `e036792`이며, 현재 `git status` 기준 README, app/api, components, lib, tests, docs, scripts 등에 다수의 미커밋 변경과 신규 파일이 있다. 따라서 “직접 구현” 범위는 저장소 소유자 확인 전까지 `확인 필요`로 유지한다.
+- 최근 git 근거: 최신 커밋은 `0edd82a`이며, 현재 `git status` 기준 API, components, lib, tests, docs에 미커밋 runtime hardening 변경과 신규 파일이 있다. 구현 완료 claim은 코드와 검증 artifact가 함께 있는 범위로 제한한다.
 - 실행 방법이 명확한지: `npm run dev`, `npm run typecheck`, `npm run test:adapters`, Netlify deploy/smoke script가 명확함
 - 스크린샷/데모가 필요한 부분: 검색 결과, 상세 비교 decision block, 즐겨찾기/알림, 관리자 diagnostics, Compare Entry funnel
 

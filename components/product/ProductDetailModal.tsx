@@ -33,6 +33,7 @@ import { classifyRetailerTrust, getRetailerTrustLabel } from '@/lib/api/sourceCa
 import { getFreshnessBadgeClassName, summarizeDetailFreshness } from '@/lib/product/dataFreshness';
 import { getMatchStrategyLabel } from '@/lib/product/matchStrategyLabel';
 import { logSearchInteraction } from '@/lib/search/searchInteractionClient';
+import { Logger, toErrorMessage } from '@/lib/core/observability';
 
 interface ProductDetailModalProps {
     product: UnifiedProduct | null;
@@ -42,8 +43,19 @@ interface ProductDetailModalProps {
     matchStrategy?: GroupedProduct['matchStrategy'];
 }
 
-export default function ProductDetailModal({ product, onClose, variants = [], matchConfidence, matchStrategy }: ProductDetailModalProps) {
-    if (!product) return null;
+type ProductDetailModalContentProps = Omit<ProductDetailModalProps, 'product'> & {
+    product: UnifiedProduct;
+};
+
+export default function ProductDetailModal(props: ProductDetailModalProps) {
+    if (!props.product) {
+        return null;
+    }
+
+    return <ProductDetailModalContent {...props} product={props.product} />;
+}
+
+function ProductDetailModalContent({ product, onClose, variants = [], matchConfidence, matchStrategy }: ProductDetailModalContentProps) {
     const baseVariants = React.useMemo(
         () => (variants.length > 0 ? variants : [product]),
         [product, variants]
@@ -95,7 +107,9 @@ export default function ProductDetailModal({ product, onClose, variants = [], ma
                 }
             } catch (error) {
                 if (!cancelled) {
-                    console.error('[ProductDetailModal] detail enrichment failed:', error);
+                    Logger.warn('[ProductDetailModal] detail enrichment failed', {
+                        error: toErrorMessage(error),
+                    });
                     setDetailRefreshError('상세 페이지 확인에 실패했습니다.');
                     setEnrichedVariants(baseVariants);
                 }

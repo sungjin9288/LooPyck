@@ -20,6 +20,7 @@ import { rerankProductsByPreference, type PreferenceProfile } from '@/lib/search
 import { logSearchInteraction } from '@/lib/search/searchInteractionClient';
 import { describeCommerceBadgeContext } from '@/lib/product/cardCommerceBadges';
 import { buildRealtimeSearchPersistentFeedback } from '@/lib/search/realtimeSearchFeedback';
+import { Logger, toErrorMessage } from '@/lib/core/observability';
 
 interface InfiniteProductGridProps {
     query: string;
@@ -56,6 +57,8 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
         topCategories: [],
     });
     const observerTarget = useRef<HTMLDivElement>(null);
+    const loggedImpressionKeys = useRef(new Set<string>());
+    const loggedImpressionScope = useRef('');
 
     const { recentlyViewed, addToRecentlyViewed } = useRecentlyViewed();
 
@@ -199,6 +202,57 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
     );
 
     useEffect(() => {
+        if (!query || isInitialLoading) {
+            return;
+        }
+
+        const filterScope = `${filters.priceRange}:${filters.brand}:${filters.source}`;
+        const scope = `${query}:${sortOption}:${filterScope}`;
+        if (loggedImpressionScope.current !== scope) {
+            loggedImpressionScope.current = scope;
+            loggedImpressionKeys.current.clear();
+        }
+        const visibleGroups = [...enrichedHighlightGroups, ...gridGroups];
+        const uniqueGroups = new Map(visibleGroups.map((group) => [group.groupKey, group]));
+        const productIdsByBadgeContext = new Map<string, string[]>();
+
+        uniqueGroups.forEach((group) => {
+            const representative = enrichedProductsByKey[buildProductKey(group.representative)] || group.representative;
+            const badgeContext = describeCommerceBadgeContext(representative);
+            const impressionKey = `${scope}:${buildProductKey(representative)}:${badgeContext}`;
+            if (loggedImpressionKeys.current.has(impressionKey)) {
+                return;
+            }
+
+            loggedImpressionKeys.current.add(impressionKey);
+            const cohortProductIds = productIdsByBadgeContext.get(badgeContext) || [];
+            cohortProductIds.push(representative.id);
+            productIdsByBadgeContext.set(badgeContext, cohortProductIds);
+        });
+
+        productIdsByBadgeContext.forEach((productIds, badgeContext) => {
+            for (let index = 0; index < productIds.length; index += 40) {
+                void logSearchInteraction({
+                    type: 'product_impression',
+                    query,
+                    productIds: productIds.slice(index, index + 40),
+                    context: `search_results:${badgeContext}`,
+                });
+            }
+        });
+    }, [
+        enrichedHighlightGroups,
+        enrichedProductsByKey,
+        filters.brand,
+        filters.priceRange,
+        filters.source,
+        gridGroups,
+        isInitialLoading,
+        query,
+        sortOption,
+    ]);
+
+    useEffect(() => {
         let cancelled = false;
 
         const productsToRefresh = highlightGroups
@@ -248,7 +302,9 @@ export default function InfiniteProductGrid({ query, sort = 'sim', onSearch }: I
                 });
             } catch (error) {
                 if (!cancelled) {
-                    console.error('[InfiniteProductGrid] highlight enrichment failed:', error);
+                    Logger.warn('[InfiniteProductGrid] highlight enrichment failed', {
+                        error: toErrorMessage(error),
+                    });
                 }
             }
         }

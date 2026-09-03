@@ -9,6 +9,7 @@ import { mergeSourceQueryPlans } from '@/lib/searchLearning/searchLearningRewrit
 import { normalizeSearchSort, type SearchSort } from '@/types/searchSort';
 import { checkRateLimit, getRateLimitKey, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
 import { persistPriceHistorySnapshot, searchTrackedProductsByFashionQuery } from '@/lib/server/priceHistoryStore';
+import { Logger, toErrorMessage } from '@/lib/core/observability';
 
 export const runtime = 'nodejs';
 const SEARCH_AGGREGATION_TIMEOUT_MS = 12_000;
@@ -160,7 +161,9 @@ export async function GET(request: NextRequest) {
             aggregateRealtimeSearchDetailed(effectiveQuery, page, sort, sourceQueryPlan),
             SEARCH_AGGREGATION_TIMEOUT_MS
         ).catch(async (error) => {
-            console.warn('[RealtimeSearch] full aggregation failed, falling back to NAVER only:', error);
+            Logger.warn('[RealtimeSearch] full aggregation failed; using NAVER fallback', {
+                error: toErrorMessage(error),
+            });
             fallbackMode = 'naver_only';
             return await aggregateRealtimeSearchNaverOnly(
                 effectiveQuery,
@@ -237,7 +240,9 @@ export async function GET(request: NextRequest) {
         let variantHistoriesPersisted = 0;
         const searchDiagnosticsPersistPromise = withSoftTimeout(
             persistSearchDiagnostics(diagnosticsPayload).catch((persistError) => {
-                console.warn('[SearchDiagnostics] persist failed:', persistError);
+                Logger.warn('[SearchDiagnostics] persist failed', {
+                    error: toErrorMessage(persistError),
+                });
                 return null;
             }),
             SEARCH_SIDE_EFFECT_TIMEOUT_MS
@@ -245,14 +250,18 @@ export async function GET(request: NextRequest) {
 
         const historyPersistPromise = withSoftTimeout(
             persistPriceHistorySnapshot(reranked.products, effectiveQuery).catch((ingestError) => {
-                console.warn('[PriceHistory] ingest failed:', ingestError);
+                Logger.warn('[PriceHistory] ingest failed', {
+                    error: toErrorMessage(ingestError),
+                });
                 return null;
             }),
             SEARCH_SIDE_EFFECT_TIMEOUT_MS
         );
         const learningPersistPromise = withSoftTimeout(
             persistSearchLearningCandidate(diagnosticsPayload).catch((learningError) => {
-                console.warn('[SearchLearning] persist failed:', learningError);
+                Logger.warn('[SearchLearning] persist failed', {
+                    error: toErrorMessage(learningError),
+                });
                 return null;
             }),
             SEARCH_SIDE_EFFECT_TIMEOUT_MS
@@ -272,8 +281,7 @@ export async function GET(request: NextRequest) {
         );
 
         if (fallbackSources.length > 0) {
-            console.info('[RealtimeSearch] source fallback', {
-                query: effectiveQuery,
+            Logger.info('[RealtimeSearch] source fallback', {
                 page,
                 fallbackSources: fallbackSources.map((entry) => ({
                     source: entry.source,
@@ -302,7 +310,7 @@ export async function GET(request: NextRequest) {
             }
         );
     } catch (error) {
-        console.error('Real-time Search API Error:', error);
+        Logger.error('[RealtimeSearch] request failed', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 2,
+  "reviewedAt": "2026-09-03",
+  "reviewBy": "2026-10-03",
+  "maxVulnerablePackages": {
+    "high": 0,
+    "critical": 0
+  },
+  "allowedAdvisories": []
+}

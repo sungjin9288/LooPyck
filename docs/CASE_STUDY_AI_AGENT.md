@@ -1,5 +1,7 @@
 # Case Study: Zero-Cost AI Agent 구축기
 
+> **Evidence status:** Legacy planning artifact. Numeric outcomes are assumptions, not measured LooPyck results.
+
 ## AI로 7개 쇼핑몰을 자동 분석하고, 비용을 99.8% 절감한 방법
 
 **Author**: LooPyck Development Team  

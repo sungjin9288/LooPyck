@@ -25,8 +25,11 @@ export const Logger = {
                 .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]')
                 .replace(/\d{3}-\d{3,4}-\d{4}/g, '[PHONE]');
         }
+        if (Array.isArray(data)) {
+            return data.map((entry) => Logger.maskPII(entry));
+        }
         if (typeof data === 'object' && data !== null) {
-            const masked: Record<string, unknown> = Array.isArray(data) ? {} : {};
+            const masked: Record<string, unknown> = {};
             for (const key in data as Record<string, unknown>) {
                 if (key.toLowerCase().includes('password') || key.toLowerCase().includes('token')) {
                     masked[key] = '[REDACTED]';

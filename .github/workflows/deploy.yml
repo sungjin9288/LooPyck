@@ -27,18 +27,29 @@ jobs:
         run: npm ci
 
       - name: Security audit
-        run: npm audit --audit-level=moderate || true
+        run: npm run verify:dependency-audit
 
       - name: Type check & Build
         run: npm run build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
+        if: always()
         with:
           name: build-output
-          path: .next/
+          path: |
+            .next/
+            public/deployment-provenance.json
           include-hidden-files: true
           retention-days: 1
+
+      - name: Upload dependency audit evidence
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: dependency-audit-policy
+          path: output/playwright/dependency-audit-policy.json
+          retention-days: 7
 
   # 타입 검사 + 단위 테스트 (test:adapters — 카운트는 tests/ 실측 기준)
   test:
@@ -62,6 +73,37 @@ jobs:
       - name: Unit tests
         run: npm run test:adapters
 
+      - name: Integrity contract tests
+        run: |
+          npm run test:system-stress-contract
+          npm run test:deployment-provenance-contract
+          npm run test:release-closeout-contract
+          npm run test:portfolio-claims-contract
+          npm run test:ci-workflow-contract
+          npm run test:dependency-audit-contract
+
+      - name: Portfolio claim audit
+        run: npm run verify:portfolio-claims
+
+      - name: CI workflow audit
+        run: npm run verify:ci-workflow
+
+      - name: Upload portfolio claim audit
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: portfolio-claim-audit
+          path: output/playwright/portfolio-claim-audit.json
+          retention-days: 7
+
+      - name: Upload CI workflow audit
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: ci-workflow-audit
+          path: output/playwright/ci-workflow-contract.json
+          retention-days: 7
+
   # E2E 렌더링 회귀 가드 (Playwright, 프로덕션 빌드 기준)
   e2e:
     runs-on: ubuntu-latest
@@ -81,8 +123,19 @@ jobs:
       - name: Install Playwright chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Build (E2E runs against next start)
+      - name: Build (E2E runs against standalone runtime)
         run: npm run build
+
+      - name: Local production-build stress
+        run: npm run ntl:system-stress
+
+      - name: Upload system stress evidence
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: local-system-stress
+          path: output/playwright/local-system-stress-smoke.json
+          retention-days: 7
 
       - name: E2E tests
         run: npm run test:e2e

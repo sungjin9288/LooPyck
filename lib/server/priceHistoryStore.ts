@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore';
-import { isProductSource, type GroupedProduct, type ProductSource, type ProductVariantCandidate, type UnifiedProduct } from '@/lib/api/types';
+import { isProductSource, type GroupedProduct, type ProductSource, type UnifiedProduct } from '@/lib/api/types';
 import { buildOptionHistoryIdentity, buildOptionHistoryStorageKey } from '@/lib/product/optionHistory';
 import { groupProducts } from '@/lib/product/productMatching';
 import { analyzeFashionQuery, searchProductsByFashionQuery, type FashionQueryAnalysis } from '@/lib/search/fashionQueryAssistant';
@@ -8,6 +8,7 @@ import { buildVariantHistoryIdentity, buildVariantHistoryStorageKey } from '@/li
 import { sanitizeExternalUrl } from '@/lib/security/urlSafety';
 import { getAdminDb } from '@/lib/server/firebaseAdmin';
 import { Logger, toErrorMessage } from '../core/observability.ts';
+import { normalizeOptionalVariantCandidates, serializeVariantCandidatesForFirestore } from './firestoreProductSerialization.ts';
 
 const MAX_PRODUCTS_PER_INGEST = 40;
 const MAX_SITEMAP_PRODUCTS = 200;
@@ -60,38 +61,6 @@ function normalizeOptionalStringArray(value: unknown, maxItems: number, maxLengt
     return normalized.length > 0 ? normalized.slice(0, maxItems) : undefined;
 }
 
-function normalizeOptionalVariantCandidates(value: unknown, maxItems: number = 24): ProductVariantCandidate[] | undefined {
-    if (!Array.isArray(value)) return undefined;
-
-    const normalized = value.flatMap((entry) => {
-        if (!entry || typeof entry !== 'object') {
-            return [];
-        }
-
-        const candidate = entry as Record<string, unknown>;
-        const label = normalizeOptionalText(candidate.label, 120);
-        if (!label) {
-            return [];
-        }
-
-        const normalizedCandidate: ProductVariantCandidate = {
-            label,
-            variantId: normalizeOptionalText(candidate.variantId, 120),
-            variantSku: normalizeOptionalText(candidate.variantSku, 120),
-            color: normalizeOptionalText(candidate.color, 60),
-            size: normalizeOptionalText(candidate.size, 40),
-            price: normalizeOptionalMoney(candidate.price),
-            stockStatus: candidate.stockStatus === 'in_stock' || candidate.stockStatus === 'low_stock' || candidate.stockStatus === 'sold_out' || candidate.stockStatus === 'unknown'
-                ? candidate.stockStatus
-                : undefined,
-        };
-
-        return [normalizedCandidate];
-    }).slice(0, maxItems);
-
-    return normalized.length > 0 ? normalized : undefined;
-}
-
 function normalizeCount(value: unknown): number | undefined {
     if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
     return Math.max(0, Math.floor(value));
@@ -142,7 +111,7 @@ function buildStoredProductRecord(product: UnifiedProduct): Record<string, unkno
         optionValues: product.optionValues || null,
         sizeOptions: product.sizeOptions || null,
         colorOptions: product.colorOptions || null,
-        variantCandidates: product.variantCandidates?.slice(0, 24) || null,
+        variantCandidates: serializeVariantCandidatesForFirestore(product.variantCandidates),
         detailCollectedAt: product.detailCollectedAt || null,
         variantHistoryKey: variantHistory.variantKey || null,
         variantHistoryLabel: variantHistory.variantLabel || null,

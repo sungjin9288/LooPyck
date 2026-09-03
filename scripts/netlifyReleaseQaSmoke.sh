@@ -7,6 +7,8 @@ PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
 SESSION="${PLAYWRIGHT_CLI_SESSION:-nq-$(date +%s)}"
 SEARCH_PLACEHOLDER='찾고 싶은 옷을 검색하세요'
 SEARCH_QUERY='남자 후드'
+CAPTURE_SCREENSHOTS="${RELEASE_QA_SCREENSHOTS:-0}"
+DEMO_SCREENSHOT_DIR="$(pwd)/output/playwright"
 
 pw() {
   PLAYWRIGHT_CLI_SESSION="$SESSION" CODEX_HOME="$CODEX_HOME" "$PWCLI" "$@"
@@ -58,6 +60,28 @@ displayed_count() {
       process.stdout.write(match ? match[1] : '0');
     });
   "
+}
+
+capture_demo_screenshot() {
+  local file_name="$1"
+  local capture_mode="${2:-viewport}"
+  if [ "$CAPTURE_SCREENSHOTS" != "1" ]; then
+    printf ''
+    return 0
+  fi
+
+  mkdir -p "$DEMO_SCREENSHOT_DIR"
+  local full_path="$DEMO_SCREENSHOT_DIR/$file_name"
+  if [ "$capture_mode" = "full-page" ]; then
+    pw screenshot --filename "$full_path" --full-page >/dev/null
+  else
+    pw screenshot --filename "$full_path" >/dev/null
+  fi
+  if [ ! -s "$full_path" ]; then
+    echo "Demo screenshot was not created: ${full_path}" >&2
+    return 1
+  fi
+  printf '%s' "$full_path"
 }
 
 poll_search_result() {
@@ -197,8 +221,12 @@ cleanup() {
 
 trap cleanup EXIT
 
+echo "[ntl:release-qa-smoke] provenance -> ${BASE_URL}" >&2
+DEPLOYMENT_PROVENANCE="$(node scripts/netlifyDeploymentProvenanceSmoke.mjs "$BASE_URL")"
+
 echo "[ntl:release-qa-smoke] open -> ${BASE_URL}" >&2
 OPEN_OUTPUT="$(pw open "$BASE_URL")"
+pw resize 1440 1100 >/dev/null
 SNAPSHOT_PATH="$(snapshot_path_from_output "$OPEN_OUTPUT")"
 if [ -z "$SNAPSHOT_PATH" ]; then
   echo "Initial snapshot path not found" >&2
@@ -206,12 +234,14 @@ if [ -z "$SNAPSHOT_PATH" ]; then
 fi
 
 TEXTBOX_REF="$(search_ref_from_snapshot "$SNAPSHOT_PATH")"
+MAIN_SEARCH_SCREENSHOT="$(capture_demo_screenshot 'demo-flow-main-search.png')"
 
 echo "[ntl:release-qa-smoke] search -> ${SEARCH_QUERY}" >&2
 pw fill "$TEXTBOX_REF" "$SEARCH_QUERY" >/dev/null
 pw press Enter >/dev/null
 SEARCH_BODY="$(poll_search_result "$SEARCH_QUERY")"
 SEARCH_COUNT="$(displayed_count "$SEARCH_BODY")"
+SEARCH_RESULTS_SCREENSHOT="$(capture_demo_screenshot 'demo-flow-search-results.png')"
 
 DETAIL_PRODUCT_JSON="$(resolve_detail_product "$SEARCH_QUERY")"
 DETAIL_PAGE_HREF="$(printf '%s' "$DETAIL_PRODUCT_JSON" | node -e "
@@ -227,16 +257,40 @@ DETAIL_PRODUCT_TITLE="$(printf '%s' "$DETAIL_PRODUCT_JSON" | node -e "
 
 echo "[ntl:release-qa-smoke] open -> detail page" >&2
 pw open "$DETAIL_PAGE_HREF" >/dev/null
+pw resize 1440 1100 >/dev/null
 DETAIL_PAGE_BODY="$(poll_detail_page)"
+DETAIL_PAGE_FINAL_HREF="$(eval_result 'window.location.href')"
+DETAIL_VARIANT_KEY="$(printf '%s' "$DETAIL_PAGE_FINAL_HREF" | node -e "
+  let text = '';
+  process.stdin.on('data', (chunk) => text += chunk);
+  process.stdin.on('end', () => process.stdout.write(new URL(text).searchParams.get('variantKey') || ''));
+")"
+if printf '%s' "$DETAIL_VARIANT_KEY" | grep -Eiq '(찜한?|장바구니|구매하기|바로[[:space:]]*구매|add[[:space:]]+to[[:space:]]+(cart|bag|wishlist)|buy[[:space:]]+now|wishlist|favorite)'; then
+  echo "Detail page variantKey contains a commerce action label: ${DETAIL_VARIANT_KEY}" >&2
+  exit 1
+fi
+DETAIL_SCREENSHOT="$(capture_demo_screenshot 'demo-flow-detail-compare.png' 'full-page')"
 
 echo "[ntl:release-qa-smoke] open -> favorites" >&2
 pw open "${BASE_URL}/favorites" >/dev/null
+pw resize 1440 1100 >/dev/null
 FAVORITES_BODY="$(poll_favorites_page)"
+FAVORITES_SCREENSHOT="$(capture_demo_screenshot 'demo-flow-favorites.png')"
+WORKSPACE_PROVENANCE="$(node scripts/gitWorkspaceProvenance.mjs)"
 
 node -e "
+  const baseUrl = new URL(process.argv[1]);
+  const isLocalTarget = ['localhost', '127.0.0.1', '::1'].includes(baseUrl.hostname);
   const output = {
+    generatedAt: new Date().toISOString(),
     baseUrl: process.argv[1],
+    targetKind: isLocalTarget ? 'local-working-tree' : 'deployed-environment',
     session: process.argv[2],
+    runnerWorkspace: JSON.parse(process.argv[9]),
+    deploymentProvenance: JSON.parse(process.argv[17]),
+    scopeNote: isLocalTarget
+      ? 'This result links local behavior to the working-tree fingerprint and deployment manifest recorded in this summary.'
+      : 'This result links target behavior to the validated deployment manifest recorded in this summary.',
     searchQuery: process.argv[3],
     searchDisplayedCount: Number(process.argv[4]),
     detailPage: {
@@ -245,11 +299,21 @@ node -e "
       hasCompareIntro: process.argv[7].includes('고정 compare page입니다.'),
       hasCompareSection: process.argv[7].includes('선택 variant 기준 쇼핑몰 비교'),
       hasPriceHistorySection: process.argv[7].includes('선택 variant 가격 흐름'),
+      finalHref: process.argv[10],
+      variantKey: process.argv[11] || null,
+      hasCleanVariantIdentity: true,
     },
     favorites: {
       hasLookbookHeader: process.argv[8].includes('My Lookbook'),
       hasSavedSummary: /saved/i.test(process.argv[8]),
       hasGuestEmptyState: process.argv[8].includes('찜한 상품이 없습니다'),
+    },
+    screenshots: {
+      enabled: process.argv[12] === '1',
+      mainSearch: process.argv[13] || null,
+      searchResults: process.argv[14] || null,
+      detailCompare: process.argv[15] || null,
+      favorites: process.argv[16] || null,
     },
   };
   process.stdout.write(JSON.stringify(output, null, 2));
@@ -261,4 +325,13 @@ node -e "
   "$DETAIL_PAGE_HREF" \
   "$DETAIL_PRODUCT_TITLE" \
   "$DETAIL_PAGE_BODY" \
-  "$FAVORITES_BODY"
+  "$FAVORITES_BODY" \
+  "$WORKSPACE_PROVENANCE" \
+  "$DETAIL_PAGE_FINAL_HREF" \
+  "$DETAIL_VARIANT_KEY" \
+  "$CAPTURE_SCREENSHOTS" \
+  "$MAIN_SEARCH_SCREENSHOT" \
+  "$SEARCH_RESULTS_SCREENSHOT" \
+  "$DETAIL_SCREENSHOT" \
+  "$FAVORITES_SCREENSHOT" \
+  "$DEPLOYMENT_PROVENANCE"

@@ -9,6 +9,7 @@ import {
     signInWithRedirect,
     signOut,
 } from 'firebase/auth';
+import { Logger } from '@/lib/core/observability';
 
 declare global {
     interface Window {
@@ -75,7 +76,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 return;
             }
 
-            console.error('Link account error:', error);
+            Logger.error('[UserContext] account linking failed', error);
             throw error;
         }
     };

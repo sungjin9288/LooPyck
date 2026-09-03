@@ -19,6 +19,7 @@ import { useUser } from '@/contexts/UserContext';
 import { db } from '@/lib/firebase';
 import type { AppNotificationType } from '@/lib/core/notifications';
 import type { AlertPriority } from '@/lib/favorites/alertState';
+import { Logger } from '@/lib/core/observability';
 
 export interface AlertInboxItem {
     cheapestLink?: string;
@@ -129,7 +130,7 @@ export function useAlertInbox(limitCount: number = 20, options: UseAlertInboxOpt
             setAlerts(visibleAlerts);
             setLoading(false);
         }, (error) => {
-            console.error('[useAlertInbox] Firestore Sync Error:', error);
+            Logger.error('[useAlertInbox] Firestore sync failed', error);
             setLoading(false);
         });
     }, [appId, includeArchived, isAuthenticated, limitCount, userId]);

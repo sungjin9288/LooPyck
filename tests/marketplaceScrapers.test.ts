@@ -2,12 +2,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     ABLY_SCRAPER_CONFIG,
+    buildHandsomeSearchApiUrl,
+    buildLfMallSearchApiRequest,
     COUPANG_SCRAPER_CONFIG,
     EQL_SCRAPER_CONFIG,
     FARFETCH_SCRAPER_CONFIG,
     HAGO_SCRAPER_CONFIG,
     HANDSOME_SCRAPER_CONFIG,
     LFMALL_SCRAPER_CONFIG,
+    parseHandsomeSearchResponse,
+    parseLfMallSearchResponse,
     parseMarketplaceSearchResults,
     SSF_SCRAPER_CONFIG,
     SIVILLAGE_SCRAPER_CONFIG,
@@ -125,18 +129,26 @@ test('SSF 카드와 JSON-LD가 중복되어도 하나로 dedupe한다', () => {
                 "@context": "https://schema.org",
                 "@type": "Product",
                 "name": "캐시미어 니트",
-                "url": "https://www.ssfshop.com/goods/00001",
+                "url": "https://www.ssfshop.com/BEAKER/00001/good",
                 "image": "https://image.ssfshop.com/1.jpg",
                 "brand": "BEAKER",
                 "offers": { "@type": "Offer", "price": "198000" }
             }
         </script>
-        <a href="/goods/00001">
-            <img src="https://image.ssfshop.com/1.jpg" alt="캐시미어 니트" />
-            <span class="brand">BEAKER</span>
-            <span class="prd_name">캐시미어 니트</span>
-            <span class="price">198,000원</span>
-        </a>
+        <li class="god-item">
+            <a href="/BEAKER/00001/good">
+                <div class="god-img"><img src="https://image.ssfshop.com/1.jpg" alt="" /></div>
+                <div class="god-info">
+                    <span class="brand">BEAKER</span>
+                    <span class="name">캐시미어 니트</span>
+                    <span class="price">
+                        <del><span class="wa_hidden">원가</span>248,000<span class="wa_hidden">원</span></del>
+                        <em class="sale"><span class="wa_hidden">할인율</span>20%</em>
+                        <span class="wa_hidden">판매가</span>198,000<span class="wa_hidden">원</span>
+                    </span>
+                </div>
+            </a>
+        </li>
     `;
 
     const products = parseMarketplaceSearchResults(html, SSF_SCRAPER_CONFIG);
@@ -145,6 +157,39 @@ test('SSF 카드와 JSON-LD가 중복되어도 하나로 dedupe한다', () => {
     assert.equal(products[0]?.source, 'SSF');
     assert.equal(products[0]?.brand, 'BEAKER');
     assert.equal(products[0]?.price, 198000);
+});
+
+test('현재 공식 search URL contract를 사용한다', () => {
+    assert.equal(
+        ZIGZAG_SCRAPER_CONFIG.searchUrl('남자 후드', 2),
+        'https://zigzag.kr/search?keyword=%EB%82%A8%EC%9E%90%20%ED%9B%84%EB%93%9C&page=2'
+    );
+    assert.equal(
+        SSF_SCRAPER_CONFIG.searchUrl('남자 후드', 2),
+        'https://www.ssfshop.com/search/result?keyword=%EB%82%A8%EC%9E%90%20%ED%9B%84%EB%93%9C&page=2'
+    );
+    assert.equal(
+        EQL_SCRAPER_CONFIG.searchUrl('남자 후드', 2),
+        'https://www.eqlstore.com/public/search/view?searchWord=%EB%82%A8%EC%9E%90%20%ED%9B%84%EB%93%9C&currentPage=2&tabContent0'
+    );
+    assert.equal(
+        LFMALL_SCRAPER_CONFIG.searchUrl('남자 후드', 2),
+        'https://www.lfmall.co.kr/app/search/result/%EB%82%A8%EC%9E%90%20%ED%9B%84%EB%93%9C?page=2'
+    );
+    assert.match(buildHandsomeSearchApiUrl('남자 후드', 2), /\/api\/goods\/1\/ko\/search\/v2\/product\?/);
+    assert.match(buildHandsomeSearchApiUrl('남자 후드', 2), /page=2/);
+    const lfMallRequest = buildLfMallSearchApiRequest('남자 후드', 2);
+    assert.equal(lfMallRequest.url, 'https://nxapi.lfmall.co.kr/exhibition/search/v1');
+    assert.deepEqual(JSON.parse(lfMallRequest.body), {
+        aggs: ['categories'],
+        brandGroupPageWithFixedTid: false,
+        keyword: '남자 후드',
+        order: 'popular_2_increase_category',
+        page: 2,
+        sendLogYN: 'N',
+        size: 10,
+        cameFromBack: false,
+    });
 });
 
 test('쿠팡 카드 마크업을 직접 상품 목록으로 파싱한다', () => {
@@ -186,6 +231,35 @@ test('한섬 카드 마크업을 직접 상품 목록으로 파싱한다', () =>
     assert.equal(products.length, 1);
     assert.equal(products[0]?.source, 'HANDSOME');
     assert.equal(products[0]?.link, 'https://www.thehandsome.com/ko/PM/productDetail/STBS1234567');
+});
+
+test('한섬 search API 응답을 검증해 직접 상품으로 변환한다', () => {
+    const products = parseHandsomeSearchResponse({
+        code: '0000',
+        payload: {
+            list: [
+                {
+                    id: 'MK2G9TTS603MS2',
+                    goodsCode: 'MK2G9TTS603MS2',
+                    name: '율 집업 후디',
+                    price: '478000',
+                    image1: 'https://cdn-img.thehandsome.com/studio/goods/item.jpg',
+                    brandName: 'MOOSE KNUCKLES',
+                },
+                { goodsCode: 'BROKEN', name: '가격 누락', image1: 'https://example.com/item.jpg' },
+                null,
+            ],
+        },
+    });
+
+    assert.equal(products.length, 1);
+    assert.equal(products[0]?.source, 'HANDSOME');
+    assert.equal(products[0]?.id, 'handsome_MK2G9TTS603MS2');
+    assert.equal(products[0]?.title, '율 집업 후디');
+    assert.equal(products[0]?.price, 478000);
+    assert.equal(products[0]?.brand, 'MOOSE KNUCKLES');
+    assert.equal(products[0]?.link, 'https://www.thehandsome.com/ko/PM/productDetail/MK2G9TTS603MS2');
+    assert.deepEqual(parseHandsomeSearchResponse({ code: '5000', payload: { list: [{ goodsCode: 'IGNORED' }] } }), []);
 });
 
 test('Farfetch 카드 마크업을 직접 상품 목록으로 파싱한다', () => {
@@ -247,12 +321,18 @@ test('HAGO 카드 마크업을 직접 상품 목록으로 파싱한다', () => {
 
 test('EQL 카드 마크업을 직접 상품 목록으로 파싱한다', () => {
     const html = `
-        <a href="/product/300001">
-            <img src="https://img.eqlstore.com/1.jpg" alt="스트라이프 셔츠" />
-            <span class="brand">LE17SEPTEMBRE</span>
-            <span class="title">스트라이프 셔츠</span>
-            <span class="price">179,000원</span>
-        </a>
+        <ul class="product_list">
+            <li>
+                <a href="/product/300001/detail" class="go-product-detail">
+                    <div class="thumb_area"><img src="https://img.eqlstore.com/1.jpg" alt="" /></div>
+                    <div class="info_area">
+                        <span class="brand">LE17SEPTEMBRE</span>
+                        <span class="product">스트라이프 셔츠</span>
+                        <div class="price_wrap"><span class="current">179,000</span></div>
+                    </div>
+                </a>
+            </li>
+        </ul>
     `;
 
     const products = parseMarketplaceSearchResults(html, EQL_SCRAPER_CONFIG);
@@ -263,7 +343,7 @@ test('EQL 카드 마크업을 직접 상품 목록으로 파싱한다', () => {
 
 test('LF몰 카드 마크업을 직접 상품 목록으로 파싱한다', () => {
     const html = `
-        <a href="/product.do?cmd=getProductDetail&PROD_CD=400001">
+        <a href="/app/product/400001">
             <img src="https://img.lfmall.co.kr/1.jpg" alt="헤지스 니트" />
             <span class="brand">HAZZYS</span>
             <span class="product-name">헤지스 니트</span>
@@ -275,6 +355,40 @@ test('LF몰 카드 마크업을 직접 상품 목록으로 파싱한다', () => 
 
     assert.equal(products.length, 1);
     assert.equal(products[0]?.source, 'LFMALL');
+});
+
+test('LF몰 search API 응답을 검증해 배송·재고 포함 직접 상품으로 변환한다', () => {
+    const products = parseLfMallSearchResponse({
+        header: { resultCode: 'Success' },
+        body: {
+            results: {
+                products: [
+                    {
+                        id: 'HSPA6BC33I1',
+                        name: '[시즌오프] 세미와이드 치노 팬츠',
+                        salePrice: 137970,
+                        brandName: '헤지스 여성',
+                        representImage: { url: 'https://nimg.lfmall.co.kr/file/product/item.jpg' },
+                        freeDelivery: true,
+                        deliveryFee: 0,
+                        soldout: false,
+                    },
+                    { id: 'BROKEN', name: '이미지 누락', salePrice: 10000 },
+                ],
+            },
+        },
+    });
+
+    assert.equal(products.length, 1);
+    assert.equal(products[0]?.source, 'LFMALL');
+    assert.equal(products[0]?.id, 'lfmall_HSPA6BC33I1');
+    assert.equal(products[0]?.price, 137970);
+    assert.equal(products[0]?.brand, '헤지스 여성');
+    assert.equal(products[0]?.shippingFee, 0);
+    assert.equal(products[0]?.shippingText, '무료배송');
+    assert.equal(products[0]?.stockStatus, 'in_stock');
+    assert.equal(products[0]?.link, 'https://www.lfmall.co.kr/app/product/HSPA6BC33I1');
+    assert.deepEqual(parseLfMallSearchResponse({ header: { resultCode: 'Failure' }, body: {} }), []);
 });
 
 test('S.I.VILLAGE 카드 마크업을 직접 상품 목록으로 파싱한다', () => {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { parseGeminiJson } from '@/lib/ai/geminiJson';
 import { shapeVisionResponse, VISION_ITEM_CATEGORIES } from '@/lib/ai/visionItemNormalizer';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
+import { Logger } from '@/lib/core/observability';
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -144,8 +145,7 @@ export async function POST(request: NextRequest) {
         });
 
         if (!response.ok) {
-            const err = (await response.text()).slice(0, 300);
-            console.error('[AI Vision] Gemini API Error:', response.status, err);
+            Logger.warn('[AI Vision] Gemini request rejected', { status: response.status });
             return NextResponse.json(
                 { error: 'AI 분석 중 오류가 발생했습니다.' },
                 { status: response.status, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
                 { status: 504, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
             );
         }
-        console.error('[AI Vision] Server Error:', error);
+        Logger.error('[AI Vision] request failed', error);
         return NextResponse.json(
             { error: '서버 오류가 발생했습니다.' },
             { status: 500, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }

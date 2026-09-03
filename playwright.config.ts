@@ -29,7 +29,9 @@ export default defineConfig({
     webServer: {
         // CI runs against the production build (deterministic, no on-demand
         // compilation); locally `next dev` is faster and needs no prior build.
-        command: process.env.CI ? 'npx next start --port 3210' : 'npx next dev --port 3210',
+        command: process.env.CI
+            ? 'node scripts/startStandalone.mjs --port 3210'
+            : 'npx next dev --port 3210',
         url: 'http://localhost:3210',
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

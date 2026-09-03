@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getRateLimitKey, isQueryLengthValid, normalizeQuery } from '@/lib/security/requestGuards';
 import { analyzeFashionQuery } from '@/lib/search/fashionQueryAssistant';
 import { normalizeSearchSort } from '@/types/searchSort';
+import { Logger } from '@/lib/core/observability';
 
 /**
  * 네이버 쇼핑 API 검색 엔드포인트
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
         { status: 504 }
       );
     }
-    console.error('검색 API 에러:', error);
+    Logger.error('[Search API] request failed', error);
     return NextResponse.json(
       { error: '검색 중 오류가 발생했습니다' },
       { status: 500 }

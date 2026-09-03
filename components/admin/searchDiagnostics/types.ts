@@ -60,12 +60,13 @@ export type RecentSnapshot = {
 };
 
 export type RecentInteraction = {
-    type: 'suggestion_click' | 'product_open' | 'store_click';
+    type: 'suggestion_click' | 'product_impression' | 'product_open' | 'store_click';
     query: string;
     generatedAt: string;
     selectedQuery?: string;
     source?: string;
     productId?: string;
+    productIds?: string[];
     productTitle?: string;
     brand?: string;
     context?: string;
@@ -392,8 +393,15 @@ export type DiagnosticsResponse = {
     interactionSummary: {
         total: number;
         suggestionClicks: number;
+        productImpressions: number;
         productOpens: number;
         storeClicks: number;
+        badgeCohorts: Array<{
+            cohort: 'none' | 'shipping' | 'benefit' | 'shipping+benefit';
+            impressions: number;
+            opens: number;
+            openRate: number;
+        }>;
         topSelectedQueries: Array<{ query: string; count: number }>;
         topOpenedBrands: Array<{ brand: string; count: number }>;
     };

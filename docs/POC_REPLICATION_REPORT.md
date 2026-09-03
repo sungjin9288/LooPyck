@@ -1,5 +1,7 @@
 # PoC Replication Report
 
+> **Evidence status:** Legacy planning artifact. Numeric outcomes are assumptions, not measured LooPyck results.
+
 ## Real Estate Domain Implementation
 
 ---

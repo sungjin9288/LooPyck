@@ -1,53 +1,43 @@
-# LooPyck: Walkthrough (The Last Update)
+# LooPyck Walkthrough
 
-**Current Status**: [MISSION ACCOMPLISHED]
-**Final Version**: 1.0.0 (Gold Master)
+**Current status:** MVP 구현 후 검증·운영 고도화 중
 
-## 🏆 Project Milestone: [MISSION ACCOMPLISHED]
+**Evidence date:** 2026-07-15
 
-The **LooPyck** project has successfully completed all planned phases. The system is now fully operational, optimized, and documented for enterprise use.
+## Product Flow
 
-### Final Key Metrics
-| Metric | Value |
-| :--- | :--- |
-| **Cost Reduction** | **99.8%** (vs GPU Servers) |
-| **Success Rate** | **94.2%** (Multi-Mall Crawling) |
-| **Infrastructure** | **Serverless** (Vercel + Firebase) |
-| **Visuals** | **Premium Minimalist** |
+1. 홈/brand/category Compare Entry에서 검색 의도를 입력한다.
+2. realtime aggregation이 direct source와 fallback 결과를 수집한다.
+3. 검색 결과가 compare-ready highlight와 일반 결과 hierarchy로 정리된다.
+4. 상세 화면에서 옵션, 배송, 재고, 실구매가, 가격 이력을 비교한다.
+5. favorites와 가격 알림으로 후보를 다시 확인한다.
 
----
+## Current Verification
 
-## 📅 Chronological Journey
+```bash
+npm run typecheck
+npm run test:adapters
+npm run build
+npm run ntl:system-stress
+```
 
-### Phase 43: Final Closure & Assetization [COMPLETED]
-- [x] **Technical Debt Report**: Created `docs/TECHNICAL_DEBT_REPORT.md`.
-- [x] **System Freeze**: Implemented `lib/core/freeze.ts`.
-- [x] **Final Reports**:
-    - `docs/FINAL_COMPLETION_REPORT.md` (Executive Summary)
-    - `docs/ENTERPRISE_READY_REPORT.md` (Metrics Update)
-- [x] **Verification**: `npm run build` passed.
+- Compare Entry Figma review gate: `READY`
+- adapter/domain tests: `501/501` pass
+- local system stress: served build manifest와 runner/CI run identity linkage 후 production build route contracts `100/100` pass at concurrency `100`
+- CI build artifact: `.next/`와 generated provenance manifest를 exact bundle로 always-upload
+- release closeout report: local QA, screenshots, direct-source, system-stress fingerprint 상태 확인
 
-### Phase 42: Trend Discovery [COMPLETED]
-- [x] `TrendDiscovery` component implemented.
-- [x] Domain Guard strengthened for non-fashion queries.
+## Evidence
 
-### Phase 38: Community & Alerts [COMPLETED]
-- [x] Notification System & Bell Icon.
-- [x] Community Reviews & Fit Check.
+- `output/playwright/release-closeout-report.md`
+- `output/playwright/local-release-qa-summary.json`
+- `output/playwright/local-direct-source-integration-smoke.json`
+- `output/playwright/local-system-stress-smoke.json`
+- `docs/implementation-evidence.md`
 
-### ... (Phases 1-37) [COMPLETED]
-All previous phases have been successfully executed and verified. The foundation is solid.
+## Limitations
 
----
-
-## 🚀 Final Verification Results
-- **Build Status**: ✅ Passed (`Next.js 16.1.4`)
-- **Type Safety**: ✅ 100% Strict Mode
-- **System State**: ❄️ Frozen (Observation Mode)
-
-## 📝 Usage Guide (Post-Closure)
-- **To Unfreeze**: Set `NEXT_PUBLIC_FORCE_UNFREEZE=true` in `.env.local`.
-- **To Replicate**: Follow `docs/REPLICATION_STRATEGY.md`.
-- **To Maintain**: Refer to `docs/TECHNICAL_DEBT_REPORT.md`.
-
-> **"Mission Accomplished. LooPyck is ready for the world."**
+- local stress는 manifest-linked production build의 네 deterministic route contract 단일 실행이며 production concurrent-user capacity가 아니다.
+- 운영 사용자 수, 전환율, 비용 절감률, SLA는 측정 자료가 없다.
+- live Gemini 품질과 외부 source 정확도는 지속적인 표본 검증이 필요하다.
+- 최신 working tree의 production promotion은 commit/push/deploy 지시 전까지 보류한다.

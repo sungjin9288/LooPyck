@@ -16,6 +16,7 @@ const MyAsset = dynamic(() => import('@/components/profile/MyAsset'), {
 import { pushAppNotification } from '@/lib/core/notifications';
 import { isTossWebView } from '@/lib/native/tossWebView';
 import { useTdsMobile } from '@/lib/native/tdsMobile';
+import { Logger } from '@/lib/core/observability';
 
 interface LoginModalProps {
     isOpen: boolean;
@@ -115,7 +116,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                             }
                             onClose();
                         } catch (e: unknown) {
-                            console.error('Login error:', e);
+                            Logger.error('[LoginModal] sign-in failed', e);
                             const message = getReadableAuthMessage(e);
                             setLoginError(message);
                             pushAppNotification({ title: '로그인 실패', message, type: 'alert' });

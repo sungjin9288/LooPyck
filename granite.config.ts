@@ -2,7 +2,8 @@ import { defineConfig } from '@apps-in-toss/web-framework/config';
 
 /**
  * Apps in Toss (앱인토스) 설정
- * WebView 방식: 토스 앱이 Netlify 호스팅 URL을 WebView로 로드
+ * SDK dev/runtime bridge 설정이다. `ait build`는 CSR/SSG index.html output을
+ * 요구하므로 Next standalone 배포와는 별도 static mini-app architecture가 필요하다.
  */
 export default defineConfig({
     appName: 'LooPyck',

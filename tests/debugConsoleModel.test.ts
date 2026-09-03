@@ -57,8 +57,10 @@ function createDiagnosticsResponse(overrides: Partial<DiagnosticsResponse> = {})
         interactionSummary: {
             total: 0,
             suggestionClicks: 0,
+            productImpressions: 0,
             productOpens: 0,
             storeClicks: 0,
+            badgeCohorts: [],
             topSelectedQueries: [],
             topOpenedBrands: [],
         },

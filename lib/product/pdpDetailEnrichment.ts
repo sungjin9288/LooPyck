@@ -57,10 +57,22 @@ function normalizeOptionText(value: string): string {
         .slice(0, 60);
 }
 
+function hasUnresolvedTemplateSyntax(value: string): boolean {
+    return /\{\{|\}\}|<%|%>|\$\{/.test(value);
+}
+
+function isCommerceActionLabel(value: string): boolean {
+    return /(?:찜한?|[장]바구니|구매하기|바로\s*구매|아이템에\s*추가하기|add\s+to\s+(?:cart|bag|wishlist)|buy\s+now|wishlist|favorite)/i.test(value);
+}
+
 function isUsefulOptionText(value: string): boolean {
     if (!value) return false;
 
     const normalized = value.toLowerCase();
+    if (hasUnresolvedTemplateSyntax(normalized)) return false;
+    if (isCommerceActionLabel(normalized)) return false;
+    if (/\b\d+(?:\.\d+)?\s*(?:px|rem|em|vw|vh)\b/i.test(normalized)) return false;
+    if (/^https?:\/\//i.test(normalized)) return false;
     if (normalized.length < 2 && !['s', 'm', 'l'].includes(normalized)) return false;
     if (normalized.includes('선택')) return false;
     if (normalized.includes('choose')) return false;
@@ -68,6 +80,13 @@ function isUsefulOptionText(value: string): boolean {
     if (normalized === 'color' || normalized === 'size' || normalized === 'option') return false;
 
     return true;
+}
+
+function normalizeOptionField(value: unknown, maxLength: number): string | undefined {
+    const raw = normalizeOptionalText(value);
+    if (!raw) return undefined;
+    const normalized = normalizeOptionText(raw);
+    return isUsefulOptionText(normalized) ? normalized.slice(0, maxLength) : undefined;
 }
 
 function toUniqueList(values: string[], maxItems: number = 12): string[] {
@@ -129,9 +148,9 @@ function buildVariantCandidateLabel(input: {
     variantSku?: string;
     variantId?: string;
 }): string | undefined {
-    const explicitLabel = normalizeOptionalText(input.label);
-    if (explicitLabel && isUsefulOptionText(explicitLabel)) {
-        return normalizeOptionText(explicitLabel).slice(0, 120);
+    const explicitLabel = normalizeOptionField(input.label, 120);
+    if (explicitLabel) {
+        return explicitLabel;
     }
 
     const parts = [
@@ -165,8 +184,8 @@ function toVariantStockStatus(value: unknown): UnifiedProduct['stockStatus'] | u
 function normalizeVariantCandidate(input: Partial<ProductVariantCandidate>): ProductVariantCandidate | null {
     const variantId = normalizeIdentifier(input.variantId);
     const variantSku = normalizeIdentifier(input.variantSku);
-    const color = normalizeOptionalText(input.color)?.slice(0, 60);
-    const size = normalizeOptionalText(input.size)?.slice(0, 40);
+    const color = normalizeOptionField(input.color, 60);
+    const size = normalizeOptionField(input.size, 40);
     const label = buildVariantCandidateLabel({
         label: input.label,
         color,

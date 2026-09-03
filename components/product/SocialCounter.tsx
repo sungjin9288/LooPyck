@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useUser } from '@/contexts/UserContext';
+import { Logger } from '@/lib/core/observability';
 
 interface SocialCounterProps {
     productId: string;
@@ -43,7 +44,7 @@ export default function SocialCounter({ productId }: SocialCounterProps) {
             setCount(0);
             setVisible(false);
             if (!isPermissionDeniedError(error)) {
-                console.error('[SocialCounter] watch count feed unavailable:', error);
+                Logger.error('[SocialCounter] watch count feed unavailable', error);
             }
         });
 

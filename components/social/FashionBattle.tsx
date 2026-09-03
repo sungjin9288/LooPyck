@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { haptics } from '@/lib/ux/hapticEngine';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, updateDoc, increment, setDoc } from 'firebase/firestore';
+import { Logger } from '@/lib/core/observability';
 
 interface BattleItem {
     id: string;
@@ -104,7 +105,9 @@ export default function FashionBattle() {
                     votes: { A: 0, B: 0 },
                     items: season.items,
                     label: season.label,
-                }).catch(console.error);
+                }).catch((error) => {
+                    Logger.error('[FashionBattle] season initialization failed', error);
+                });
             }
         });
         return () => unsubscribe();
@@ -120,7 +123,7 @@ export default function FashionBattle() {
             try {
                 await updateDoc(doc(db, 'battles', season.id), { [`votes.${id}`]: increment(1) });
             } catch (e) {
-                console.error('Vote failed:', e);
+                Logger.error('[FashionBattle] vote failed', e);
             }
         }
     };

@@ -2,11 +2,11 @@
 
 ## 1. 현재 상태 요약
 
-- 현재 구현 완료: 검색 API, 다중 소스 aggregate, 상품 그룹핑, 실구매가/배송/재고 판단, AI chat/vision/style recommendation, Firestore favorites, 가격 이력/알림 서버 로직, Netlify deploy/smoke 문서
-- 개발 중: Compare Entry funnel redesign, search-learning/admin diagnostics 고도화, alert tuning 운영 흐름
-- 미구현: 검증된 성과 수치, production analytics 기반 개선 지표, README 코드 근거 중심 재작성
-- 검증 필요: 최신 배포 상태, 핵심 사용자 흐름 스크린샷, AI 추천 품질, 외부 소스별 검색 정확도
-- repo 상태: 최신 커밋은 `e036792`(2026-03-18)이고, 2026-06-09 현재 워킹트리에 다수의 미커밋 변경이 있다. 따라서 Phase 1에서는 기능 추가보다 문서/검증/커밋 단위 정리가 우선이다.
+- 현재 구현 완료: 검색 API, 다중 소스 aggregate, 상품 그룹핑, 실구매가/배송/재고 판단, Compare Entry landing/search hierarchy, AI chat/vision/style recommendation, Firestore favorites, 가격 이력/알림 서버 로직, Netlify deploy/smoke 경로
+- 개발 중: search-learning/admin diagnostics와 alert tuning 운영 품질 고도화
+- 미구현: 검증된 사업 성과 수치와 production analytics 기반 개선 지표
+- 검증 필요: 실제 사용자 트래픽/전환율, live Gemini 응답과 장기 대화 품질, 외부 소스별 검색·옵션 정확도
+- repo 상태: 2026-07-15 기준 최신 커밋은 `0edd82a`(2026-07-10)이며 working tree에는 검증 완료 후 커밋하지 않은 runtime hardening 변경이 있다. 문서 claim은 현재 파일과 재실행 가능한 검증 명령을 기준으로 유지한다.
 
 ## 2. Phase 1 - MVP 완성
 
@@ -29,8 +29,7 @@
 
 - 목표: 검색/비교 품질과 구매 판단 흐름을 개선
 - 해야 할 작업:
-  - Compare Entry funnel Figma gate 완료
-  - brand/category/search result hierarchy 구현
+  - [완료] Compare Entry funnel Figma gate와 brand/category/search result hierarchy 구현
   - 상품 grouping precision/recall 평가 기준 작성
   - source별 fallback/quality diagnostics 지표 정리
 - 완료 기준:
@@ -80,8 +79,8 @@
 
 | 우선순위 | 작업 | 이유 | 예상 산출물 |
 |---|---|---|---|
-| 1 | README 위험 표현 정리 | 이력서/포트폴리오 신뢰도를 가장 크게 좌우함 | 코드 근거 중심 README |
-| 2 | 핵심 demo flow 캡처 | 면접/README에서 실제 동작을 보여줘야 함 | 검색/비교/상세/favorites screenshot |
-| 3 | `npm run typecheck`와 `npm run test:adapters` 최신 실행 | 문서 claim을 검증 결과와 연결해야 함 | verification summary |
-| 4 | Compare Entry gate unblock | 현재 redesign 구현 진입 조건이 gate에 묶여 있음 | approved review gate artifact |
-| 5 | 검색 품질 지표 정의 | “검색 품질 개선”을 수치 없이 말하기 어려움 | source quality matrix |
+| 1 | runtime hardening 변경을 review 가능한 단위로 정리 | 현재 검증된 working-tree 변경의 범위와 의도를 명확히 해야 함 | 변경 요약과 검증 근거 |
+| 2 | production/local release evidence 재갱신 [완료] | production UAT와 dirty working-tree fingerprint evidence를 분리해 오표기 방지 | provenance-aware release QA summary |
+| 3 | 핵심 demo flow 캡처 갱신 [완료] | Compare Entry와 검색 결과 hierarchy를 local QA fingerprint에 연결 | 검색/비교/상세/favorites screenshot 4개 |
+| 4 | 검색 품질 지표 관찰 [구현 완료, post-deploy 표본 수집 중] | badge cohort와 compare-ready/source health를 HOLD/CANDIDATE/WATCH 판단으로 통합 | privacy-trimmed local/Netlify observation report |
+| 5 | 포트폴리오 문서 최종 정합화 | 오래된 개발 중/commit 기준 문구를 제거해야 함 | source-backed portfolio packet |

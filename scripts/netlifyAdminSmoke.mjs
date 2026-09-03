@@ -1,6 +1,9 @@
 import { createNetlifyAdminAuthPayload } from './netlifyAdminAuth.mjs';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
 const baseUrl = process.argv[2] || process.env.SMOKE_BASE_URL || 'https://loo-pyck.netlify.app';
+const diagnosticsLimit = process.env.SEARCH_DIAGNOSTICS_LIMIT?.trim() || '5';
 
 async function fetchJson(url, init) {
     const response = await fetch(url, init);
@@ -53,7 +56,7 @@ async function main() {
         })}`);
     }
 
-    const diagnostics = await fetchJson(`${baseUrl}/api/realtime-search/diagnostics?limit=5&include=recent`, {
+    const diagnostics = await fetchJson(`${baseUrl}/api/realtime-search/diagnostics?limit=${encodeURIComponent(diagnosticsLimit)}&include=recent`, {
         headers: {
             authorization: `Bearer ${idToken}`,
         },
@@ -88,6 +91,36 @@ async function main() {
         pdpStorage: diagnostics.json.pdp?.storage ?? null,
     };
 
+    const diagnosticsOutput = process.env.SEARCH_DIAGNOSTICS_OUTPUT?.trim();
+    if (diagnosticsOutput) {
+        const outputPath = path.resolve(diagnosticsOutput);
+        const interactionSummary = diagnostics.json.interactionSummary || {};
+        const snapshot = {
+            generatedAt: new Date().toISOString(),
+            baseUrl,
+            scope: 'search-quality-observation',
+            privacyBoundary: 'Recent queries, product identities, opened brands, alert data, and admin identity are excluded.',
+            summary: {
+                trackedSearches: Number(diagnostics.json.summary?.trackedSearches || 0),
+                lastUpdatedAt: diagnostics.json.summary?.lastUpdatedAt || null,
+            },
+            quality: diagnostics.json.quality,
+            interactionSummary: {
+                total: Number(interactionSummary.total || 0),
+                suggestionClicks: Number(interactionSummary.suggestionClicks || 0),
+                productImpressions: Number(interactionSummary.productImpressions || 0),
+                productOpens: Number(interactionSummary.productOpens || 0),
+                storeClicks: Number(interactionSummary.storeClicks || 0),
+                badgeCohorts: Array.isArray(interactionSummary.badgeCohorts) ? interactionSummary.badgeCohorts : [],
+            },
+            sourceHealth: Array.isArray(diagnostics.json.sourceHealth) ? diagnostics.json.sourceHealth : [],
+            storage: diagnostics.json.storage || 'memory',
+        };
+
+        mkdirSync(path.dirname(outputPath), { recursive: true });
+        writeFileSync(outputPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+    }
+
     console.log(JSON.stringify({
         baseUrl,
         adminUid,
@@ -98,6 +131,8 @@ async function main() {
         diagnostics: {
             status: diagnostics.response.status,
             terminalHints,
+            observationSnapshot: diagnosticsOutput ? path.resolve(diagnosticsOutput) : null,
+            requestedLimit: Number(diagnosticsLimit),
         },
     }, null, 2));
 }

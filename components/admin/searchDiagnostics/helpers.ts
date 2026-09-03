@@ -205,6 +205,8 @@ export function interactionLabel(type: RecentInteraction['type']): string {
             return '추천 클릭';
         case 'product_open':
             return '상품 열람';
+        case 'product_impression':
+            return '검색결과 노출';
         default:
             return '쇼핑몰 이동';
     }

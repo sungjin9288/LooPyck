@@ -118,7 +118,7 @@ User
 
 ### AI Features
 
-AI 기능은 Gemini 2.5 Flash를 사용합니다. 모든 AI route는 request schema, timeout, JSON parsing을 적용하고, `style-recommend`는 API key 누락이나 parse 실패 시 fallback recommendation을 반환합니다.
+AI 기능은 Gemini 2.5 Flash를 사용합니다. 모든 AI route는 request schema, timeout, JSON parsing을 적용하고, `ai-chat`, `ai-insight`, `style-recommend`는 API key 누락이나 upstream/parse 실패 시 source-aware fallback을 반환합니다.
 
 ### Firebase Integration
 
@@ -198,8 +198,8 @@ SITE_URL
 
 ## 12. 향후 개선 계획
 
-- README를 코드 근거 중심으로 정리
+- README 코드 근거 중심 정리 유지
 - demo screenshot/GIF 추가
-- Compare Entry design gate 완료
+- Compare Entry 완료 상태와 gate artifact 정합성 유지
 - 검색 품질 평가 지표 수립
 - production UAT 결과와 release evidence 정리

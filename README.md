@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![LooPyck Logo](./public/preview.png)
+![LooPyck Logo](./public/icons/icon-512x512.png)
 
 **AI-Powered Fashion Price Comparison Platform**
 
@@ -74,6 +74,12 @@ LooPyck은 무료 티어 인프라(Netlify · Firebase) 위에서 네이버 쇼�
 | 네이버 쇼핑 API | Open API | ✅ |
 | 무신사 | 실시간 스크래핑 | ✅ |
 | 29CM | 검색 API | ✅ |
+| SSF SHOP | 공식 검색 HTML adapter | ✅ |
+| 더한섬닷컴 | 공식 web search API adapter | ✅ |
+| EQL | 공식 검색 HTML adapter | ✅ |
+| LF몰 | 공식 web search API adapter | ✅ |
+
+Direct adapter가 client-only rendering, bot protection, 도메인 이전으로 안정적으로 수집되지 않는 쇼핑몰은 실행 registry에서 제외하고, Naver Shopping 결과의 mall/domain 분류를 fallback으로 사용합니다. 따라서 모든 쇼핑몰의 direct 수집을 보장하지 않습니다.
 
 ---
 
@@ -159,6 +165,10 @@ npm run dev
 # Fixed local port
 # http://localhost:3000
 
+# Production standalone runtime
+npm run build
+npm start
+
 # 5. Type Check
 npm run typecheck
 
@@ -239,6 +249,16 @@ npm run ntl:admin-browser-smoke
 npm run ntl:quick-pass:runtime-ready
 npm run ntl:release-closeout
 npm run ntl:release-report
+
+# source/compare/badge cohort 품질을 production-safe snapshot으로 관찰
+npm run ntl:search-quality-report
+
+# 현재 working tree를 local admin API 기준으로 관찰
+npm run ntl:search-quality-report -- http://localhost:3100
+
+# dirty working tree의 pre-release 동작을 production UAT와 별도 검증
+RELEASE_QA_SCREENSHOTS=1 bash scripts/netlifyReleaseQaSmoke.sh http://localhost:3100 \
+  > output/playwright/local-release-qa-summary.json
 ```
 
 `ntl:uat` is the default Netlify release gate and writes `output/playwright/netlify-uat-summary.json`.
@@ -252,7 +272,11 @@ built-in MCP is still degraded, but the repo-local fallback and escalation packe
 cleanup result, then converts the latest UAT summary, runtime-ready artifact, and refreshed MCP evidence into
 `output/playwright/release-closeout-report.md`. If cleanup was executed immediately before
 report generation, the last execution result is preserved separately as
-`output/playwright/playwright-mcp-runtime-cleanup-last-execution.json`.
+`output/playwright/playwright-mcp-runtime-cleanup-last-execution.json`. The report also evaluates
+the local direct-source integration artifact against the current workspace fingerprint, so a
+previously successful source probe is reported as stale after code or documentation changes.
+
+Release evidence는 대상을 분리해 해석합니다. Netlify UAT는 현재 배포 환경의 동작을 증명하지만 deployed commit을 자동으로 증명하지 않습니다. dirty working tree는 local release QA artifact의 Git diff/untracked content fingerprint가 현재 workspace와 일치할 때만 pre-release 검증 완료로 표기합니다. `RELEASE_QA_SCREENSHOTS=1`이면 같은 세션에서 home/search/detail/favorites 캡처를 생성하며, closeout report는 네 파일의 존재와 fingerprint 일치를 별도로 확인합니다.
 
 ### Compare Entry Review Gate
 
@@ -285,6 +309,94 @@ Detailed guides:
 - [docs/CLOUDFLARE_DEPLOY.md](./docs/CLOUDFLARE_DEPLOY.md) (kept as blocked alternative)
 - [docs/MOBILE_DEVICE_TESTING.md](./docs/MOBILE_DEVICE_TESTING.md)
 
+## Testing
+
+2026-09-03 현재 working tree 기준으로 adapter/domain test 526건을 실행해 모두 통과했습니다.
+테스트 수와 pass 결과는 아래 명령의 Node.js test runner summary로 확인합니다.
+
+```bash
+npm run typecheck
+npm run test:adapters  # tests 526, pass 526, fail 0
+npm run test:deployment-provenance-contract
+npm run test:release-closeout-contract
+npm run build
+npm run ntl:deployment-provenance -- http://localhost:3100
+npm run ntl:direct-source-smoke -- http://localhost:3100
+npm run ntl:system-stress
+npm run verify:portfolio-claims
+npm run verify:ci-workflow
+npm run verify:dependency-audit
+```
+
+`npm run build` copies `public/` and `.next/static/` into the generated `.next/standalone/`
+runtime, and `npm start` launches that packaged server instead of the unsupported
+`next start` + `output: standalone` combination.
+
+`ntl:system-stress` starts the same standalone production runtime locally, validates the served
+`deployment-provenance.json` against the runner commit, working-tree fingerprint, and GitHub Actions
+run identity, and only then sends 100 concurrent requests across four deterministic page/API
+validation contracts. It records the secret-free runner identity, linked build manifest, success
+rate, p95 latency, and the Next server process-tree RSS delta in
+`output/playwright/local-system-stress-smoke.json`. This is a local regression smoke, not a
+production concurrent-user capacity claim.
+
+`verify:portfolio-claims` checks current portfolio-facing documents for unsupported outcome/status
+claims and requires a fixed evidence marker on retained legacy planning artifacts. The audit is
+written to `output/playwright/portfolio-claim-audit.json` and linked to the working-tree fingerprint.
+
+`verify:ci-workflow` prevents the GitHub Actions integrity gates from moving to the wrong job,
+becoming non-blocking, or running out of order. The test job audits the current workflow itself and
+always uploads both portfolio and CI audit artifacts. The E2E job runs the manifest-linked
+100-request production-build stress before Playwright and always uploads the stress artifact. The
+build job always packages `.next/` and the generated `public/deployment-provenance.json` together;
+the self-audit rejects missing or unexpected build artifact paths.
+
+`verify:dependency-audit` runs root `npm audit --json`, root
+`npm audit --omit=dev --json`, and an isolated `tools/capacitor-assets` audit. It compares every
+high/critical advisory source, package, severity, and vulnerable-package count against a separate
+reviewed baseline for each scope. The production install baseline allows no severe advisory; the
+optional asset generator remains exact-version locked and separately audited instead of being
+installed with every root dependency setup. A new advisory, severity increase, unresolved dependency
+chain, or count increase fails CI; `|| true` is not used. Each baseline schema v2 review window is
+independently limited to 31 days, and a future-dated or expired review fails the same gate. Extending
+any date requires rerunning that scope's audit and reviewing the current source/package/severity
+chains rather than treating a baseline as a permanent exception. The fingerprint-linked result is written to
+`output/playwright/dependency-audit-policy.json`. The July remediation history reduced the full graph
+and separated the Apps in Toss runtime from build-only tooling, then isolated `@capacitor/assets`
+from the default root install. The 2026-09-03 re-review applied only non-breaking lockfile fixes and
+kept both direct manifests unchanged. The current verifier reports root `50 total / 15 high / 1
+critical`, production install `8 moderate / 0 high / 0 critical`, and the optional asset tool `7
+total / 3 high / 1 critical`; all three scopes match baselines reviewed through 2026-10-03. These
+values come from `npm run verify:dependency-audit`. Isolation and baseline matching are not
+remediation: root build/dev and optional tool debt remain reviewed and visible in their baseline files.
+These are npm scope and dependency-package counts, not a claim that the remaining upstream debt is
+safe, exploitable in the deployed application, or resolved.
+
+`npm run build` first writes a secret-free `public/deployment-provenance.json` from Netlify,
+GitHub Actions, or local Git metadata. The manifest distinguishes hosted Netlify, Netlify CLI,
+GitHub Actions, and local builds; the CLI placeholder `DEPLOY_ID=0` is never presented as a real
+deploy ID. Netlify hosted builds use `deployId`, GitHub Actions uses a separate `runId`, and
+cross-provider identifier combinations fail validation. The public manifest uses an exact field
+allowlist; unexpected metadata is rejected without echoing its value into diagnostics. Hosted
+identity requires `NETLIFY=true`, GitHub Actions requires `GITHUB_ACTIONS=true`, and the repository's
+Netlify build command supplies `LOOPYCK_NETLIFY_BUILD=true` only for local CLI builds. Conflicting
+signals fail closed, and each provider reads only its own commit/branch/context namespace. `ntl:uat`
+validates that deployed manifest before its API and
+browser steps. Promotion additionally requires the standalone smoke, UAT summary, and parsed UAT
+step to carry the same manifest identity, expected HEAD, and target URL; a stale or mixed UAT packet
+cannot satisfy the gate. The current production
+promotion remains unverified until this manifest is deployed and the new five-step UAT is rerun.
+
+`ntl:release-closeout` always executes UAT, Playwright runtime readiness, and release report in that
+order. A failed step does not suppress later diagnostics, but the command still exits non-zero and
+writes step exit codes and durations to `output/playwright/netlify-release-closeout-execution.json`.
+
+`netlifyReleaseQaSmoke.sh` runs the target provenance check before opening Playwright. Its local or
+deployed QA summary embeds that exact provenance result, so behavior and screenshots cannot pass
+release evidence evaluation without a valid manifest linked to the same commit, target, and runner.
+
+실행 로그는 로컬 `evidence/cli-logs/test-adapters.log`에 생성하며, API 응답과 사용자 데이터가 섞이지 않도록 Git 추적에서는 제외합니다.
+
 ## Admin Diagnostics
 
 관리자 계정으로 로그인한 뒤 아래 화면에서 운영 상태를 확인할 수 있습니다.
@@ -309,6 +421,10 @@ npm run cap:build:prod
 npm run cap:ios:prod
 # or
 npm run cap:android:prod
+
+# icon/splash를 다시 생성할 때만 optional tool을 설치하고 실행
+npm run cap:assets:setup
+npm run cap:assets
 ```
 
 These scripts pin the native WebView to:
@@ -369,6 +485,8 @@ https://loo-pyck.netlify.app
 - 무신사 · 29CM는 공식 API가 아닌 **스크래핑 / 폴백 어댑터** 기반이라, 대상 사이트 구조 변경 시 깨질 수 있습니다.
 - 검증되지 않은 비용 절감률 · 추천 정확도 · 자동화율 수치는 사용하지 않습니다.
 - 가격 이력 누적과 알림 배치는 동작하지만, 대규모 트래픽 · 데이터 정합성은 추가 검증이 필요합니다.
+- dependency audit의 root build/dev graph에는 Apps in Toss upstream chain의 reviewed high/critical debt가 남아 있고, 별도 설치하는 Capacitor asset generator에도 자체 upstream debt가 남아 있습니다. `--omit=dev` production install graph는 2026-09-03 검사에서 high/critical 0건이었지만, 세 scope의 baseline은 신규 악화를 차단하고 최대 31일마다 재검토를 강제할 뿐 package safety나 exploitability를 보장하지 않습니다.
+- Capacitor는 Netlify remote URL mode로 검증됐지만 Apps in Toss 출시는 별도 build artifact를 Toss CDN에 업로드하는 구조입니다. 현재 Next standalone/API app은 `ait build`가 요구하는 CSR/SSG `index.html` output을 만들지 않으므로, Apps in Toss artifact 출시는 별도 static mini-app architecture가 필요한 후속 범위입니다.
 
 ---
 

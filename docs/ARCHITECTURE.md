@@ -150,25 +150,28 @@ graph LR
     E --> F[Cache 24h]
 ```
 
-### Cost Breakdown
-| Resource | Cost | Strategy |
-|----------|------|----------|
-| Gemini API | ₩0 | Free tier (500 RPD) |
-| Vercel | ₩0 | Hobby plan |
-| Firebase | ₩0 | Spark plan |
-| **Total** | **₩0/month** | Zero infrastructure cost |
+### Runtime Dependencies
+| Resource | Role | Evidence boundary |
+|----------|------|-------------------|
+| Gemini API | AI response provider | quota/cost varies by account and is not measured here |
+| Netlify | primary web deployment | current target behavior is tracked by Netlify UAT artifacts |
+| Firebase | auth, favorites, server persistence | Admin features degrade gracefully when credentials are absent |
 
 ---
 
-## SLA Targets
+## Validation Boundary
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| Uptime | 99.5% | 99.9% |
-| Response Time (p95) | < 3s | 2.1s |
-| Extraction Success | 90% | 92% |
-| Price Accuracy | 98% | 98.5% |
+- Local typecheck, adapter/domain tests, production build, release QA, and system-stress artifacts are reproducible.
+- Local system stress records a single-run p95 and process-tree RSS delta; it is not an SLA or production-capacity measurement.
+- Uptime, extraction accuracy, price accuracy, and infrastructure cost require production telemetry or a labeled evaluation dataset and are currently unverified.
 
 ---
 
-_Last updated: 2026-02-06_
+_Last updated: 2026-09-03_
+### Apps in Toss artifact boundary
+
+Toss runtime share integration은 `@apps-in-toss/web-bridge`와 실제 runtime import인 `@apps-in-toss/bridge-core`만 사용한다. `@apps-in-toss/web-framework`는 `granite.config.ts`와 Apps in Toss CLI를 위한 build/dev-only dependency다. 현재 배포 artifact는 Next standalone + Netlify server/API 구조이며, Apps in Toss CLI는 CSR/SSG `index.html` output을 Toss CDN에 업로드하는 contract이므로 `ait build`는 현재 release gate가 아니다. Apps in Toss 출시를 범위에 포함하려면 static mini-app frontend와 hosted API backend를 분리하는 별도 architecture decision이 필요하다.
+
+### Optional asset tooling boundary
+
+`@capacitor/assets`는 application runtime이나 production build dependency가 아니라 icon/splash를 다시 생성할 때만 필요한 optional tool이다. root install에는 포함하지 않고 `tools/capacitor-assets`의 exact-version lock으로 관리하며, `npm run cap:assets:setup` 후 root cwd를 유지하는 `npm run cap:assets` runner로 실행한다. tool graph의 잔존 advisory는 root/production graph와 분리해 audit하지만, 분리 자체를 취약점 해결이나 안전 판정으로 간주하지 않는다.

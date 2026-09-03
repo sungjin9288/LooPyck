@@ -1,4 +1,8 @@
 import { formatTime, pdpStrategyLabel, webhookFormatLabel } from './helpers';
+import {
+    buildSearchQualityObservation,
+    type SearchQualityObservationStatus,
+} from '@/lib/search/searchQualityObservation';
 import type {
     ApprovalQueueSummary,
     DiagnosticsResponse,
@@ -18,6 +22,20 @@ const SOURCE_HEALTH_BADGE: Record<SourceHealthEntry['status'], { label: string; 
 
 // 표시는 심각도 우선 — failing이 항상 맨 위에 오도록
 const SOURCE_HEALTH_ORDER: SourceHealthEntry['status'][] = ['failing', 'degraded', 'healthy', 'disabled', 'never_direct', 'no_data'];
+
+const OBSERVATION_STATUS: Record<SearchQualityObservationStatus, { label: string; className: string }> = {
+    'insufficient-data': { label: 'INSUFFICIENT DATA', className: 'border-slate-600 bg-slate-800/60 text-slate-300' },
+    hold: { label: 'HOLD', className: 'border-sky-500/30 bg-sky-500/10 text-sky-200' },
+    candidate: { label: 'CANDIDATE', className: 'border-lime-500/30 bg-lime-500/10 text-lime-200' },
+    watch: { label: 'WATCH', className: 'border-amber-500/30 bg-amber-500/10 text-amber-200' },
+};
+
+const BADGE_COHORT_LABEL: Record<string, string> = {
+    'shipping+benefit': '배송 + 혜택',
+    shipping: '배송',
+    benefit: '혜택',
+    none: '배지 없음',
+};
 
 function SourceHealthSection({ sourceHealth }: { sourceHealth?: SourceHealthEntry[] }) {
     if (!sourceHealth || sourceHealth.length === 0) {
@@ -77,6 +95,90 @@ function SourceHealthSection({ sourceHealth }: { sourceHealth?: SourceHealthEntr
                         </div>
                     );
                 })}
+            </div>
+        </section>
+    );
+}
+
+function SearchQualityObservationSection({ data }: { data: DiagnosticsResponse | null }) {
+    if (!data) {
+        return null;
+    }
+
+    const observation = buildSearchQualityObservation(data);
+    const status = OBSERVATION_STATUS[observation.status];
+
+    return (
+        <section className="mt-8 rounded-3xl border border-slate-800 bg-[linear-gradient(135deg,rgba(15,23,42,0.96),rgba(10,18,31,0.82))] p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Quality Observation</p>
+                    <h2 className="mt-2 text-xl font-black text-white">검색 품질 운영 판단</h2>
+                    <p className="mt-2 max-w-3xl text-sm text-slate-400">
+                        배지 없음 cohort를 baseline으로 사용합니다. cohort당 {observation.minimumDirectionalImpressions} impressions 전에는 방향성 판단만 보류하며, uplift는 통계적 유의성이나 인과 효과를 의미하지 않습니다.
+                    </p>
+                </div>
+                <span className={`rounded-full border px-3 py-1.5 text-xs font-black tracking-[0.14em] ${status.className}`}>
+                    {status.label}
+                </span>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {observation.badgeCohorts.map((entry) => {
+                    const decision = OBSERVATION_STATUS[entry.decision];
+                    const uplift = entry.upliftVsNoBadge === null
+                        ? '-'
+                        : `${entry.upliftVsNoBadge > 0 ? '+' : ''}${entry.upliftVsNoBadge}%p`;
+                    return (
+                        <div key={entry.cohort} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                            <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm font-bold text-slate-200">{BADGE_COHORT_LABEL[entry.cohort]}</p>
+                                <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${decision.className}`}>
+                                    {decision.label}
+                                </span>
+                            </div>
+                            <div className="mt-4 flex items-end justify-between gap-3">
+                                <div>
+                                    <p className="text-2xl font-black text-white">{entry.openRate}%</p>
+                                    <p className="mt-1 text-[11px] text-slate-500">{entry.opens} opens / {entry.impressions} impressions</p>
+                                </div>
+                                <p className={`text-sm font-bold ${entry.upliftVsNoBadge !== null && entry.upliftVsNoBadge > 0 ? 'text-lime-200' : entry.upliftVsNoBadge !== null && entry.upliftVsNoBadge < 0 ? 'text-amber-200' : 'text-slate-400'}`}>
+                                    {uplift}
+                                </p>
+                            </div>
+                            <p className="mt-3 text-xs leading-5 text-slate-500">{entry.reason}</p>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-[0.7fr_1.3fr]">
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Source Health Mix</p>
+                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                        <div className="rounded-xl bg-slate-900 px-3 py-2 text-slate-400">failing <span className="float-right font-bold text-rose-200">{observation.sourceHealth.failing}</span></div>
+                        <div className="rounded-xl bg-slate-900 px-3 py-2 text-slate-400">degraded <span className="float-right font-bold text-amber-200">{observation.sourceHealth.degraded}</span></div>
+                        <div className="rounded-xl bg-slate-900 px-3 py-2 text-slate-400">healthy <span className="float-right font-bold text-emerald-200">{observation.sourceHealth.healthy}</span></div>
+                        <div className="rounded-xl bg-slate-900 px-3 py-2 text-slate-400">disabled <span className="float-right font-bold text-sky-200">{observation.sourceHealth.disabled}</span></div>
+                    </div>
+                </div>
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Next Actions</p>
+                    <div className="mt-4 space-y-2">
+                        {observation.actions.map((action) => (
+                            <div key={action.id} className="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2.5">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{action.priority}</span>
+                                    <p className="text-sm font-semibold text-slate-200">{action.title}</p>
+                                </div>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">{action.detail}</p>
+                            </div>
+                        ))}
+                        {observation.actions.length === 0 && (
+                            <p className="text-sm text-slate-500">현재 observation window에서 추가 action이 없습니다.</p>
+                        )}
+                    </div>
+                </div>
             </div>
         </section>
     );
@@ -234,6 +336,8 @@ export function SearchOverviewSections({
                     <p className="mt-2 text-4xl font-black tracking-tight text-violet-300">{data?.interactionSummary.productOpens ?? 0}</p>
                 </div>
             </section>
+
+            <SearchQualityObservationSection data={data} />
 
             <section className="mt-8 grid gap-4 lg:grid-cols-4">
                 <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">

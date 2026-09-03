@@ -12,7 +12,7 @@ test('detail freshness marks recent PDP detail as fresh', () => {
 
     assert.equal(freshness.status, 'fresh');
     assert.equal(freshness.shortLabel, '2시간 전 확인');
-    assert.match(freshness.detailLabel, /3\. 23\./);
+    assert.equal(freshness.detailLabel, '3. 23. 18:30 기준');
 });
 
 test('detail freshness marks old PDP detail as stale', () => {

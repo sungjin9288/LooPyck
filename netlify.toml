@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "LOOPYCK_NETLIFY_BUILD=true npm run build"
 
 [build.environment]
   NODE_VERSION = "20"

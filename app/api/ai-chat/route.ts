@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { extractGeminiText, normalizeKeywordList, parseGeminiJson } from '@/lib/ai/geminiJson';
+import { buildAiChatFallback, type AiChatLocale } from '@/lib/ai/aiChatFallback';
+import { parseAiChatGeminiResponse } from '@/lib/ai/aiChatResponse';
 import { sanitizePromptText } from '@/lib/ai/promptSafety';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
+import { Logger, toErrorMessage } from '@/lib/core/observability';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
@@ -50,11 +52,6 @@ const ChatRequestSchema = z.object({
     styleProfile: z.string().trim().max(200).optional(),
 });
 
-const ChatResponseSchema = z.object({
-    text: z.string().trim().min(1).max(800),
-    searchKeywords: z.array(z.string().trim().min(1).max(40)).max(5).optional().default([]),
-});
-
 function getSystemPrompt(locale: 'ko' | 'en'): string {
     return locale === 'en' ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_KO;
 }
@@ -67,7 +64,22 @@ function getStarterResponse(locale: 'ko' | 'en'): string {
 
 const HISTORY_CONTEXT_LIMIT = 6;
 const REQUEST_TIMEOUT_MS = 10_000;
-const FALLBACK_TEXT_MAX_LEN = 320;
+
+function buildFallbackResponse(
+    message: string,
+    locale: AiChatLocale,
+    remaining: number,
+    reason: string
+) {
+    return NextResponse.json(buildAiChatFallback(message, locale), {
+        headers: {
+            'X-RateLimit-Remaining': String(remaining),
+            'X-AI-Chat-Source': 'fallback',
+            'X-AI-Chat-Reason': reason,
+            'Cache-Control': 'private, no-store',
+        },
+    });
+}
 
 export async function POST(request: NextRequest) {
     const rateLimit = await checkRateLimit(getRateLimitKey(request, 'ai-chat'), 20, 60_000);
@@ -81,14 +93,6 @@ export async function POST(request: NextRequest) {
                     'X-RateLimit-Remaining': '0',
                 },
             }
-        );
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        return NextResponse.json(
-            { error: 'AI 서비스가 설정되지 않았습니다.' },
-            { status: 503, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
         );
     }
 
@@ -111,6 +115,10 @@ export async function POST(request: NextRequest) {
     }
 
     const { message, history, locale, styleProfile } = parsedBody.data;
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        return buildFallbackResponse(message, locale, rateLimit.remaining, 'missing_api_key');
+    }
 
     // Personalize the stylist with the user's taste, but keep their explicit
     // request authoritative. styleProfile is sanitized (favorites-derived text).
@@ -145,52 +153,38 @@ export async function POST(request: NextRequest) {
         });
 
         if (!res.ok) {
-            throw new Error(`Gemini API error: ${res.status}`);
+            Logger.warn('[AI Chat] Gemini upstream rejected request', { status: res.status });
+            return buildFallbackResponse(message, locale, rateLimit.remaining, `gemini_http_${res.status}`);
         }
 
         const data = await res.json() as unknown;
-        const parsed = parseGeminiJson(data, ChatResponseSchema);
+        const parsed = parseAiChatGeminiResponse(data);
 
-        if (!parsed.ok) {
-            const fallbackText = extractGeminiText(data);
-            if (!fallbackText) {
-                return NextResponse.json(
-                    { error: 'AI 응답 형식을 처리하지 못했습니다.' },
-                    { status: 502, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
-                );
-            }
-
-            return NextResponse.json(
-                {
-                    text: fallbackText.slice(0, FALLBACK_TEXT_MAX_LEN),
-                    searchKeywords: [],
-                },
-                { headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
-            );
+        if (parsed.ok === false) {
+            Logger.warn('[AI Chat] Gemini response contract mismatch', { error: parsed.error });
+            return buildFallbackResponse(message, locale, rateLimit.remaining, 'gemini_parse_failed');
         }
 
         return NextResponse.json(
-            {
-                text: parsed.data.text,
-                searchKeywords: normalizeKeywordList(parsed.data.searchKeywords, 3),
-            },
+            parsed.data,
             {
                 headers: {
                     'X-RateLimit-Remaining': String(rateLimit.remaining),
+                    'X-AI-Chat-Source': 'ai',
+                    'Cache-Control': 'private, no-store',
                 },
             }
         );
     } catch (error) {
         if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
-            return NextResponse.json(
-                { error: 'AI 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.' },
-                { status: 504, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
+            return buildFallbackResponse(
+                message,
+                locale,
+                rateLimit.remaining,
+                error.name === 'AbortError' ? 'request_aborted' : 'gemini_timeout'
             );
         }
-        console.error('[AI Chat API Error]', error);
-        return NextResponse.json(
-            { error: 'AI 응답 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
-            { status: 500, headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) } }
-        );
+        Logger.warn('[AI Chat] Gemini request failed', { error: toErrorMessage(error) });
+        return buildFallbackResponse(message, locale, rateLimit.remaining, 'gemini_request_failed');
     }
 }

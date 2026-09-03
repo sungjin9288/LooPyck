@@ -54,6 +54,9 @@ const DIRECT_TIMEOUT_REASON = 'source_timeout';
 export const DISABLED_DIRECT_SOURCES: Readonly<Partial<Record<ProductSource, string>>> = {
     COUPANG: 'Netlify IP 상시 403 — 2026-07-10 관찰 리뷰에서 33회 연속 무수확 실측(로컬 IP에서만 수확되던 스크레이퍼)',
     SSENSE: 'Netlify IP 상시 403 — 2026-07-10 관찰 리뷰에서 35회 연속 무수확 실측(로컬 IP에서만 수확되던 스크레이퍼)',
+    ZIGZAG: '2026-07-15 공식 /search는 200이지만 SSR HTML에 상품이 없는 client-only contract — 공개 direct HTML 수집 불가',
+    FARFETCH: '2026-07-15 공식 search/category 요청이 direct server fetch에 403/429 bot protection 응답 — 반복 재시도 중단',
+    SIVILLAGE: '2026-07-15 공식 도메인이 shinsegaev.com 40x page로 redirect — 기존 search/goods contract 폐기',
 };
 
 /**

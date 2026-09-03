@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "reviewedAt": "2026-09-03",
+  "reviewBy": "2026-10-03",
+  "maxVulnerablePackages": {
+    "high": 3,
+    "critical": 1
+  },
+  "allowedAdvisories": [
+    { "source": 1112659, "package": "tar", "severity": "high" },
+    { "source": 1113300, "package": "tar", "severity": "high" },
+    { "source": 1113375, "package": "tar", "severity": "high" },
+    { "source": 1114200, "package": "tar", "severity": "high" },
+    { "source": 1114302, "package": "tar", "severity": "high" },
+    { "source": 1114680, "package": "tar", "severity": "high" },
+    { "source": 1123940, "package": "tar", "severity": "critical" },
+    { "source": 1123941, "package": "tar", "severity": "high" },
+    { "source": 1124066, "package": "sharp", "severity": "high" },
+    { "source": 1145647, "package": "tar", "severity": "high" }
+  ]
+}

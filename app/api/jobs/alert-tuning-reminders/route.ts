@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runAlertTuningReminderDigest } from '@/lib/server/alertTuningStore';
+import { Logger } from '@/lib/core/observability';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ ok: true, ...result });
     } catch (error) {
-        console.error('[alert-tuning-reminders] failed:', error);
+        Logger.error('[alert-tuning-reminders] job failed', error);
         return NextResponse.json(
             { ok: false, error: 'approval reminder digest 생성 중 오류가 발생했습니다.' },
             { status: 500 }

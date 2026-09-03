@@ -10,6 +10,7 @@ import {
     parseRealtimeSearchFeedbackMeta,
     type RealtimeSearchFeedbackMeta,
 } from '@/lib/search/realtimeSearchFeedback';
+import { Logger } from '@/lib/core/observability';
 
 interface UseMultiSourceSearchResult {
     products: UnifiedProduct[];
@@ -109,7 +110,7 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
             if (err instanceof DOMException && err.name === 'AbortError') {
                 return;
             }
-            console.error('Real-time Search Failed:', err);
+            Logger.error('[useMultiSourceSearch] search failed', err);
             setError(err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setIsLoading(false);
@@ -147,7 +148,7 @@ export function useMultiSourceSearch(query: string, sort: SearchSort = 'sim'): U
         // Phase 42 Hardening: Memory Leak Protection
         // Prevent infinite scroll from crashing the browser if > 500 items
         if (products.length >= 500) {
-            console.warn('[Safety Cap] Product limit 500 reached. Stopping load.');
+            Logger.warn('[useMultiSourceSearch] product safety cap reached', { limit: 500 });
             setHasMore(false);
             return;
         }

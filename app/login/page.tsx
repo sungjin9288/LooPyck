@@ -7,6 +7,7 @@ import { getReadableAuthMessage } from '@/lib/auth/authErrorMessage';
 import { signInWithGoogle } from '@/lib/auth/firebase';
 import { auth } from '@/lib/firebase';
 import { useUser } from '@/contexts/UserContext';
+import { Logger } from '@/lib/core/observability';
 
 const REDIRECT_PENDING_KEY = 'loopyck:google-redirect-pending';
 const POST_LOGIN_NEXT_KEY = 'loopyck:post-login-next';
@@ -113,7 +114,7 @@ export default function LoginPage() {
                 setError(null);
             } catch (redirectError) {
                 if (cancelled) return;
-                console.error('Dedicated login route error:', redirectError);
+                Logger.error('[LoginPage] redirect sign-in failed', redirectError);
                 const message = getReadableAuthMessage(redirectError);
                 setStatus('failed');
                 setError(message);
@@ -158,7 +159,7 @@ export default function LoginPage() {
                                 window.sessionStorage.setItem(REDIRECT_PENDING_KEY, '1');
                             }
                             void signInWithGoogle().catch((retryError) => {
-                                console.error('Retry Google Sign-In Error:', retryError);
+                                Logger.error('[LoginPage] Google sign-in retry failed', retryError);
                                 if (typeof window !== 'undefined') {
                                     window.sessionStorage.removeItem(REDIRECT_PENDING_KEY);
                                 }

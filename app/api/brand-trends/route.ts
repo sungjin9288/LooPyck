@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 import { BRANDS_TO_TRACK } from '@/lib/config/brands';
+import { Logger } from '@/lib/core/observability';
 
 // revalidate every 1 hour (Vercel ISR)
 export const revalidate = 3600;
@@ -122,7 +123,7 @@ export async function GET(request: NextRequest) {
             }
         );
     } catch (error) {
-        console.error('[brand-trends] Error:', error);
+        Logger.error('[brand-trends] request failed', error);
         return NextResponse.json(
             { brands: getFallbackData(), fallback: true },
             {

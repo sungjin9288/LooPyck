@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { collection, doc, onSnapshot, query, getDocs, writeBatch, runTransaction } from 'firebase/firestore';
 import { Product } from '@/types/product';
 import { buildFavoriteDocId } from '@/lib/favorites/favoriteProduct';
+import { Logger } from '@/lib/core/observability';
 
 function isProduct(data: unknown): data is Product {
     if (!data || typeof data !== 'object') return false;
@@ -55,7 +56,7 @@ export function useCloudStorage() {
             setFavorites(cloudData);
             setLoading(false);
         }, (error) => {
-            console.error("Firestore Sync Error:", error);
+            Logger.error('[useCloudStorage] Firestore sync failed', error);
             setLoading(false);
         });
 
@@ -98,7 +99,7 @@ export function useCloudStorage() {
                     localStorage.setItem(migratedKey, 'true');
                 }
             } catch (e) {
-                console.error("Migration Failed:", e);
+                Logger.error('[useCloudStorage] local migration failed', e);
             }
         };
 
@@ -137,7 +138,7 @@ export function useCloudStorage() {
                 }
             });
         } catch (e) {
-            console.error("Add Failed:", e);
+            Logger.error('[useCloudStorage] favorite add failed', e);
         }
     };
 
@@ -188,7 +189,7 @@ export function useCloudStorage() {
                 });
             }
         } catch (e) {
-            console.error("Remove Failed:", e);
+            Logger.error('[useCloudStorage] favorite remove failed', e);
         }
     };
 

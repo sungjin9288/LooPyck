@@ -34,6 +34,18 @@ test('maskPII: 이메일·전화번호 마스킹, password/token 키 삭제', ()
     assert.equal(masked.keep, '유지');
 });
 
+test('maskPII: nested array shape를 보존하며 각 항목을 마스킹', () => {
+    const masked = Logger.maskPII([
+        'user@example.com',
+        { phone: '010-1234-5678', nested: ['safe', 'admin@example.com'] },
+    ]);
+
+    assert.deepEqual(masked, [
+        '[EMAIL]',
+        { phone: '[PHONE]', nested: ['safe', '[EMAIL]'] },
+    ]);
+});
+
 // ── 프로덕션 emit (관측성 퇴행 가드) ─────────────────────────────────
 // 과거 프로덕션 분기가 비어 있어 로그가 전부 소실됐다 — 이 가드는
 // "프로덕션에서 error가 실제로 console.error로 나간다"를 고정한다.

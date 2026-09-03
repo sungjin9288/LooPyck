@@ -1,5 +1,7 @@
 # LooPyck Replication Strategy
 
+> **Evidence status:** Legacy planning artifact. Numeric outcomes are assumptions, not measured LooPyck results.
+
 ## Speed-to-Market: 2주 산업 확장 가이드
 
 ---

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { checkRateLimit, getRateLimitKey } from '@/lib/security/requestGuards';
 import { requireAdminRequest } from '@/lib/server/adminAccess';
+import { Logger } from '@/lib/core/observability';
 import {
     generateSearchLearningSuggestions,
     generateSearchLearningSuggestion,
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ entry: updated, suggestion, activity });
     } catch (error) {
-        console.error('Search learning suggestion route failed:', error);
+        Logger.error('[SearchLearning] suggestion request failed', error);
         return NextResponse.json({ error: '검색 학습 제안을 생성하지 못했습니다.' }, { status: 500 });
     }
 }
@@ -167,7 +168,7 @@ export async function PATCH(request: NextRequest) {
 
         return NextResponse.json({ entry: updated, activity });
     } catch (error) {
-        console.error('Search learning review route failed:', error);
+        Logger.error('[SearchLearning] review request failed', error);
         return NextResponse.json({ error: '검색 학습 검토를 저장하지 못했습니다.' }, { status: 500 });
     }
 }
