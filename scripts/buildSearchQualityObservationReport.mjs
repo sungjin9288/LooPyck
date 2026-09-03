@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildSearchQualityObservation } from '../lib/search/searchQualityObservation.ts';
+import { validateDeploymentProvenance } from './deploymentProvenanceContract.mjs';
 import { buildGitWorkspaceProvenance } from './gitWorkspaceProvenance.mjs';
 
 const workspace = process.cwd();
@@ -24,8 +25,40 @@ if (!Array.isArray(snapshot.interactionSummary.badgeCohorts)) {
 
 const observation = buildSearchQualityObservation(snapshot);
 const workspaceProvenance = buildGitWorkspaceProvenance(workspace);
+const targetHostname = new URL(snapshot.baseUrl).hostname;
+const targetName = ['localhost', '127.0.0.1', '::1'].includes(targetHostname) ? 'local' : 'netlify';
+const targetKind = targetName === 'local' ? 'local-working-tree' : 'deployed-environment';
+const provenancePath = path.resolve(
+    process.argv[5] || `output/playwright/${targetName}-deployment-provenance.json`,
+);
+if (!existsSync(provenancePath)) {
+    throw new Error(`Missing deployment provenance evidence: ${provenancePath}`);
+}
+const deploymentProvenance = JSON.parse(readFileSync(provenancePath, 'utf8'));
+const deploymentAudit = validateDeploymentProvenance(deploymentProvenance.deployment);
+const commonProvenanceLink = deploymentProvenance.ok === true
+    && deploymentProvenance.baseUrl === snapshot.baseUrl
+    && deploymentProvenance.targetKind === targetKind
+    && deploymentProvenance.expectedCommit === workspaceProvenance.head
+    && deploymentProvenance.commitMatchesExpected === true
+    && deploymentProvenance.runnerWorkspace?.head === workspaceProvenance.head
+    && deploymentProvenance.runnerWorkspace?.fingerprint === workspaceProvenance.fingerprint
+    && deploymentAudit.ok;
+const targetProvenanceLink = targetKind === 'local-working-tree'
+    ? deploymentProvenance.deployment?.provider === 'local'
+        && deploymentProvenance.deployment?.workspaceFingerprint === workspaceProvenance.fingerprint
+    : deploymentProvenance.deployment?.provider === 'netlify'
+        && deploymentProvenance.deployment?.dirty === false;
+if (!commonProvenanceLink || !targetProvenanceLink) {
+    throw new Error('Search diagnostics target is not linked to the current workspace and deployment provenance.');
+}
 const report = {
+    schemaVersion: 1,
     generatedAt: new Date().toISOString(),
+    baseUrl: snapshot.baseUrl,
+    targetKind,
+    runnerWorkspace: workspaceProvenance,
+    deploymentProvenance,
     target: {
         baseUrl: snapshot.baseUrl || null,
         diagnosticsGeneratedAt: snapshot.generatedAt || null,
@@ -35,8 +68,8 @@ const report = {
     evidenceBoundary: {
         privacyBoundary: snapshot.privacyBoundary || null,
         runnerWorkspace: workspaceProvenance,
-        deploymentProvenanceClaimed: false,
-        note: 'The snapshot describes the target diagnostics response. runnerWorkspace identifies the report generator only.',
+        deploymentProvenanceClaimed: true,
+        note: 'The diagnostics snapshot and served deployment are linked to this report.',
     },
     observation,
 };
@@ -59,6 +92,7 @@ const markdown = [
     '',
     `Generated at: ${report.generatedAt}`,
     `Target: ${report.target.baseUrl || 'unknown'}`,
+    `Target kind: ${report.targetKind}`,
     `Diagnostics storage: ${report.target.storage}`,
     `Observation status: ${observation.status}`,
     '',
@@ -67,7 +101,9 @@ const markdown = [
     `- Target diagnostics generated at: ${report.target.diagnosticsGeneratedAt || 'unknown'}`,
     `- Target diagnostics last updated at: ${report.target.diagnosticsLastUpdatedAt || 'unknown'}`,
     `- Runner workspace fingerprint: ${workspaceProvenance.fingerprint}`,
-    '- Deployment provenance claimed: false',
+    '- Deployment provenance claimed: true',
+    `- Deployment provider: ${deploymentProvenance.deployment.provider}`,
+    `- Deployment commit: ${deploymentProvenance.deployment.commit}`,
     `- Privacy boundary: ${report.evidenceBoundary.privacyBoundary || 'not recorded'}`,
     '',
     '## Search And Compare Signals',

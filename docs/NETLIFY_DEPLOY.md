@@ -91,8 +91,6 @@ Mirror the existing runtime values already used in `.env.local`.
 Minimum set:
 
 ```text
-NAVER_CLIENT_ID
-NAVER_CLIENT_SECRET
 NEXT_PUBLIC_FIREBASE_API_KEY
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
 NEXT_PUBLIC_FIREBASE_PROJECT_ID
@@ -168,8 +166,7 @@ npm run ntl:release-closeout
 npm run ntl:release-report
 
 # 현재 dirty working tree의 local pre-release evidence
-bash scripts/netlifyReleaseQaSmoke.sh http://localhost:3100 \
-  > output/playwright/local-release-qa-summary.json
+npm run ntl:release-qa-smoke -- http://localhost:3100
 ```
 
 Notes:
@@ -184,15 +181,15 @@ Notes:
 - `ntl:browser-smoke` validates public search repeat-flow and the unauthenticated `/admin` gate.
 - `ntl:admin-smoke` mints a Firebase custom token for the first `ADMIN_UIDS` entry and validates `/api/admin/access` plus `/api/realtime-search/diagnostics`.
 - `ntl:admin-browser-smoke` uses the same custom token flow to sign into the browser session and verifies the authenticated `/admin` terminal surface headings, `Admin runtime telemetry` debug console, visible batch action buttons, and both advanced chain toggles.
-- `ntl:search-quality-report` requests up to 120 recent search/interaction samples, excludes query/product/admin identity and alert data, then writes target-aware observation artifacts under `output/playwright/{netlify,local}-search-quality-observation-report.{json,md}`. Badge uplift is directional only and remains `HOLD` until each cohort and the no-badge baseline meet the internal sample floor.
+- `ntl:search-quality-report` first validates the target's deployment provenance, then requests up to 120 recent search/interaction samples while excluding query/product/admin identity and alert data. It embeds the served manifest, target kind, and runner workspace fingerprint in `output/playwright/{netlify,local}-search-quality-observation-report.{json,md}`. Local release evidence additionally requires a report no more than 24 hours old and a diagnostics snapshot captured within five minutes of report generation. Badge uplift is directional only and remains `HOLD` until each cohort and the no-badge baseline meet the internal sample floor.
 - `ntl:direct-source-smoke` requests `/api/realtime-search?debug=1`, requires SSF·Handsome·EQL·LF몰 direct hits, and writes `output/playwright/{local,netlify}-direct-source-integration-smoke.json`. 로컬 artifact는 runner workspace fingerprint를 포함하며 `ntl:release-report`가 current/stale 여부를 판정한다. 로컬 검증은 `npm run ntl:direct-source-smoke -- http://localhost:3100`으로 실행한다.
-- Direct source contract는 `lib/api/searchSourceRegistry.ts`의 `ACTIVE_DIRECT_SOURCE_ORDER`가 기준이다. 2026-07-15 live probe에서 SSF `/search/result`, EQL `/public/search/view`, Handsome `/api/goods/1/ko/search/v2/product`, LF몰 `nxapi.lfmall.co.kr/exhibition/search/v1`은 각각 10건 수확을 확인했다. Zigzag(client-only HTML), Farfetch(403/429), S.I.VILLAGE(폐기 도메인 redirect)는 direct 배선에서 제외하며 NAVER classified fallback은 유지한다.
+- Direct source contract는 `lib/api/searchSourceRegistry.ts`의 `ACTIVE_DIRECT_SOURCE_ORDER`가 기준이다. 2026-07-15 live probe에서 SSF `/search/result`, EQL `/public/search/view`, Handsome `/api/goods/1/ko/search/v2/product`, LF몰 `nxapi.lfmall.co.kr/exhibition/search/v1`은 각각 10건 수확을 확인했다. Zigzag(client-only HTML), Farfetch(403/429), S.I.VILLAGE(폐기 도메인 redirect)는 direct 배선에서 제외하며, 전체 수집 실패 시 tracked catalog fallback을 사용한다.
 - 외부 쇼핑몰 URL을 변경할 때는 HTTP 200만으로 복구를 판정하지 않고, parser가 유효한 제품 title/price/link/image를 수확하는지 live probe한 다음 registry를 활성화한다.
 - After `ntl:uat`, run the visual compare funnel pass described in [PLAYWRIGHT_MCP_UAT.md](/Users/sungjin/dev/personal/LooPyck/docs/PLAYWRIGHT_MCP_UAT.md).
 - `ntl:quick-pass:runtime-ready` is the final operational check for the Playwright MCP layer. It regenerates the runtime packet, runs the readiness assertion, and writes `output/playwright/playwright-mcp-runtime-ready.json`.
 - `ntl:release-closeout` runs `ntl:uat`, `ntl:quick-pass:runtime-ready`, and `ntl:release-report` in fixed order as the standard release closeout path. It continues after failures so diagnostics are not lost, records each exit code/duration in `output/playwright/netlify-release-closeout-execution.json`, and returns non-zero if any step failed.
-- `ntl:release-report` refreshes MCP health, the runtime cleanup plan, and a forced dry-run cleanup result, then builds a human-readable summary from `netlify-uat-summary.json`, `playwright-mcp-runtime-ready.json`, and the refreshed MCP evidence. It writes `output/playwright/release-closeout-report.md`. If cleanup was executed immediately before report generation, the execution audit is preserved as `output/playwright/playwright-mcp-runtime-cleanup-last-execution.json`.
-- `netlify-release-qa-summary.json`은 target deployment 동작을, `local-release-qa-summary.json`은 기록된 workspace fingerprint의 pre-release 동작을 증명한다. production UAT의 runner Git HEAD를 deployed commit으로 간주하지 않으며, promotion은 standalone provenance smoke·UAT summary·UAT step parsed payload가 동일한 정적 manifest identity, current HEAD, target URL을 가리키고 5-step UAT가 통과할 때만 완료로 판정한다. 과거 UAT packet과 현재 manifest를 섞은 evidence는 차단한다.
+- `ntl:release-report` refreshes MCP health, the runtime cleanup plan, and a forced dry-run cleanup result, then builds a human-readable summary from UAT, runtime-ready, local QA, source/stress, grouping, search-quality, portfolio, CI, and dependency evidence. It writes `output/playwright/release-closeout-report.md`; stale or unlinked local search-quality evidence is reported as non-passing even when its observation status is only `watch` or `insufficient-data`. If cleanup was executed immediately before report generation, the execution audit is preserved as `output/playwright/playwright-mcp-runtime-cleanup-last-execution.json`.
+- `ntl:release-qa-smoke`는 localhost target이면 `local-release-qa-summary.json`, 외부 target이면 `netlify-release-qa-summary.json`에 결과를 자동 저장하고 JSON stdout도 유지한다. 격리된 경로가 필요할 때만 `RELEASE_QA_OUTPUT_PATH`를 사용한다. 각 파일은 target deployment 동작 또는 기록된 workspace fingerprint의 pre-release 동작을 증명한다. production UAT의 runner Git HEAD를 deployed commit으로 간주하지 않으며, promotion은 standalone provenance smoke·UAT summary·UAT step parsed payload가 동일한 정적 manifest identity, current HEAD, target URL을 가리키고 5-step UAT가 통과할 때만 완료로 판정한다. 과거 UAT packet과 현재 manifest를 섞은 evidence는 차단한다.
 - `netlifyReleaseQaSmoke.sh`는 browser flow 전에 같은 target의 deployment provenance smoke를 blocking 실행하고 결과를 QA summary에 내장한다. local/deployed behavior와 demo screenshot은 summary 내 manifest·commit·target·runner linkage가 유효할 때만 release evidence로 통과한다.
 
 ## 10. Mobile Real-Device Testing

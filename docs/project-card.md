@@ -9,10 +9,10 @@
 - 내 역할: 개인 개발자로 추정되나, 저장소만으로 직접 기여 범위는 확인 필요
 - GitHub 링크: https://github.com/sungjin9288/LooPyck
 - Demo 링크: https://loo-pyck.netlify.app
-- 핵심 기술스택: Next.js App Router, React, TypeScript, Tailwind CSS, Firebase Auth/Firestore/Admin, Gemini 2.5 Flash, Naver Shopping API, Cheerio, Netlify, Capacitor
+- 핵심 기술스택: Next.js App Router, React, TypeScript, Tailwind CSS, Firebase Auth/Firestore/Admin, Gemini 2.5 Flash, Cheerio source adapters, Netlify, Capacitor
 - 이력서 반영 가능 여부: 조건부 가능
 - 판단 이유: 검색, 비교, AI 스타일 추천, 즐겨찾기, 가격 이력, 알림, 관리자 진단, 배포/검증 스크립트의 코드 근거가 있다. 다만 README와 일부 문서의 성과 수치, 정확도, 비용 절감 수치는 현재 코드만으로 검증되지 않아 이력서에서는 제외해야 한다.
-- 분석 기준: 2026-07-15 현재 워킹트리와 최신 커밋 `0edd82a`(2026-07-10)를 함께 참고했다. 워킹트리의 runtime hardening 변경은 아직 커밋되지 않았으므로 포트폴리오 표현은 현재 파일과 검증 결과 기준으로 작성한다.
+- 분석 기준: 2026-09-03 현재 워킹트리와 최신 커밋 `6e32108`을 함께 참고했다. Phase 81~83 변경은 아직 커밋·배포되지 않았으므로 포트폴리오 표현은 현재 파일과 fingerprint-linked 검증 결과 기준으로 작성한다.
 
 ## 2. One-liner
 
@@ -34,8 +34,8 @@
 
 - 제공하려는 핵심 기능: 다중 쇼핑몰 검색, 패션 쿼리 분석, 비교 가능 상품 그룹핑, 실구매가/옵션/재고/배송 근거 표시, 즐겨찾기/가격 알림, AI 스타일 상담/이미지 검색/체형 기반 추천, 관리자 진단 대시보드
 - 현재 실제로 제공 가능한 기능:
-  - `/api/search` 기반 Naver Shopping API 검색
-  - `/api/realtime-search` 기반 다중 소스 aggregate 검색과 fallback
+  - `/api/realtime-search` 기반 다중 direct-source aggregate 검색과 tracked catalog fallback
+  - 종료된 Naver Shopping API의 no-call lifecycle, `410 Gone`, disabled diagnostics 처리
   - `groupProducts()`, `comparePurchaseOffers()`, `buildPurchaseDecisionSummary()` 기반 비교/구매 판단 로직
   - Firebase Auth 및 Firestore 즐겨찾기 동기화
   - Gemini 2.5 Flash 기반 AI chat, vision, style recommendation API
@@ -79,7 +79,7 @@ User
 -> Search / Compare / Favorite / Admin components
 -> Next.js API Routes
 -> Search aggregator / AI routes / Firebase server modules
--> Naver Shopping API / marketplace scrapers / Gemini API / Firestore
+-> marketplace sources / Gemini API / Firestore
 -> Response with products, diagnostics, AI recommendation, alerts
 ```
 
@@ -97,12 +97,12 @@ User
 
 ### 설명
 
-- 주요 데이터 흐름: 검색 query가 `app/api/realtime-search/route.ts`로 들어가고, `aggregateRealtimeSearchDetailed()`가 직접 소스와 Naver fallback을 합친 뒤 `rerankProductsByFashionRelevance()`와 diagnostics 저장을 수행한다.
+- 주요 데이터 흐름: 검색 query가 `app/api/realtime-search/route.ts`로 들어가고, `aggregateRealtimeSearchDetailed()`가 활성 direct source를 집계한 뒤 `rerankProductsByFashionRelevance()`와 diagnostics 저장을 수행한다. 전체 수집 실패 시 tracked catalog를 사용한다.
 - 주요 모듈 구성: `app/`은 route와 page, `components/`는 UI, `hooks/`는 client state, `lib/api`는 search adapter, `lib/product`는 비교/가격/옵션 판단, `lib/ai`는 Gemini 응답 처리, `lib/server`는 Firebase Admin 의존 기능을 담당한다.
-- API 구조: `/api/search`, `/api/realtime-search`, `/api/ai-chat`, `/api/ai-vision`, `/api/style-recommend`, `/api/price-history`, `/api/jobs/scan-price-alerts`, `/api/admin/access` 등.
+- API 구조: `/api/realtime-search`, `/api/ai-chat`, `/api/ai-vision`, `/api/style-recommend`, `/api/price-history`, `/api/jobs/scan-price-alerts`, `/api/admin/access` 등이며 `/api/search`는 retired legacy route로 `410`을 반환한다.
 - AI/LLM 처리 흐름: route별 Zod schema와 rate limit을 통과한 요청이 Gemini 2.5 Flash로 전달되고 JSON response contract를 검증한다. `ai-chat`, `ai-insight`, `style-recommend`는 key 누락, timeout, parse failure에 deterministic fallback을 반환하며 source를 명시한다.
 - DB 또는 저장소 구조: Firestore `artifacts/{appId}/users/{userId}/favorites`, alerts, devices와 server-side price history collection을 사용한다.
-- 인증/보안/환경변수 처리 방식: Firebase client auth, Firebase Admin token verification, `ADMIN_UIDS`, `CRON_SECRET`, `GEMINI_API_KEY`, Naver API keys, rate limit, timeout, URL sanitization을 사용한다.
+- 인증/보안/환경변수 처리 방식: Firebase client auth, Firebase Admin token verification, `ADMIN_UIDS`, `CRON_SECRET`, `GEMINI_API_KEY`, rate limit, timeout, URL sanitization을 사용한다.
 - 배포 구조가 있다면 설명: Netlify가 primary 배포 경로이고, Vercel cron은 fallback 형태로 설정되어 있다. Docker standalone image도 존재한다.
 - 배포 구조가 아직 없다면: 해당 없음. 다만 Cloudflare Workers Free는 docs/task ledger 기준 size limit 제약이 있어 운영 경로로 확정하기 어렵다.
 
@@ -118,7 +118,7 @@ User
 
 | 구분 | 기능 | 상태 | 근거 파일 | 이력서 반영 가능 여부 |
 |---|---|---|---|---|
-| 구현 완료 | Naver Shopping API 검색 | 구현 완료 | `app/api/search/route.ts` | 가능 |
+| 구현 완료 | Naver Shopping API 종료 격리 | retired provider no-call, legacy route `410`, health `disabled` | `app/api/search/route.ts`, `lib/api/naverShoppingSearchLifecycle.ts` | 장애 대응 사례로 가능, 현재 검색 기능으로 표현 금지 |
 | 구현 완료 | 다중 소스 실시간 검색과 fallback | 구현 완료 / 고도화 중 | `app/api/realtime-search/route.ts`, `lib/api/realtimeAggregator.ts` | 가능 |
 | 구현 완료 | 상품 그룹핑/비교 근거 | 구현 완료 / 품질 고도화 중 | `lib/product/productMatching.ts`, `lib/product/purchasePricing.ts` | 가능 |
 | 구현 완료 | AI chat/vision/style recommendation | fallback 흐름 검증 완료 / live AI 품질 검증 필요 | `app/api/ai-chat/route.ts`, `app/api/ai-vision/route.ts`, `app/api/style-recommend/route.ts` | 가능, 운영 품질 수치 제외 |
@@ -133,12 +133,12 @@ User
 
 - 주요 코드 파일: `app/page.tsx`, `components/product/InfiniteProductGrid.tsx`, `components/product/ComparisonHighlights.tsx`, `components/product/ProductDetailModal.tsx`
 - 주요 함수/클래스: `aggregateRealtimeSearchDetailed()`, `analyzeFashionQuery()`, `groupProducts()`, `comparePurchaseOffers()`, `buildPurchaseDecisionSummary()`, `checkRateLimit()`, `parseGeminiJson()`
-- 주요 API 엔드포인트: `/api/search`, `/api/realtime-search`, `/api/ai-chat`, `/api/ai-vision`, `/api/style-recommend`, `/api/price-history`, `/api/jobs/scan-price-alerts`, `/api/admin/access`
+- 주요 API 엔드포인트: `/api/realtime-search`, `/api/ai-chat`, `/api/ai-vision`, `/api/style-recommend`, `/api/price-history`, `/api/jobs/scan-price-alerts`, `/api/admin/access`; `/api/search`는 retired legacy contract
 - 설정 파일: `package.json`, `next.config.js`, `netlify.toml`, `vercel.json`, `Dockerfile`, `.env.local.example`
 - 실행 파일: `scripts/netlifySmokeCheck.mjs`, `scripts/netlifyUat.mjs`, `scripts/netlifyCompareEntryReviewPrep.sh`
 - 테스트 파일: `tests/productMatching.test.ts`, `tests/purchasePricing.test.ts`, `tests/purchaseDecision.test.ts`, `tests/styleRecommend.test.ts`, `tests/compareShortlist.test.ts`, `tests/searchDiagnostics.test.ts`
 - README 또는 문서 근거: `README.md`, `docs/NETLIFY_DEPLOY.md`, `docs/HANDOVER_MANUAL.md`, `docs/COMPARE_ENTRY_FUNNEL_EXECUTION_PLAN.md`
-- 최근 git 근거: 최신 커밋은 `0edd82a`이며, 현재 `git status` 기준 API, components, lib, tests, docs에 미커밋 runtime hardening 변경과 신규 파일이 있다. 구현 완료 claim은 코드와 검증 artifact가 함께 있는 범위로 제한한다.
+- 최근 git 근거: 최신 커밋은 `6e32108`이며, 현재 `git status` 기준 API, components, lib, scripts, tests, docs에 Phase 81~83 미커밋 변경과 신규 파일이 있다. 구현 완료 claim은 코드와 검증 artifact가 함께 있는 범위로 제한한다.
 - 실행 방법이 명확한지: `npm run dev`, `npm run typecheck`, `npm run test:adapters`, Netlify deploy/smoke script가 명확함
 - 스크린샷/데모가 필요한 부분: 검색 결과, 상세 비교 decision block, 즐겨찾기/알림, 관리자 diagnostics, Compare Entry funnel
 
@@ -157,7 +157,7 @@ User
 ### 써도 되는 표현
 
 - Next.js App Router 기반 패션 가격 비교 웹 애플리케이션을 개발 중
-- Naver Shopping API와 다중 쇼핑몰 scraping adapter를 통합한 실시간 검색 API 구현
+- 다중 쇼핑몰 direct adapter와 tracked catalog fallback을 결합한 실시간 검색 API 구현
 - Firebase Auth/Firestore 기반 즐겨찾기 및 가격 알림 흐름 구현
 - Gemini 2.5 Flash 기반 AI 스타일 상담, 이미지 검색 키워드 생성, 체형 기반 추천 API 구현
 - Netlify 배포 및 smoke/UAT 검증 스크립트 정리

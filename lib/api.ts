@@ -2,9 +2,10 @@ import { NaverShoppingResponse, SearchParams } from '@/types/product';
 import { normalizeTitle } from '@/lib/core/dataNormalizer';
 
 /**
- * 네이버 쇼핑 API를 호출하여 상품 검색
+ * 종료된 네이버 쇼핑 API legacy route를 호출한다.
  * @param params 검색 파라미터
  * @returns 검색 결과
+ * @deprecated `/api/realtime-search` 기반 검색 흐름을 사용한다.
  */
 export async function searchProducts(
   params: SearchParams

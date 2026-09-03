@@ -1,5 +1,5 @@
 import type { ProductSource } from './types.ts';
-import { DISABLED_DIRECT_SOURCES } from './searchSourceRegistry.ts';
+import { DISABLED_SEARCH_SOURCES } from './searchSourceRegistry.ts';
 
 /** 연속 empty가 이 횟수에 도달하면 성능 저하로 판정 */
 const DEGRADED_CONSECUTIVE_EMPTY = 3;
@@ -71,7 +71,7 @@ export function assessSourceHealth(rows: SourceHealthInput[]): SourceHealth[] {
         // 배선 해제된 소스는 시도가 멈춰 스트릭이 동결된다 — failing 경보가
         // 영원히 남지 않도록, 의도적 해제임을 아는 상태로 먼저 분기한다.
         // 윈도우 통계는 base에서 계속 계산돼 복원 판단 근거로 남는다.
-        const disabledReason = DISABLED_DIRECT_SOURCES[rowInput.source as ProductSource];
+        const disabledReason = DISABLED_SEARCH_SOURCES[rowInput.source as ProductSource];
         if (disabledReason) {
             return {
                 ...base,

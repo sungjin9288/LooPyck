@@ -31,3 +31,18 @@ test('AI provider failure paths do not read or log raw response payloads', () =>
     assert.doesNotMatch(styleRecommend, /parsed\.rawText/);
     assert.doesNotMatch(aiVision, /response\.text\s*\(/);
 });
+
+test('retired NAVER shopping route returns Gone without calling the removed upstream API', () => {
+    const searchRoute = readFileSync(path.join(API_ROOT, 'search/route.ts'), 'utf8');
+    const brandTrendsRoute = readFileSync(path.join(API_ROOT, 'brand-trends/route.ts'), 'utf8');
+    const envCheck = readFileSync(path.resolve('scripts/checkEnv.ts'), 'utf8');
+    const netlifyEnvSync = readFileSync(path.resolve('scripts/syncNetlifyEnv.mjs'), 'utf8');
+
+    assert.match(searchRoute, /NAVER_SHOPPING_SEARCH_RETIREMENT/);
+    assert.match(searchRoute, /status:\s*410/);
+    assert.doesNotMatch(searchRoute, /openapi\.naver\.com\/v1\/search\/shop/);
+    assert.match(brandTrendsRoute, /NAVER_SHOPPING_SEARCH_RETIREMENT/);
+    assert.doesNotMatch(brandTrendsRoute, /openapi\.naver\.com\/v1\/search\/shop/);
+    assert.doesNotMatch(envCheck, /NAVER_CLIENT_(?:ID|SECRET)/);
+    assert.doesNotMatch(netlifyEnvSync, /NAVER_CLIENT_(?:ID|SECRET)/);
+});

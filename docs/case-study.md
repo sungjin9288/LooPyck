@@ -5,7 +5,7 @@
 - 이 프로젝트를 시작한 배경: 패션 상품은 동일하거나 유사한 상품이 여러 쇼핑몰에 흩어져 있고, 표시 가격만으로 실제 구매 조건을 판단하기 어렵다.
 - 해결하려는 사용자 문제: 사용자가 쇼핑몰별 가격, 옵션, 배송비, 회원가, 재고 상태를 직접 비교해야 하는 번거로움
 - 이 문제가 중요한 이유: 최저가처럼 보이는 상품도 배송비, 쿠폰 조건, 품절, 옵션 불일치 때문에 실제 구매 판단이 달라질 수 있다.
-- 현재 개발 진행 상태: MVP 기능과 Compare Entry gate/landing/search hierarchy는 구현·검증 완료됐고, 검색/운영 진단과 runtime reliability를 고도화 중이다. 2026-07-15 기준 최신 커밋은 `0edd82a`이며 현재 working tree의 미커밋 변경은 현재 파일과 검증 결과 기준으로 판단한다.
+- 현재 개발 진행 상태: MVP 기능과 Compare Entry gate/landing/search hierarchy는 구현·검증 완료됐고, 검색/운영 진단과 runtime reliability를 고도화 중이다. 2026-09-03 기준 최신 커밋은 `6e32108`이며 Phase 81~83 working-tree 변경은 현재 파일과 fingerprint-linked 검증 결과 기준으로 판단한다.
 
 ## 2. 문제 정의
 
@@ -56,7 +56,7 @@
 
 ### 구현 완료
 
-- Naver Shopping API 검색: `app/api/search/route.ts`
+- Naver Shopping API 종료 격리: `app/api/search/route.ts`, `lib/api/naverShoppingSearchLifecycle.ts`
 - 다중 소스 실시간 검색: `app/api/realtime-search/route.ts`, `lib/api/realtimeAggregator.ts`
 - marketplace scraping adapter: `lib/api/marketplaceScrapers.ts`
 - 상품 그룹핑/비교 판단: `lib/product/productMatching.ts`, `lib/product/purchasePricing.ts`, `lib/product/purchaseDecision.ts`
@@ -77,7 +77,7 @@
 - 검증된 운영 성과 수치 공개
 - 실제 사용자 기반 전환율/사용량 분석
 - 외부 쇼핑몰별 데이터 정확도 정량 검증
-- 최신 working-tree 변경의 production 재배포와 release evidence 갱신
+- Phase 81~83 working-tree 변경의 production 배포와 post-deploy UAT
 
 ### 이번 MVP에서 제외한 범위
 
@@ -87,11 +87,11 @@
 ## 6. 시스템 설계
 
 - 전체 구조: Next.js frontend와 API Routes가 검색, AI, Firebase server module을 호출한다.
-- 데이터 흐름: User query -> `/api/realtime-search` -> source query plan -> marketplace/Naver search -> rerank/diagnostics -> UI compare hierarchy
+- 데이터 흐름: User query -> `/api/realtime-search` -> source query plan -> active marketplace adapters -> rerank/diagnostics -> UI compare hierarchy; 전체 수집 실패 시 tracked catalog fallback
 - API 구조: 검색 API, AI API, 가격 이력 API, 관리자 API, cron job API로 분리되어 있다.
 - AI/LLM 처리 흐름: Zod request schema -> Gemini request -> `parseGeminiJson()` -> normalized response 또는 fallback
 - 예외 처리: API timeout, missing env, rate limit, invalid query, Firebase Admin 미설정 fallback이 구현되어 있다.
-- 보안/환경변수 처리: `CRON_SECRET`, `ADMIN_UIDS`, Firebase Admin env, Naver/Gemini keys, Upstash Redis optional env를 사용한다.
+- 보안/환경변수 처리: `CRON_SECRET`, `ADMIN_UIDS`, Firebase Admin env, `GEMINI_API_KEY`, Upstash Redis optional env를 사용한다.
 - 배포 계획: Netlify primary, Vercel fallback, Docker standalone image, Cloudflare/OpenNext script가 있다. Cloudflare Workers Free는 문서상 size limit 제약이 있다.
 
 ## 7. 나의 역할

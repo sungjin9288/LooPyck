@@ -12,6 +12,7 @@
  * diagnostics output.
  */
 import type { ProductSource, UnifiedProduct } from './types.ts';
+import { NAVER_SHOPPING_SEARCH_RETIREMENT } from './naverShoppingSearchLifecycle.ts';
 
 export type SourceScrapeFn = (query: string, page: number) => Promise<UnifiedProduct[]>;
 
@@ -57,6 +58,12 @@ export const DISABLED_DIRECT_SOURCES: Readonly<Partial<Record<ProductSource, str
     ZIGZAG: '2026-07-15 공식 /search는 200이지만 SSR HTML에 상품이 없는 client-only contract — 공개 direct HTML 수집 불가',
     FARFETCH: '2026-07-15 공식 search/category 요청이 direct server fetch에 403/429 bot protection 응답 — 반복 재시도 중단',
     SIVILLAGE: '2026-07-15 공식 도메인이 shinsegaev.com 40x page로 redirect — 기존 search/goods contract 폐기',
+};
+
+/** Provider API와 direct adapter를 함께 포함하는 전체 비활성 source 목록. */
+export const DISABLED_SEARCH_SOURCES: Readonly<Partial<Record<ProductSource, string>>> = {
+    NAVER: NAVER_SHOPPING_SEARCH_RETIREMENT.message,
+    ...DISABLED_DIRECT_SOURCES,
 };
 
 /**

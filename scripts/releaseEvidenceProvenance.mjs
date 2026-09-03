@@ -124,6 +124,88 @@ export function evaluateLocalDirectSourceEvidence(summary, workspaceProvenance) 
   };
 }
 
+const SEARCH_QUALITY_OBSERVATION_STATUSES = new Set([
+  'insufficient-data',
+  'hold',
+  'candidate',
+  'watch',
+]);
+const SEARCH_QUALITY_PRIVACY_BOUNDARY = 'Recent queries, product identities, opened brands, alert data, and admin identity are excluded.';
+const SEARCH_QUALITY_DIRECTIONAL_SAMPLE_FLOOR = 30;
+const SEARCH_QUALITY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const SEARCH_QUALITY_MAX_SNAPSHOT_SKEW_MS = 5 * 60 * 1000;
+
+function isNonNegativeInteger(value) {
+  return Number.isInteger(value) && value >= 0;
+}
+
+function isLocalBaseUrl(value) {
+  try {
+    return ['localhost', '127.0.0.1', '::1'].includes(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+}
+
+export function evaluateLocalSearchQualityEvidence(
+  summary,
+  workspaceProvenance,
+  nowMs = Date.now(),
+) {
+  const observation = summary?.observation;
+  const sourceHealth = observation?.sourceHealth;
+  const reportGeneratedAt = Date.parse(summary?.generatedAt ?? '');
+  const diagnosticsGeneratedAt = Date.parse(summary?.target?.diagnosticsGeneratedAt ?? '');
+  const hasValidTimestamps = Number.isFinite(reportGeneratedAt)
+    && Number.isFinite(diagnosticsGeneratedAt);
+  const fresh = hasValidTimestamps
+    && reportGeneratedAt <= nowMs + SEARCH_QUALITY_MAX_SNAPSHOT_SKEW_MS
+    && nowMs - reportGeneratedAt <= SEARCH_QUALITY_MAX_AGE_MS
+    && diagnosticsGeneratedAt <= reportGeneratedAt + SEARCH_QUALITY_MAX_SNAPSHOT_SKEW_MS
+    && reportGeneratedAt - diagnosticsGeneratedAt <= SEARCH_QUALITY_MAX_SNAPSHOT_SKEW_MS;
+  const healthCountsAreValid = ['failing', 'degraded', 'healthy', 'disabled', 'other']
+    .every((key) => isNonNegativeInteger(sourceHealth?.[key]));
+  const evidenceValid = summary?.schemaVersion === 1
+    && summary?.targetKind === 'local-working-tree'
+    && summary?.baseUrl === summary?.target?.baseUrl
+    && isLocalBaseUrl(summary?.baseUrl)
+    && summary?.runnerWorkspace?.fingerprint === summary?.evidenceBoundary?.runnerWorkspace?.fingerprint
+    && summary?.evidenceBoundary?.privacyBoundary === SEARCH_QUALITY_PRIVACY_BOUNDARY
+    && summary?.evidenceBoundary?.deploymentProvenanceClaimed === true
+    && hasLinkedReleaseProvenance(summary, 'local-working-tree')
+    && hasValidTimestamps
+    && SEARCH_QUALITY_OBSERVATION_STATUSES.has(observation?.status)
+    && observation?.minimumDirectionalImpressions === SEARCH_QUALITY_DIRECTIONAL_SAMPLE_FLOOR
+    && isNonNegativeInteger(observation?.trackedSearches)
+    && isNonNegativeInteger(observation?.interactionCount)
+    && observation?.quality
+    && typeof observation.quality === 'object'
+    && !Array.isArray(observation.quality)
+    && Array.isArray(observation?.badgeCohorts)
+    && healthCountsAreValid
+    && Array.isArray(sourceHealth?.failingSources)
+    && sourceHealth.failingSources.length === sourceHealth.failing
+    && Array.isArray(observation?.actions);
+  const matchesWorkspace = Boolean(
+    evidenceValid
+    && summary.runnerWorkspace?.fingerprint
+    && summary.runnerWorkspace.fingerprint === workspaceProvenance.fingerprint
+  );
+  const passed = Boolean(evidenceValid && fresh);
+
+  return {
+    passed,
+    matchesWorkspace,
+    fresh,
+    status: passed && matchesWorkspace ? 'pass' : evidenceValid ? 'stale' : 'missing or fail',
+    observationStatus: observation?.status ?? 'missing',
+    trackedSearches: observation?.trackedSearches ?? 0,
+    interactionCount: observation?.interactionCount ?? 0,
+    failingSourceCount: sourceHealth?.failing ?? 0,
+    disabledSourceCount: sourceHealth?.disabled ?? 0,
+  };
+}
+
 function hasExpectedLocalBuildProvenanceUrl(summary) {
   try {
     return summary?.buildProvenance?.requestUrl === new URL(
@@ -174,6 +256,46 @@ export function evaluatePortfolioClaimEvidence(summary, workspaceProvenance) {
     && summary?.legacyDocumentCount > 0
     && Array.isArray(summary?.violations)
     && summary.violations.length === 0;
+  const matchesWorkspace = Boolean(
+    passed
+    && summary.runnerWorkspace?.fingerprint
+    && summary.runnerWorkspace.fingerprint === workspaceProvenance.fingerprint
+  );
+
+  return {
+    passed,
+    matchesWorkspace,
+    status: matchesWorkspace ? 'pass' : passed ? 'stale' : 'missing or fail',
+  };
+}
+
+const GROUPING_QUALITY_RELEASE_THRESHOLDS = Object.freeze({
+  minimumSamples: 12,
+  minimumPositivePairs: 3,
+  minimumPrecision: 0.9,
+  minimumRecall: 0.9,
+  minimumF1: 0.9,
+});
+
+export function evaluateGroupingQualityEvidence(summary, workspaceProvenance) {
+  const thresholds = summary?.thresholds;
+  const hasReviewedThresholds = Object.entries(GROUPING_QUALITY_RELEASE_THRESHOLDS)
+    .every(([key, value]) => thresholds?.[key] === value);
+  const passed = hasReviewedThresholds
+    && summary?.schemaVersion === 1
+    && summary?.ok === true
+    && Array.isArray(summary?.violations)
+    && summary.violations.length === 0
+    && Number.isInteger(summary?.sampleCount)
+    && summary.sampleCount >= thresholds?.minimumSamples
+    && Number.isInteger(summary?.expectedPositivePairs)
+    && summary.expectedPositivePairs >= thresholds?.minimumPositivePairs
+    && Number.isFinite(summary?.precision)
+    && summary.precision >= thresholds?.minimumPrecision
+    && Number.isFinite(summary?.recall)
+    && summary.recall >= thresholds?.minimumRecall
+    && Number.isFinite(summary?.f1)
+    && summary.f1 >= thresholds?.minimumF1;
   const matchesWorkspace = Boolean(
     passed
     && summary.runnerWorkspace?.fingerprint

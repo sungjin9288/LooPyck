@@ -11,7 +11,7 @@
 ## Current Architecture
 
 - Next.js App Router 기반 검색, 비교, 상세, 즐겨찾기 UI
-- Naver Shopping API와 source별 direct adapter를 결합한 realtime aggregation
+- source별 direct adapter와 tracked catalog fallback을 결합한 realtime aggregation
 - Firebase Auth/Firestore 연동과 Firebase Admin 미설정 시 graceful degradation
 - Upstash Redis rate limiting과 in-memory fallback
 - Netlify primary deployment, Cloudflare Workers는 bundle-size/계정 제약으로 보류

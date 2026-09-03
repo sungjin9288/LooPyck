@@ -27,3 +27,15 @@ test('Playwright CLI run-code receives a page function instead of a raw statemen
   assert.ok(invocationCount > 0, 'expected at least one pw run-code invocation');
   assert.deepEqual(invalidInvocations, []);
 });
+
+test('release QA smoke persists target-specific evidence while preserving stdout', () => {
+  const source = fs.readFileSync(
+    path.join(scriptsDir, 'netlifyReleaseQaSmoke.sh'),
+    'utf8',
+  );
+
+  assert.match(source, /local-release-qa-summary\.json/);
+  assert.match(source, /netlify-release-qa-summary\.json/);
+  assert.match(source, /RELEASE_QA_OUTPUT_PATH/);
+  assert.match(source, /tee "\$OUTPUT_PATH"/);
+});

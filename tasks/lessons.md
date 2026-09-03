@@ -28,6 +28,7 @@
 | 2026-07-15 | Client Runtime Boundary | `typeof process !== 'undefined'`만 확인하면 Next client polyfill을 Node runtime으로 오인해 `process.memoryUsage()`가 fetch 전에 실패할 수 있음 | Node 전용 API는 함수 존재까지 capability check하고 browser-polyfill regression test를 기본 suite에 포함 |
 | 2026-07-15 | Metric Decision Safety | open rate 숫자만 노출하면 표본이 부족하거나 배포본 parser가 뒤처진 상태에서도 uplift/하락 결론을 과대 해석할 수 있음 | baseline과 cohort별 directional sample floor를 적용하고 local/deployed observation artifact를 분리하며 인과·유의성 claim을 금지 |
 | 2026-07-15 | External Source Contracts | 외부 검색 URL이 200을 반환해도 client-only shell이면 direct adapter는 항상 0건이고, 구 URL 404/429를 매 검색마다 반복하면 latency와 IP 평판만 악화됨 | URL status와 실제 parsed product count/title/price/link를 같이 live probe하고, 복구 불가 source는 실측 사유를 남겨 registry에서 제외한 뒤 classified fallback을 유지 |
+| 2026-09-03 | Provider Lifecycle | 외부 API의 공식 종료를 일반 timeout/empty로 처리하면 불필요한 호출과 영구 failing 경보, 미사용 credential 요구가 남음 | 공식 종료가 확인된 provider는 단일 lifecycle contract로 no-call 처리하고 legacy route, health, env validation, 운영 문서를 함께 전환 |
 
 ---
 
@@ -148,3 +149,19 @@ _This document is updated whenever we learn from mistakes._
 
 - package name 기준 recursive memoization은 같은 node가 다른 ancestor set으로 재진입하는 cycle에서 advisory source를 누락할 수 있다.
 - `via` package edge의 source 집합을 monotonic fixed-point로 전파해 순회 순서와 cycle 유무에 관계없이 같은 결과를 만들고, 실제 cycle fixture를 regression test로 고정한다.
+
+## 2026-09-03 - Evidence command는 성공 출력과 stable artifact 저장을 함께 보장한다
+
+- smoke가 JSON을 stdout에만 출력하면 운영자가 redirect를 빠뜨렸을 때 검증은 통과해도 release report는 이전 fingerprint를 계속 읽는다.
+- target별 stable artifact path를 runner가 직접 선택하고 `tee`로 stdout 호환성을 유지하며, 특수 실행만 explicit output override를 사용한다.
+
+## 2026-09-03 - Portfolio current-state claim은 문서 간 일관성과 live Git 기준을 함께 검사한다
+
+- forbidden marketing claim만 검사하면 current 문서끼리 test count가 다르거나 오래된 commit을 최신으로 부르는 drift를 놓친다.
+- 반복되는 adapter count는 current 문서 전체에서 단일 값이어야 하고, `latest commit` 표현은 verifier가 읽은 실제 HEAD와 일치해야 한다.
+
+## 2026-09-03 - Grouping 품질은 pairwise false merge와 false split을 함께 측정한다
+
+- 같은 상품 사례만 unit test로 나열하면 다른 상품을 잘못 합치는 precision 회귀와 같은 상품을 나누는 recall 회귀를 하나의 품질 기준으로 비교하기 어렵다.
+- labeled cross-mall fixture의 모든 pair를 confusion matrix로 평가하고 sample/positive-pair floor와 workspace fingerprint를 함께 저장한다.
+- model code punctuation처럼 실제 false split이 드러나면 fixture를 완화하지 말고 normalization root cause를 좁게 수정한다. Curated benchmark 수치는 production accuracy로 확대 해석하지 않는다.

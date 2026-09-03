@@ -4,7 +4,7 @@
 
 이 프로젝트는 패션 상품을 여러 쇼핑몰에서 비교할 때 가격, 옵션, 배송, 재고 정보를 따로 확인해야 하는 문제를 해결하기 위해 시작했습니다.
 저는 확인 필요 상태의 개인 개발자로서 현재 저장소 기준 검색 API, 상품 비교 로직, AI 추천 API, 즐겨찾기/가격 알림 흐름을 개발했습니다.
-기술적으로는 Next.js App Router, TypeScript, Firebase, Gemini 2.5 Flash, Naver Shopping API, Cheerio, Netlify를 사용했고, 현재는 배포 가능한 MVP를 고도화하는 단계까지 구현했습니다.
+기술적으로는 Next.js App Router, TypeScript, Firebase, Gemini 2.5 Flash, Cheerio 기반 source adapter, Netlify를 사용했고, 현재는 배포 가능한 MVP를 고도화하는 단계까지 구현했습니다. 종료된 Naver Shopping API는 호출 경로에서 제거하고 lifecycle/diagnostics에 `disabled`로 남겼습니다.
 개발 과정에서 외부 쇼핑몰 응답 실패, AI 응답 형식 불안정, Firebase Admin 환경변수 의존성이 있었고, 이를 rate limit, timeout, Zod validation, fallback, graceful degradation으로 해결했거나 해결 중입니다.
 이 프로젝트를 통해 AI 기능을 사용자 구매 흐름에 연결하는 방법과 외부 의존성이 큰 서비스를 검증 가능하게 문서화하는 방법을 배웠고, 향후에는 Compare Entry funnel과 검색 품질 지표를 중심으로 고도화할 계획입니다.
 
@@ -28,7 +28,7 @@
 
 | 예상 질문 | 답변 방향 | 코드 근거 | 보완 필요 지식 |
 |---|---|---|---|
-| 다중 쇼핑몰 검색은 어떻게 동작하나요? | source-aware query plan으로 직접 소스와 Naver fallback을 결합한다고 설명 | `app/api/realtime-search/route.ts`, `lib/api/realtimeAggregator.ts` | 외부 API 장애 대응, scraping 한계 |
+| 다중 쇼핑몰 검색은 어떻게 동작하나요? | source-aware query plan으로 활성 direct adapter를 병렬 실행하고 전체 수집 실패 시 tracked catalog를 사용한다고 설명 | `app/api/realtime-search/route.ts`, `lib/api/realtimeAggregator.ts` | 외부 API lifecycle, scraping 한계 |
 | 상품이 같은 상품인지 어떻게 판단하나요? | 브랜드/모델/카테고리/옵션/성별 신호 기반 grouping 설명 | `lib/product/productMatching.ts` | 정보검색 유사도, precision/recall |
 | 표시 가격과 실구매가는 어떻게 다루나요? | 배송비, 혜택가, 쿠폰 추정, 재고 상태를 `PurchasePriceEstimate`로 계산 | `lib/product/purchasePricing.ts` | 가격 정책 모델링 |
 | AI 응답이 깨지면 어떻게 하나요? | Zod schema, `parseGeminiJson()`, fallback response 설명 | `app/api/style-recommend/route.ts`, `lib/ai/geminiJson.ts` | LLM structured output reliability |

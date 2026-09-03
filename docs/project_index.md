@@ -1,7 +1,7 @@
 # LooPyck Project Index
 
 **Status:** MVP 구현 후 검증·운영 고도화 중
-**Last updated:** 2026-07-15
+**Last updated:** 2026-09-03
 
 ## Product And Evidence
 

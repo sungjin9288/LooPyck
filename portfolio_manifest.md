@@ -5,7 +5,7 @@
 - 프로젝트명: LooPyck
 - 생성일: 2026-06-09
 - 현재 상태: 배포 가능한 MVP 고도화 중
-- 핵심 기술스택: Next.js 16, React 18.3.1, TypeScript, Tailwind CSS, Firebase Auth/Firestore/Admin, Gemini 2.5 Flash, Naver Shopping API, Cheerio, Zod, Netlify, Capacitor
+- 핵심 기술스택: Next.js 16, React 18.3.1, TypeScript, Tailwind CSS, Firebase Auth/Firestore/Admin, Gemini 2.5 Flash, Cheerio, Zod, Netlify, Capacitor
 - 이력서 반영 가능 여부: 조건부 가능
 
 ## 포함 파일

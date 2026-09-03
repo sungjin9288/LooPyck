@@ -8,7 +8,16 @@ SESSION="${PLAYWRIGHT_CLI_SESSION:-nq-$(date +%s)}"
 SEARCH_PLACEHOLDER='찾고 싶은 옷을 검색하세요'
 SEARCH_QUERY='남자 후드'
 CAPTURE_SCREENSHOTS="${RELEASE_QA_SCREENSHOTS:-0}"
-DEMO_SCREENSHOT_DIR="$(pwd)/output/playwright"
+OUTPUT_DIR="$(pwd)/output/playwright"
+DEMO_SCREENSHOT_DIR="$OUTPUT_DIR"
+TARGET_HOST="$(node -e "process.stdout.write(new URL(process.argv[1]).hostname)" "$BASE_URL")"
+if [[ "$TARGET_HOST" == "localhost" || "$TARGET_HOST" == "127.0.0.1" || "$TARGET_HOST" == "::1" ]]; then
+  DEFAULT_OUTPUT_PATH="$OUTPUT_DIR/local-release-qa-summary.json"
+else
+  DEFAULT_OUTPUT_PATH="$OUTPUT_DIR/netlify-release-qa-summary.json"
+fi
+OUTPUT_PATH="${RELEASE_QA_OUTPUT_PATH:-$DEFAULT_OUTPUT_PATH}"
+mkdir -p "$(dirname "$OUTPUT_PATH")"
 
 pw() {
   PLAYWRIGHT_CLI_SESSION="$SESSION" CODEX_HOME="$CODEX_HOME" "$PWCLI" "$@"
@@ -334,4 +343,5 @@ node -e "
   "$SEARCH_RESULTS_SCREENSHOT" \
   "$DETAIL_SCREENSHOT" \
   "$FAVORITES_SCREENSHOT" \
-  "$DEPLOYMENT_PROVENANCE"
+  "$DEPLOYMENT_PROVENANCE" \
+  | tee "$OUTPUT_PATH"

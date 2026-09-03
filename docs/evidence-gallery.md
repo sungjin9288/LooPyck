@@ -47,7 +47,7 @@
 
 | API | 파일 | 확인 내용 |
 |---|---|---|
-| `/api/search` | `evidence/api-responses/search.json` | Naver Shopping API 검색 응답 |
+| `/api/search` | `evidence/api-responses/search.json` | 2026-07-31 provider 종료 전 수집한 historical response; 현재 route는 `410 Gone` |
 | `/api/realtime-search` | `evidence/api-responses/realtime-search.json` | realtime aggregation products/searchMeta |
 | `/api/style-recommend` | `evidence/api-responses/style-recommend.json` | 3개 style looks |
 | `/api/ai-chat` | `evidence/api-responses/ai-chat.json` | HTTP 200, `responseSource=fallback`, source/reason header 확인 |

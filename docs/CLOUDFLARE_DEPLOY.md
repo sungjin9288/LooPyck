@@ -41,8 +41,6 @@ At minimum, mirror the runtime values you already use in `.env.local`.
 Examples:
 
 ```text
-NAVER_CLIENT_ID
-NAVER_CLIENT_SECRET
 GEMINI_API_KEY
 NEXT_PUBLIC_FIREBASE_API_KEY
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN

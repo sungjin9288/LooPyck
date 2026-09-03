@@ -21,11 +21,12 @@ for (const filePath of documentPaths) {
   }
 }
 
-const audit = auditPortfolioClaims(documents);
+const runnerWorkspace = buildGitWorkspaceProvenance(workspace);
+const audit = auditPortfolioClaims(documents, { expectedHead: runnerWorkspace.head });
 const artifact = {
   ok: audit.ok,
   generatedAt: new Date().toISOString(),
-  runnerWorkspace: buildGitWorkspaceProvenance(workspace),
+  runnerWorkspace,
   currentDocumentCount: CURRENT_PORTFOLIO_DOCS.length,
   legacyDocumentCount: LEGACY_PLANNING_DOCS.length,
   violations: audit.violations,

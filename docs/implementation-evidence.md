@@ -7,7 +7,7 @@
 | 프로젝트명 | LooPyck | `README.md`, `package.json` |
 | 유형 | 개인 프로젝트 / PoC 확장형 MVP | 개인 GitHub remote, 단일 Next.js repo, 포트폴리오 문서 |
 | 현재 상태 | MVP 구현 후 고도화 중 | `tasks/todo.md`, `docs/roadmap.md`, Netlify/Compare Entry 문서 |
-| 도메인 | 패션 가격 비교 / AI 스타일 추천 | `app/api/search`, `app/api/realtime-search`, `app/api/style-recommend` |
+| 도메인 | 패션 가격 비교 / AI 스타일 추천 | `app/api/realtime-search`, `app/api/style-recommend` |
 | 이력서 반영 | 조건부 가능 | 구현 근거와 검증 로그는 있으나 운영 성과 수치는 검증 필요 |
 
 ## 2. 구현 증거가 필요한 기능
@@ -18,9 +18,10 @@
 | 메인 검색 화면 | 검증 완료 | `app/page.tsx`, `components/search/SearchBar.tsx` | `output/playwright/demo-flow-main-search.png` | 현재 working-tree fingerprint 연결 캡처 |
 | 상품 검색 결과 화면 | 검증 완료 | `components/product/InfiniteProductGrid.tsx`, `components/product/searchResultSections.tsx` | `output/playwright/demo-flow-search-results.png` | 현재 working-tree fingerprint 연결 캡처 |
 | 가격 비교 상세/decision block | 검증 완료 | `components/product/ProductDetailModal.tsx`, `components/product/PurchaseDecisionBlock.tsx`, `lib/product/purchaseDecision.ts` | `output/playwright/demo-flow-detail-compare.png` | 현재 working-tree fingerprint 연결 캡처 |
-| Naver Shopping API 검색 | 검증 완료 | `app/api/search/route.ts` | `evidence/api-responses/search.json`, `search.meta.txt` | 포트폴리오 사용 가능 |
+| Naver Shopping API lifecycle | provider 종료 대응 완료 | `app/api/search/route.ts`, `lib/api/naverShoppingSearchLifecycle.ts` | local `410 Gone`, retired-source regression tests | 기존 200 response evidence는 pre-retirement snapshot이며 현재 기능 claim에 사용 금지 |
 | 다중 소스 실시간 검색 | 검증 완료 | `app/api/realtime-search/route.ts`, `lib/api/realtimeAggregator.ts` | `evidence/api-responses/realtime-search.json` | 포트폴리오 사용 가능 |
 | 상품 그룹핑/구매 판단 | 검증 완료 | `lib/product/productMatching.ts`, `lib/product/purchasePricing.ts`, `lib/product/purchaseDecision.ts` | `evidence/cli-logs/test-adapters.log` | 포트폴리오 사용 가능 |
+| 상품 grouping 품질 benchmark | curated regression 검증 완료 | `lib/product/groupingQuality.ts`, `lib/product/groupingQualityDataset.ts`, `scripts/verifyProductGroupingQuality.mjs` | `output/playwright/product-grouping-quality-benchmark.{json,md}` | 12 products / 66 pairs의 pairwise precision·recall·F1 100%, production accuracy claim 금지 |
 | AI style recommendation | 검증 완료 | `app/api/style-recommend/route.ts`, `lib/ai/styleRecommend.ts`, `components/recommend/StyleRecommender.tsx` | `evidence/api-responses/style-recommend.json`, `evidence/screenshots/priority-04-ai-style-recommendation-result.png` | 포트폴리오 우선 캡처 |
 | AI chat | fallback 흐름 검증 완료 / live AI 품질 검증 필요 | `app/api/ai-chat/route.ts`, `lib/ai/aiChatFallback.ts`, `components/ai/StyleChat.tsx` | `evidence/api-responses/ai-chat.json`, `evidence/screenshots/priority-05-ai-chatbot-result.png` | missing key fallback 200, source badge, keyword 검색 재진입 확인 |
 | 가격 이력 API validation | 검증 완료 | `app/api/price-history/route.ts` | `evidence/api-responses/price-history-missing.json` | 잘못된 입력 400 처리 확인 |
@@ -29,8 +30,8 @@
 | 모바일 로그인 화면 | 검증 완료 | `app/login/page.tsx`, `contexts/UserContext.tsx` | `evidence/screenshots/mobile-login.png` | 화면 증거 |
 | 즐겨찾기/가격 알림 화면 | 검증 완료 / 데이터 empty state | `app/favorites/page.tsx`, `app/favorites/alerts/page.tsx`, `components/favorites/FavoritesPage.tsx` | `output/playwright/demo-flow-favorites.png` | 현재 working-tree fingerprint 연결 캡처, 저장 데이터는 없음 |
 | Compare Entry redesign | 검증 완료 | `components/landing/*`, `components/product/searchResultSections.tsx`, `components/product/compareWorkflowSections.tsx` | `output/playwright/compare-entry-review-gate.json`, `output/playwright/netlify-compare-entry-baseline.json` | 구현 완료로 표현 가능, 전환 성과 수치는 별도 검증 필요 |
-| Search quality observation | 구현/로컬 검증 완료, production 표본 재수집 필요 | `lib/search/searchQualityObservation.ts`, `components/admin/searchDiagnostics/overviewSections.tsx`, `scripts/netlifySearchQualityReport.sh` | `output/playwright/{local,netlify}-search-quality-observation-report.md`, `output/playwright/local-admin-search-quality-observation.png` | cohort uplift는 directional signal이며 rollout/인과 성과 claim 금지 |
-| Direct source integration | 로컬·production 검증 완료 | `lib/api/marketplaceScrapers.ts`, `lib/api/searchSourceRegistry.ts`, `scripts/netlifyDirectSourceSmoke.mjs` | `output/playwright/{local,netlify}-direct-source-integration-smoke.json` | SSF·Handsome·EQL·LF몰 direct hit과 current workspace fingerprint 일치 필수, disabled source는 NAVER classified fallback 유지 |
+| Search quality observation | local release gate 연동, production 현재 `watch` | `lib/search/searchQualityObservation.ts`, `scripts/netlifySearchQualityReport.sh`, `scripts/releaseEvidenceProvenance.mjs` | `output/playwright/{local,netlify}-search-quality-observation-report.{json,md}`, `output/playwright/release-closeout-report.md` | local은 24시간 freshness·5분 capture skew·served provenance·workspace fingerprint 일치 필수; cohort uplift/인과 성과 claim 금지, production NAVER health 전환은 Phase 81 배포 후 재확인 |
+| Direct source integration | 로컬·production 검증 완료 | `lib/api/marketplaceScrapers.ts`, `lib/api/searchSourceRegistry.ts`, `scripts/netlifyDirectSourceSmoke.mjs` | `output/playwright/{local,netlify}-direct-source-integration-smoke.json` | SSF·Handsome·EQL·LF몰 direct hit과 current workspace fingerprint 일치 필수, 전체 수집 실패 시 tracked catalog fallback 사용 |
 | Local system stress | 로컬 검증 완료 | `scripts/localSystemStressSmoke.mjs`, `scripts/systemStressContract.mjs` | `output/playwright/local-system-stress-smoke.json` | served build manifest의 schema·commit·fingerprint·CI run identity linkage 후 deterministic route contract 100 concurrent requests; production user capacity로 해석 금지 |
 | 운영 성과 수치 | 미구현 / 코드 근거 부족 | README 문구 외 검증 자료 없음 | 이번 실행 증거 없음 | 이력서 수치 표현 금지 |
 
@@ -39,13 +40,14 @@
 | 검증 | 명령 | 결과 | 로그 |
 |---|---|---|---|
 | TypeScript typecheck | `npm run typecheck` | 통과 | `evidence/cli-logs/typecheck.log` |
-| Adapter/domain tests | `npm run test:adapters` | 통과, 527 tests pass (2026-09-03 working tree) | `evidence/cli-logs/test-adapters.log` |
+| Adapter/domain tests | `npm run test:adapters` | 통과, 543 tests pass (2026-09-03 working tree) | `evidence/cli-logs/test-adapters.log` |
+| Product grouping quality | `npm run test:grouping-quality` + `npm run verify:grouping-quality` | 12 curated products, 66 pairs, precision·recall·F1 100%, false merge/split 0 | `output/playwright/product-grouping-quality-benchmark.{json,md}`, `output/playwright/release-closeout-report.md` |
 | Badge conversion temporal integrity | `tests/searchDiagnostics.test.ts` | impression 이후 open만 cohort conversion으로 집계 | `evidence/cli-logs/test-adapters.log` |
 | Commerce signal hygiene | targeted tests + local API + Playwright snapshot | HAGO template 오염 0건, PDP dimension option 오염 0건 | `evidence/screenshots/commerce-signal-hygiene.png` |
 | Compare Entry strict gate | `npm run ntl:compare-entry-review-ready-check` | 통과, gate/audit `READY`, active blocker `none` | `output/playwright/compare-entry-review-gate.json` |
-| Local pre-release QA | `bash scripts/netlifyReleaseQaSmoke.sh http://localhost:3100` | search/detail/favorites 통과, workspace fingerprint 일치 | `output/playwright/local-release-qa-summary.json` |
-| Fingerprint-linked demo flow | `RELEASE_QA_SCREENSHOTS=1 bash scripts/netlifyReleaseQaSmoke.sh http://localhost:3100` | home/search/detail/favorites 실파일 4개와 workspace fingerprint 일치 | `output/playwright/release-closeout-report.md` |
-| Search quality observation | `npm run ntl:search-quality-report` + local target command | privacy-trimmed snapshot/report 생성, local admin observation 렌더와 console error 0건 | `output/playwright/{local,netlify}-search-quality-observation-report.md`, `output/playwright/local-admin-browser-smoke-summary.json` |
+| Local pre-release QA | `npm run ntl:release-qa-smoke -- http://localhost:3100` | search/detail/favorites 통과, target별 stable artifact 자동 저장, workspace fingerprint 일치 | `output/playwright/local-release-qa-summary.json` |
+| Fingerprint-linked demo flow | `RELEASE_QA_SCREENSHOTS=1 npm run ntl:release-qa-smoke -- http://localhost:3100` | home/search/detail/favorites 실파일 4개와 workspace fingerprint 일치 | `output/playwright/release-closeout-report.md` |
+| Search quality observation | `npm run ntl:search-quality-report` + local target command | privacy-trimmed snapshot/report 생성, local served provenance·workspace fingerprint·freshness release gate 통과 | `output/playwright/{local,netlify}-search-quality-observation-report.{json,md}`, `output/playwright/release-closeout-report.md` |
 | Direct source integration | `npm run ntl:direct-source-smoke -- http://localhost:3100` | HTTP 200, full mode, 필수 4 source direct hit, workspace fingerprint 일치; total active count는 실행별 관찰 | `output/playwright/local-direct-source-integration-smoke.json`, `output/playwright/release-closeout-report.md` |
 | Local system stress contract | `npm run test:system-stress-contract` | pass/fail threshold, scope, memory evidence와 build manifest linkage contract 검증 | Node.js test runner summary |
 | Local system stress | `npm run ntl:system-stress` | served build manifest가 runner commit/fingerprint와 일치한 뒤 production build 100-request stress와 p95/RSS evidence 생성 | `output/playwright/local-system-stress-smoke.json`, `output/playwright/release-closeout-report.md` |
@@ -66,7 +68,7 @@
 
 ## 4. API 응답 요약
 
-- `/api/search`: HTTP 200, `display=3`, item count 3
+- `/api/search`: current working tree에서 HTTP 410, `naver_shopping_search_retired_2026_07_31`; 저장된 HTTP 200 evidence는 pre-retirement snapshot
 - `/api/realtime-search`: HTTP 200, product count 19, result quality `mixed`
 - `/api/style-recommend`: HTTP 200, 3 looks returned
 - `/api/ai-chat`: missing key 환경에서 HTTP 200 deterministic fallback, `X-AI-Chat-Source: fallback`, 완전한 조언과 검색 keyword 3개 반환

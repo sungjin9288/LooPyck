@@ -225,6 +225,7 @@ function isSizeToken(token: string): boolean {
 
 function extractTitleTokens(title: string): string[] {
     const cleaned = normalizeTitle(title)
+        .replace(/([A-Za-z]+)-(?=\d)/g, '$1')
         .replace(/[()[\]{}]/g, ' ')
         .replace(/[\\/_,:+*&]/g, ' ')
         .replace(/[.-]/g, ' ');

@@ -55,3 +55,37 @@ test('portfolio audit accepts clean current docs and marked legacy assumptions',
 
   assert.deepEqual(result, { ok: true, violations: [] });
 });
+
+test('portfolio audit rejects inconsistent adapter test counts across current docs', () => {
+  const result = auditPortfolioClaims(
+    {
+      currentA: 'adapter/domain tests: `530/530` pass',
+      currentB: 'adapter/domain tests: `529/529` pass',
+    },
+    { currentPaths: ['currentA', 'currentB'], legacyPaths: [] },
+  );
+
+  assert.deepEqual(result.violations, [{
+    type: 'inconsistent-adapter-test-count',
+    claims: [
+      { filePath: 'currentA', line: 1, count: 530 },
+      { filePath: 'currentB', line: 1, count: 529 },
+    ],
+  }]);
+});
+
+test('portfolio audit rejects a latest commit claim that differs from HEAD', () => {
+  const expectedHead = 'a'.repeat(40);
+  const result = auditPortfolioClaims(
+    { current: '현재 최신 커밋은 `0edd82a`이다.' },
+    { currentPaths: ['current'], legacyPaths: [], expectedHead },
+  );
+
+  assert.deepEqual(result.violations, [{
+    type: 'stale-latest-commit-claim',
+    filePath: 'current',
+    line: 1,
+    observed: '0edd82a',
+    expected: expectedHead,
+  }]);
+});

@@ -14,9 +14,13 @@ OUTPUT_DIR="$(pwd)/output/playwright"
 SNAPSHOT_PATH="${SEARCH_DIAGNOSTICS_OUTPUT:-${OUTPUT_DIR}/${TARGET_LABEL}-search-diagnostics-snapshot.json}"
 REPORT_JSON_PATH="${SEARCH_QUALITY_REPORT_JSON:-${OUTPUT_DIR}/${TARGET_LABEL}-search-quality-observation-report.json}"
 REPORT_MARKDOWN_PATH="${SEARCH_QUALITY_REPORT_MARKDOWN:-${OUTPUT_DIR}/${TARGET_LABEL}-search-quality-observation-report.md}"
+PROVENANCE_PATH="${OUTPUT_DIR}/${TARGET_LABEL}-deployment-provenance.json"
+PROVENANCE_SUMMARY="${TMPDIR:-/tmp}/loopyck-${TARGET_LABEL}-search-quality-provenance.json"
 ADMIN_SMOKE_SUMMARY="${TMPDIR:-/tmp}/loopyck-${TARGET_LABEL}-admin-smoke-summary.json"
 
 mkdir -p "$OUTPUT_DIR"
+
+node scripts/netlifyDeploymentProvenanceSmoke.mjs "$BASE_URL" > "$PROVENANCE_SUMMARY"
 
 SEARCH_DIAGNOSTICS_LIMIT="$DIAGNOSTICS_LIMIT" \
 SEARCH_DIAGNOSTICS_OUTPUT="$SNAPSHOT_PATH" \
@@ -28,4 +32,5 @@ node \
   scripts/buildSearchQualityObservationReport.mjs \
   "$SNAPSHOT_PATH" \
   "$REPORT_JSON_PATH" \
-  "$REPORT_MARKDOWN_PATH"
+  "$REPORT_MARKDOWN_PATH" \
+  "$PROVENANCE_PATH"

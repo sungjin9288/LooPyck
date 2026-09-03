@@ -15,7 +15,7 @@
 ## 3. 현재 이력서에 넣어도 되는 bullet
 
 - 패션 상품 비교 과정에서 발생하는 옵션/배송/실구매가 판단 문제를 해결하기 위해 Next.js App Router 기반 검색·비교 웹 애플리케이션을 개발 중이며, `/api/realtime-search`와 상품 비교 UI를 통해 다중 소스 결과를 통합 표시
-- Naver Shopping API와 marketplace scraping adapter를 결합하고, 외부 소스 실패 시 Naver-only 및 tracked catalog fallback을 적용해 검색 결과 제공 안정성을 개선
+- source-aware marketplace adapter를 병렬 집계하고, 전체 외부 소스 실패 시 tracked catalog fallback을 적용해 검색 결과 제공 안정성을 개선
 - `productMatching`, `purchasePricing`, `purchaseDecision` 모듈을 구현해 상품 canonicalization, 옵션/재고/배송비/혜택가 기반 구매 판단 로직을 분리
 - Firebase Auth/Firestore 기반 즐겨찾기 동기화와 가격 알림 서버 로직을 구성해 검색 이후 관심 상품 저장, 목표가 추적, 알림 생성 흐름을 개발
 - Gemini 2.5 Flash 기반 AI chat, image-to-search keyword, 체형 기반 style recommendation API를 구현하고 Zod validation, JSON parsing, deterministic fallback으로 응답 안정성을 보완
@@ -30,7 +30,7 @@
 
 ## 5. 기술스택 한 줄
 
-- 현재 사용 중: TypeScript, Next.js 16, React 18.3.1, Tailwind CSS, Firebase Auth/Firestore/Admin, Gemini 2.5 Flash, Naver Shopping API, Cheerio, Zod, Netlify, Capacitor
+- 현재 사용 중: TypeScript, Next.js 16, React 18.3.1, Tailwind CSS, Firebase Auth/Firestore/Admin, Gemini 2.5 Flash, Cheerio, Zod, Netlify, Capacitor
 - 현재 사용 중: Figma-first design handoff, Playwright visual QA
 - 예정/검토: Cloudflare Workers/OpenNext
 
@@ -71,8 +71,8 @@
 
 ## 9. 최종 판단
 
-- 현재 이력서 반영 가능 여부: 조건부 가능
-- 이유: 구현 근거가 풍부하고 기능 범위가 명확하지만, 수치 성과와 운영 안정성은 검증 자료 없이 쓰면 위험하다.
-- 이력서에 넣기 전 반드시 보완할 것: 데모 스크린샷, 핵심 기능 GIF, 검증 명령 결과, README의 과장 수치 제거 또는 근거 추가
-- 가장 먼저 개선해야 할 것: README를 코드 근거 중심으로 재작성하고, “구현 완료/개발 중/검증 필요” 상태를 분리
-- git 기준 주의사항: 2026-06-09 현재 워킹트리에 미커밋 변경이 많으므로, 이력서에는 “배포/완성”보다 “개발 중/고도화 중” 표현을 우선 사용하고 최신 검증 결과를 확보한 뒤 표현 강도를 높인다.
+- 현재 이력서 반영 가능 여부: 구현 범위와 검증 방법을 함께 제시하는 조건으로 가능
+- 이유: 검색·비교·AI·favorites·alert 흐름에 코드와 local/release evidence가 연결돼 있다. 다만 실제 사용자 성과와 production capacity 수치는 검증되지 않았다.
+- 이력서에 넣기 전 확인할 것: README의 `Scope & Limitations`, current demo screenshot, `npm run test:adapters` summary와 배포 대상 provenance
+- 가장 먼저 개선해야 할 것: 실제 사용자 analytics 표본을 수집해 검색 성공률, 비교 진입률, 알림 반응을 구현 완료 claim과 분리해 검증
+- git 기준 주의사항: 2026-09-03 working tree의 Phase 81~83은 local fingerprint evidence까지 검증됐지만 아직 production 배포 전이다. 최신 배포 완료로 표현하려면 commit/push/deploy와 post-deploy UAT가 추가로 필요하다.

@@ -18,6 +18,7 @@ export type TimedSearchResult = {
     source: UnifiedProduct['source'];
     products: UnifiedProduct[];
     durationMs: number;
+    attempted?: boolean;
     fallbackReason?: string;
     requestedQueries?: string[];
     resolvedQuery?: string;
@@ -226,7 +227,8 @@ export async function runNaverSearchLike(
     page: number,
     sort: SearchSort,
     fetchNaverRealtime: (query: string, page: number, sort: SearchSort) => Promise<UnifiedProduct[]>,
-    hasNaverCredentials: () => boolean
+    hasNaverCredentials: () => boolean,
+    unavailableReason: string = 'naver_credentials_missing'
 ): Promise<TimedSearchResult> {
     const startedAt = Date.now();
     const requestedQueries = uniqueQueryCandidates(queries);
@@ -237,7 +239,8 @@ export async function runNaverSearchLike(
             source: 'NAVER',
             products: [],
             durationMs: Date.now() - startedAt,
-            fallbackReason: 'naver_credentials_missing',
+            attempted: false,
+            fallbackReason: unavailableReason,
             requestedQueries,
             resolvedQuery: query,
         };
@@ -323,7 +326,7 @@ export function buildAggregationDiagnostics(
 
     sourceDiagnostics.push({
         source: 'NAVER',
-        attempted: true,
+        attempted: naverRun.attempted ?? true,
         success: naverRun.products.length > 0,
         durationMs: naverRun.durationMs,
         directCount: naverRun.products.length,

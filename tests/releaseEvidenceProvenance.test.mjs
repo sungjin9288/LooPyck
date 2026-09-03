@@ -6,8 +6,10 @@ import {
   evaluateLocalDirectSourceEvidence,
   evaluateLocalDemoEvidence,
   evaluateLocalReleaseEvidence,
+  evaluateLocalSearchQualityEvidence,
   evaluateLocalSystemStressEvidence,
   evaluatePortfolioClaimEvidence,
+  evaluateGroupingQualityEvidence,
   evaluateCiWorkflowEvidence,
   evaluateDependencyAuditEvidence,
 } from '../scripts/releaseEvidenceProvenance.mjs';
@@ -201,6 +203,155 @@ function passingDirectSourceSummary(fingerprint = 'workspace-a') {
   };
 }
 
+function passingSearchQualitySummary(
+  fingerprint = FINGERPRINT_A,
+  generatedAt = '2026-09-03T06:00:00.000Z',
+) {
+  const baseUrl = 'http://localhost:3211';
+  const runnerWorkspace = {
+    head: COMMIT,
+    branch: 'main',
+    dirty: true,
+    changedFileCount: 12,
+    fingerprint,
+  };
+  const deployment = {
+    schemaVersion: 1,
+    generatedAt: '2026-09-03T05:55:00.000Z',
+    provider: 'local',
+    buildEnvironment: 'local',
+    commit: COMMIT,
+    branch: 'main',
+    context: 'local-build',
+    deployId: null,
+    runId: null,
+    workspaceFingerprint: fingerprint,
+    dirty: true,
+  };
+
+  return {
+    schemaVersion: 1,
+    generatedAt,
+    baseUrl,
+    targetKind: 'local-working-tree',
+    runnerWorkspace,
+    deploymentProvenance: {
+      ok: true,
+      generatedAt: '2026-09-03T05:59:00.000Z',
+      baseUrl,
+      targetKind: 'local-working-tree',
+      requestUrl: `${baseUrl}/deployment-provenance.json`,
+      expectedCommit: COMMIT,
+      commitMatchesExpected: true,
+      responseStatus: 200,
+      contentType: 'application/json',
+      deployment,
+      violations: [],
+      failure: null,
+      runnerWorkspace,
+    },
+    target: {
+      baseUrl,
+      diagnosticsGeneratedAt: '2026-09-03T05:59:30.000Z',
+      diagnosticsLastUpdatedAt: '2026-09-03T05:58:00.000Z',
+      storage: 'firestore',
+    },
+    evidenceBoundary: {
+      privacyBoundary: 'Recent queries, product identities, opened brands, alert data, and admin identity are excluded.',
+      runnerWorkspace,
+      deploymentProvenanceClaimed: true,
+      note: 'The diagnostics snapshot and served deployment are linked to this report.',
+    },
+    observation: {
+      status: 'watch',
+      minimumDirectionalImpressions: 30,
+      trackedSearches: 120,
+      interactionCount: 80,
+      quality: {},
+      badgeCohorts: [],
+      sourceHealth: {
+        failing: 1,
+        degraded: 0,
+        healthy: 9,
+        disabled: 2,
+        other: 0,
+        failingSources: [{ source: 'EXAMPLE', reason: 'fixture' }],
+      },
+      actions: [],
+    },
+  };
+}
+
+test('local search-quality evidence accepts a current provenance-linked watch observation', () => {
+  assert.deepEqual(
+    evaluateLocalSearchQualityEvidence(
+      passingSearchQualitySummary(),
+      { fingerprint: FINGERPRINT_A },
+      Date.parse('2026-09-03T06:05:00.000Z'),
+    ),
+    {
+      passed: true,
+      matchesWorkspace: true,
+      fresh: true,
+      status: 'pass',
+      observationStatus: 'watch',
+      trackedSearches: 120,
+      interactionCount: 80,
+      failingSourceCount: 1,
+      disabledSourceCount: 2,
+    },
+  );
+});
+
+test('local search-quality evidence becomes stale after workspace changes', () => {
+  assert.equal(
+    evaluateLocalSearchQualityEvidence(
+      passingSearchQualitySummary(),
+      { fingerprint: FINGERPRINT_B },
+      Date.parse('2026-09-03T06:05:00.000Z'),
+    ).status,
+    'stale',
+  );
+});
+
+test('local search-quality evidence rejects an observation older than 24 hours', () => {
+  const summary = passingSearchQualitySummary(FINGERPRINT_A, '2026-09-01T06:00:00.000Z');
+  summary.target.diagnosticsGeneratedAt = '2026-09-01T05:59:30.000Z';
+
+  const result = evaluateLocalSearchQualityEvidence(
+    summary,
+    { fingerprint: FINGERPRINT_A },
+    Date.parse('2026-09-03T06:05:00.000Z'),
+  );
+
+  assert.equal(result.fresh, false);
+  assert.equal(result.status, 'stale');
+});
+
+test('local search-quality evidence rejects legacy provenance and sample-floor drift', () => {
+  const legacy = passingSearchQualitySummary();
+  delete legacy.deploymentProvenance;
+  const loweredFloor = passingSearchQualitySummary();
+  loweredFloor.observation.minimumDirectionalImpressions = 1;
+
+  assert.equal(
+    evaluateLocalSearchQualityEvidence(
+      legacy,
+      { fingerprint: FINGERPRINT_A },
+      Date.parse('2026-09-03T06:05:00.000Z'),
+    ).status,
+    'missing or fail',
+  );
+  assert.equal(
+    evaluateLocalSearchQualityEvidence(
+      loweredFloor,
+      { fingerprint: FINGERPRINT_A },
+      Date.parse('2026-09-03T06:05:00.000Z'),
+    ).status,
+    'missing or fail',
+  );
+});
+
 test('local direct-source evidence passes only for direct hits from the current workspace', () => {
   assert.deepEqual(
     evaluateLocalDirectSourceEvidence(
@@ -379,6 +530,70 @@ test('portfolio claim evidence rejects reported violations', () => {
 
   assert.equal(
     evaluatePortfolioClaimEvidence(summary, { fingerprint: 'workspace-a' }).status,
+    'missing or fail',
+  );
+});
+
+function passingGroupingQualitySummary(fingerprint = 'workspace-a') {
+  return {
+    schemaVersion: 1,
+    ok: true,
+    runnerWorkspace: { fingerprint },
+    thresholds: {
+      minimumSamples: 12,
+      minimumPositivePairs: 3,
+      minimumPrecision: 0.9,
+      minimumRecall: 0.9,
+      minimumF1: 0.9,
+    },
+    sampleCount: 12,
+    expectedPositivePairs: 3,
+    precision: 1,
+    recall: 1,
+    f1: 1,
+    violations: [],
+  };
+}
+
+test('grouping quality evidence passes only for the current workspace', () => {
+  assert.deepEqual(
+    evaluateGroupingQualityEvidence(
+      passingGroupingQualitySummary(),
+      { fingerprint: 'workspace-a' },
+    ),
+    { passed: true, matchesWorkspace: true, status: 'pass' },
+  );
+});
+
+test('grouping quality evidence becomes stale after workspace changes', () => {
+  assert.equal(
+    evaluateGroupingQualityEvidence(
+      passingGroupingQualitySummary(),
+      { fingerprint: 'workspace-b' },
+    ).status,
+    'stale',
+  );
+});
+
+test('grouping quality evidence rejects a threshold violation', () => {
+  const summary = passingGroupingQualitySummary();
+  summary.ok = false;
+  summary.recall = 0.6667;
+  summary.violations = ['recall-below-threshold'];
+
+  assert.equal(
+    evaluateGroupingQualityEvidence(summary, { fingerprint: 'workspace-a' }).status,
+    'missing or fail',
+  );
+});
+
+test('grouping quality evidence rejects lowered artifact thresholds', () => {
+  const summary = passingGroupingQualitySummary();
+  summary.thresholds.minimumRecall = 0.5;
+  summary.recall = 0.6;
+
+  assert.equal(
+    evaluateGroupingQualityEvidence(summary, { fingerprint: 'workspace-a' }).status,
     'missing or fail',
   );
 });

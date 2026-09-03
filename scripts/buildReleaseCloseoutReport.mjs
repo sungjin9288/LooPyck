@@ -8,8 +8,10 @@ import {
   evaluateLocalDirectSourceEvidence,
   evaluateLocalDemoEvidence,
   evaluateLocalReleaseEvidence,
+  evaluateLocalSearchQualityEvidence,
   evaluateLocalSystemStressEvidence,
   evaluatePortfolioClaimEvidence,
+  evaluateGroupingQualityEvidence,
   evaluateCiWorkflowEvidence,
   evaluateDependencyAuditEvidence,
 } from './releaseEvidenceProvenance.mjs';
@@ -46,6 +48,10 @@ const localReleaseQaPath = path.join(outputDir, 'local-release-qa-summary.json')
 const deployedReleaseQaPath = path.join(outputDir, 'netlify-release-qa-summary.json');
 const localDirectSourcePath = path.join(outputDir, 'local-direct-source-integration-smoke.json');
 const localSystemStressPath = path.join(outputDir, 'local-system-stress-smoke.json');
+const localSearchQualityPath = path.join(outputDir, 'local-search-quality-observation-report.json');
+const localSearchQualityMarkdownPath = path.join(outputDir, 'local-search-quality-observation-report.md');
+const groupingQualityPath = path.join(outputDir, 'product-grouping-quality-benchmark.json');
+const groupingQualityMarkdownPath = path.join(outputDir, 'product-grouping-quality-benchmark.md');
 const portfolioClaimAuditPath = path.join(outputDir, 'portfolio-claim-audit.json');
 const ciWorkflowAuditPath = path.join(outputDir, 'ci-workflow-contract.json');
 const dependencyAuditPath = path.join(outputDir, 'dependency-audit-policy.json');
@@ -85,6 +91,8 @@ const localReleaseQa = existsSync(localReleaseQaPath) ? readJson(localReleaseQaP
 const deployedReleaseQa = existsSync(deployedReleaseQaPath) ? readJson(deployedReleaseQaPath) : null;
 const localDirectSource = existsSync(localDirectSourcePath) ? readJson(localDirectSourcePath) : null;
 const localSystemStress = existsSync(localSystemStressPath) ? readJson(localSystemStressPath) : null;
+const localSearchQuality = existsSync(localSearchQualityPath) ? readJson(localSearchQualityPath) : null;
+const groupingQuality = existsSync(groupingQualityPath) ? readJson(groupingQualityPath) : null;
 const portfolioClaimAudit = existsSync(portfolioClaimAuditPath) ? readJson(portfolioClaimAuditPath) : null;
 const ciWorkflowAudit = existsSync(ciWorkflowAuditPath) ? readJson(ciWorkflowAuditPath) : null;
 const dependencyAudit = existsSync(dependencyAuditPath) ? readJson(dependencyAuditPath) : null;
@@ -101,8 +109,16 @@ const localSystemStressEvidence = evaluateLocalSystemStressEvidence(
   localSystemStress,
   workspaceProvenance,
 );
+const localSearchQualityEvidence = evaluateLocalSearchQualityEvidence(
+  localSearchQuality,
+  workspaceProvenance,
+);
 const portfolioClaimEvidence = evaluatePortfolioClaimEvidence(
   portfolioClaimAudit,
+  workspaceProvenance,
+);
+const groupingQualityEvidence = evaluateGroupingQualityEvidence(
+  groupingQuality,
   workspaceProvenance,
 );
 const ciWorkflowEvidence = evaluateCiWorkflowEvidence(ciWorkflowAudit, workspaceProvenance);
@@ -149,6 +165,8 @@ const lines = [
   `- Fingerprint-linked demo screenshot packet: ${localDemoEvidence.status}`,
   `- Fingerprint-linked direct-source integration smoke: ${localDirectSourceEvidence.status}`,
   `- Fingerprint-linked local system stress smoke: ${localSystemStressEvidence.status}`,
+  `- Fingerprint-linked local search-quality observation: ${localSearchQualityEvidence.status}`,
+  `- Fingerprint-linked product grouping quality benchmark: ${groupingQualityEvidence.status}`,
   `- Fingerprint-linked portfolio claim integrity audit: ${portfolioClaimEvidence.status}`,
   `- Fingerprint-linked CI workflow integrity audit: ${ciWorkflowEvidence.status}`,
   `- Fingerprint-linked dependency audit policy: ${dependencyAuditEvidence.status}`,
@@ -200,6 +218,29 @@ const lines = [
   `- Local system stress p95 latency: ${localSystemStress?.evaluation?.p95LatencyMs ?? 'unknown'}ms`,
   `- Local system stress RSS growth: ${localSystemStress?.evaluation?.rssGrowthMb ?? 'unknown'}MB`,
   `- Local system stress artifact: \`${path.relative(workspace, localSystemStressPath)}\``,
+  localSearchQuality
+    ? `- Local search-quality observation generated at: ${localSearchQuality.generatedAt ?? 'unknown'}`
+    : '- Local search-quality observation generated at: missing',
+  `- Local search-quality fingerprint matches current workspace: ${localSearchQualityEvidence.matchesWorkspace}`,
+  `- Local search-quality observation fresh: ${localSearchQualityEvidence.fresh}`,
+  `- Local search-quality observation status: ${localSearchQualityEvidence.observationStatus}`,
+  `- Local search-quality tracked searches: ${localSearchQualityEvidence.trackedSearches}`,
+  `- Local search-quality interaction events: ${localSearchQualityEvidence.interactionCount}`,
+  `- Local search-quality failing / disabled sources: ${localSearchQualityEvidence.failingSourceCount} / ${localSearchQualityEvidence.disabledSourceCount}`,
+  `- Local search-quality artifact: \`${path.relative(workspace, localSearchQualityPath)}\``,
+  `- Local search-quality report: \`${path.relative(workspace, localSearchQualityMarkdownPath)}\``,
+  groupingQuality
+    ? `- Product grouping benchmark generated at: ${groupingQuality.generatedAt ?? 'unknown'}`
+    : '- Product grouping benchmark generated at: missing',
+  `- Product grouping benchmark fingerprint matches current workspace: ${groupingQualityEvidence.matchesWorkspace}`,
+  `- Product grouping benchmark products: ${groupingQuality?.sampleCount ?? 0}`,
+  `- Product grouping benchmark expected pairs: ${groupingQuality?.expectedPositivePairs ?? 0}`,
+  `- Product grouping benchmark precision: ${groupingQuality?.precision ?? 'unknown'}`,
+  `- Product grouping benchmark recall: ${groupingQuality?.recall ?? 'unknown'}`,
+  `- Product grouping benchmark F1: ${groupingQuality?.f1 ?? 'unknown'}`,
+  `- Product grouping benchmark violations: ${groupingQuality?.violations?.length ?? 'unknown'}`,
+  `- Product grouping benchmark artifact: \`${path.relative(workspace, groupingQualityPath)}\``,
+  `- Product grouping benchmark report: \`${path.relative(workspace, groupingQualityMarkdownPath)}\``,
   portfolioClaimAudit
     ? `- Portfolio claim audit generated at: ${portfolioClaimAudit.generatedAt ?? 'unknown'}`
     : '- Portfolio claim audit generated at: missing',
@@ -289,6 +330,8 @@ const lines = [
   '- Demo screenshots are current only when all four files exist and their release QA fingerprint matches the current workspace.',
   '- Local direct-source evidence is current only when every required source returns direct hits and its fingerprint matches the current workspace.',
   '- Local stress evidence is current only when the served build manifest passes strict schema validation, matches the runner commit/workspace fingerprint and CI run identity, and the 100 concurrent deterministic route contracts pass; it is not a production capacity or concurrent-user claim.',
+  '- Local search-quality evidence is current only when its privacy-trimmed diagnostics snapshot is no more than 24 hours old, was captured within five minutes of report generation, and the served deployment provenance and workspace fingerprint match. Observation `watch` or `insufficient-data` is an operational signal, not an automatic evidence failure.',
+  '- Product grouping quality is current only when the curated pairwise precision/recall/F1 benchmark meets its reviewed sample and quality floors and the artifact fingerprint matches the workspace; it is not a production accuracy claim.',
   '- Portfolio claims are current only when current docs contain no forbidden outcome claims, legacy artifacts carry the fixed evidence marker, and the audit fingerprint matches the workspace.',
   '- CI workflow integrity is current only when test/e2e job-scoped blocking gates, current-workflow self-audit, execution order, failure upload actions, and workspace fingerprint all match.',
   '- Dependency audit evidence is current only when the full dependency graph, `--omit=dev` production install graph, and isolated Capacitor asset tool graph each match their reviewed source/package/severity baseline, package-count ceilings do not increase, every maximum 31-day review window is still valid, and the audit fingerprint matches the workspace.',

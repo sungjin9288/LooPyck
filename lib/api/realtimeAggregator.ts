@@ -7,14 +7,9 @@ import {
     parseAblyCommerceData,
     parseHagoCommerceData,
     parseMusinsaCommerceData,
-    parseNaverCommerceData,
     parseTwentyNineCmCommerceData,
     parseWConceptCommerceData,
 } from '@/lib/product/sourceCommerceParsing';
-import {
-    detectMarketplaceSource,
-    getSourceDisplayName,
-} from '@/lib/api/sourceCatalog';
 import {
     scrapeCoupang,
     scrapeEql,
@@ -37,6 +32,7 @@ import {
     type TimedSearchResult,
 } from '@/lib/api/aggregationCore';
 import { ACTIVE_DIRECT_SOURCE_ORDER, buildDirectRegistry } from '@/lib/api/searchSourceRegistry';
+import { NAVER_SHOPPING_SEARCH_RETIREMENT } from '@/lib/api/naverShoppingSearchLifecycle';
 import { withScrapeRetry } from '@/lib/api/scrapeRetry';
 import { getHostLimiter } from '@/lib/api/hostConcurrency';
 import { Logger, toErrorMessage } from '../core/observability';
@@ -50,12 +46,10 @@ export type { UnifiedProduct };
 // searchLearningEntryCodec.ts, searchLearningSeeding.ts, queryLearningTypes.ts) need zero changes.
 export type { SearchSourceStrategy, SearchSourceDiagnostic, SearchAggregationDiagnostics, AggregateRealtimeSearchResult } from '@/lib/api/aggregationCore';
 
-const NAVER_SEARCH_BUDGET_MS = 3_500;
 // Retry deadline must sit INSIDE the per-source withTimedSearchBudget race (3.5s):
 // a retry that cannot finish before the race loses is wasted work and starves the
 // candidate-query iteration in runTimedSearchWithCandidates.
 const RETRY_DEADLINE_MS = 3_200;
-const NAVER_API_HOST = 'openapi.naver.com';
 const TWENTY_NINE_CM_API_HOST = 'search-api.29cm.co.kr';
 const MUSINSA_API_HOST = 'api.musinsa.com';
 const WCONCEPT_API_HOST = 'api-display.wconcept.co.kr';
@@ -63,30 +57,6 @@ const HAGO_API_HOST = 'www.hago.kr';
 const ABLY_API_HOST = 'api.a-bly.com';
 // W컨셉 프론트가 자체 API 게이트웨이에 박아 쓰는 정적 앱 키(세션/서명 아님, 로그인·쿠키 불필요).
 const WCONCEPT_DISPLAY_API_KEY = 'VWmkUPgs6g2fviPZ5JQFQ3pERP4tIXv/J2jppLqSRBk=';
-
-// Naver Shopping API response item shape
-interface NaverShopItem {
-    productId: string;
-    title: string;
-    lprice: string;
-    hprice?: string;
-    image: string;
-    link: string;
-    mallName: string;
-    brand: string;
-    category1: string;
-    category2?: string;
-    category3?: string;
-    category4?: string;
-    delivery?: string;
-    deliveryFeeContent?: string;
-    benefitPrice?: string;
-    discountPrice?: string;
-    benefitText?: string;
-    stockText?: string;
-    availability?: string;
-    status?: string;
-}
 
 // 29CM API response item shape
 interface TwentyNineCMItem {
@@ -132,74 +102,6 @@ interface TwentyNineCMItem {
 
 // Helper to proxy images for 29CM/Musinsa to bypass hotlink protection
 const proxyImage = (url: string) => `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=500&output=webp`;
-
-// 1. Naver API Wrapper
-async function fetchNaverRealtime(
-    query: string,
-    page: number = 1,
-    sort: SearchSort = 'sim'
-): Promise<UnifiedProduct[]> {
-    const clientId = process.env.NAVER_CLIENT_ID;
-    const clientSecret = process.env.NAVER_CLIENT_SECRET;
-    const start = (page - 1) * 20 + 1;
-
-    if (!clientId || !clientSecret) {
-        return [];
-    }
-
-    try {
-        const url = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&display=20&start=${start}&sort=${sort}`;
-        const res = await getHostLimiter(NAVER_API_HOST).run(() => withScrapeRetry(
-            async () => {
-                const response = await fetch(url, {
-                    headers: {
-                        'X-Naver-Client-Id': clientId,
-                        'X-Naver-Client-Secret': clientSecret
-                    },
-                    signal: AbortSignal.timeout(8000),
-                });
-                if (!response.ok) throw new Error(`Status ${response.status}`);
-                return response;
-            },
-            () => false,
-            Date.now() + RETRY_DEADLINE_MS
-        ));
-        if (!res.ok) return [];
-        const data = await res.json();
-        if (!data.items) return [];
-
-        return data.items.reduce((products: UnifiedProduct[], item: NaverShopItem, index: number) => {
-            const image = sanitizeExternalUrl(item.image);
-            const link = sanitizeExternalUrl(item.link);
-            const price = parseInt(item.lprice, 10);
-
-            if (!image || !link || !Number.isFinite(price)) {
-                return products;
-            }
-
-            const title = normalizeTitle(item.title).replace(/<[^>]*>?/gm, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
-            const source = detectMarketplaceSource(item.mallName, link);
-
-            products.push({
-                id: buildSourceAwareId(source, item.productId, title, index),
-                title,
-                price,
-                image,
-                link,
-                mallName: getSourceDisplayName(source, item.mallName),
-                brand: item.brand,
-                category1: item.category1,
-                category2: item.category2,
-                source,
-                ...parseNaverCommerceData(item as unknown as Record<string, unknown>, price)
-            });
-            return products;
-        }, []);
-    } catch (e) {
-        Logger.warn('[RealtimeSearch] Naver API gave up', { error: toErrorMessage(e) });
-        return [];
-    }
-}
 
 // Musinsa goods search API item shape (api.musinsa.com/api2/dp/v1/plp/goods)
 interface MusinsaApiItem {
@@ -580,8 +482,19 @@ async function scrapeAbly(query: string, page: number = 1): Promise<UnifiedProdu
     }
 }
 
-function hasNaverCredentials(): boolean {
-    return Boolean(process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET);
+function runRetiredNaverSearch(
+    queries: string[],
+    page: number,
+    sort: SearchSort
+): Promise<TimedSearchResult> {
+    return runNaverSearchLike(
+        queries,
+        page,
+        sort,
+        async () => [],
+        () => false,
+        NAVER_SHOPPING_SEARCH_RETIREMENT.reason
+    );
 }
 
 /**
@@ -613,13 +526,7 @@ export async function aggregateRealtimeSearchDetailed(
     });
 
     const [naverRun, ...directRuns]: [TimedSearchResult, ...TimedSearchResult[]] = await Promise.all([
-        withTimedSearchBudget(
-            'NAVER',
-            naverQueries,
-            runNaverSearchLike(naverQueries, page, sort, fetchNaverRealtime, hasNaverCredentials),
-            NAVER_SEARCH_BUDGET_MS,
-            'naver_timeout'
-        ),
+        runRetiredNaverSearch(naverQueries, page, sort),
         ...registry.map((entry) => {
             const queries = sourceQueryPlan?.[entry.source] || [query];
             return withTimedSearchBudget(
@@ -666,13 +573,7 @@ export async function aggregateRealtimeSearchNaverOnly(
     sort: SearchSort = 'sim',
     queries: string[] = [query]
 ): Promise<CoreAggregateRealtimeSearchResult> {
-    const naverRun = await withTimedSearchBudget(
-        'NAVER',
-        queries,
-        runNaverSearchLike(queries, page, sort, fetchNaverRealtime, hasNaverCredentials),
-        NAVER_SEARCH_BUDGET_MS,
-        'naver_timeout'
-    );
+    const naverRun = await runRetiredNaverSearch(queries, page, sort);
     const diagnostics = buildAggregationDiagnostics(query, page, sort, naverRun.products, naverRun, [], ACTIVE_DIRECT_SOURCE_ORDER);
 
     return {

@@ -10,7 +10,7 @@ LooPyck은 분산된 패션 상품 정보를 검색하고 비교하는 과정에
 
 ## Approach
 
-1. source별 direct adapter와 Naver classified fallback을 분리했다.
+1. source별 direct adapter와 tracked catalog fallback을 분리하고, 종료된 NAVER provider를 lifecycle contract로 격리했다.
 2. 검색 결과를 product matching과 compare-ready hierarchy로 재구성했다.
 3. 상세 화면에서 실구매가, 배송, 재고, 옵션, 가격 이력을 구매 판단 근거로 노출했다.
 4. admin diagnostics에 source health, fallback, interaction cohort를 표시했다.
@@ -23,18 +23,20 @@ LooPyck은 분산된 패션 상품 정보를 검색하고 비교하는 과정에
 | Realtime aggregation | `app/api/realtime-search/route.ts`, `lib/api/realtimeAggregator.ts` | direct/fallback diagnostics와 graceful degradation |
 | Source recovery | `lib/api/marketplaceScrapers.ts`, `lib/api/searchSourceRegistry.ts` | SSF, Handsome, EQL, LF Mall direct-source smoke |
 | Compare workflow | `lib/product/productMatching.ts`, `lib/product/purchasePricing.ts` | matching, option alignment, purchase pricing tests |
-| Release evidence | `scripts/buildReleaseCloseoutReport.mjs` | local/deployed evidence와 workspace fingerprint 분리 |
+| Grouping quality benchmark | `lib/product/groupingQuality.ts`, `scripts/verifyProductGroupingQuality.mjs` | curated pairwise precision/recall/F1와 false merge/split artifact |
+| Release evidence | `scripts/buildReleaseCloseoutReport.mjs`, `scripts/releaseEvidenceProvenance.mjs` | local/deployed evidence 분리와 search-quality provenance/freshness gate |
 | Local stress | `scripts/localSystemStressSmoke.mjs` | served build manifest와 runner commit/fingerprint/CI run linkage 후 100 concurrent route-contract requests |
 
 ## Verified Results
 
-- adapter/domain tests: `504/504` pass
+- adapter/domain tests: `543/543` pass
+- curated grouping benchmark: 12 products / 66 pairs, pairwise precision `100%`, recall `100%`, F1 `100%`; `npm run verify:grouping-quality`로 측정
 - system stress contract tests: `10/10` pass
 - local production-build stress: `100/100` requests pass, concurrency `100`
 - p95 latency and process-tree RSS before/peak/after are recorded in the current stress artifact
 - direct-source local smoke: required four sources each returned direct hits; total active source count is observed, not guaranteed
 
-측정값은 2026-07-15 단일 local run과 현재 artifact에 한정된다. 운영 SLA, 월간 처리량, 사용자 동시 접속 규모, 비용 절감률로 확장 해석하지 않는다.
+측정값은 2026-09-03 current working-tree local run과 해당 fingerprint artifact에 한정된다. grouping 수치는 curated regression fixture이며 production accuracy가 아니다. 운영 SLA, 월간 처리량, 사용자 동시 접속 규모, 비용 절감률로 확장 해석하지 않는다.
 
 ## Consulting Takeaway
 

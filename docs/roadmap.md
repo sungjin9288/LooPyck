@@ -2,11 +2,11 @@
 
 ## 1. 현재 상태 요약
 
-- 현재 구현 완료: 검색 API, 다중 소스 aggregate, 상품 그룹핑, 실구매가/배송/재고 판단, Compare Entry landing/search hierarchy, AI chat/vision/style recommendation, Firestore favorites, 가격 이력/알림 서버 로직, Netlify deploy/smoke 경로
+- 현재 구현 완료: direct-source 실시간 검색, 다중 소스 aggregate, 상품 그룹핑, 실구매가/배송/재고 판단, Compare Entry landing/search hierarchy, AI chat/vision/style recommendation, Firestore favorites, 가격 이력/알림 서버 로직, Netlify deploy/smoke 경로
 - 개발 중: search-learning/admin diagnostics와 alert tuning 운영 품질 고도화
 - 미구현: 검증된 사업 성과 수치와 production analytics 기반 개선 지표
 - 검증 필요: 실제 사용자 트래픽/전환율, live Gemini 응답과 장기 대화 품질, 외부 소스별 검색·옵션 정확도
-- repo 상태: 2026-07-15 기준 최신 커밋은 `0edd82a`(2026-07-10)이며 working tree에는 검증 완료 후 커밋하지 않은 runtime hardening 변경이 있다. 문서 claim은 현재 파일과 재실행 가능한 검증 명령을 기준으로 유지한다.
+- repo 상태: 2026-09-03 기준 `main`/`origin/main`은 `6e32108`이며, working tree에는 NAVER 종료 격리, release QA artifact persistence, portfolio current-state audit, product grouping quality benchmark, search-quality observation release gate를 다루는 Phase 81~85 변경이 있다. 문서 claim은 현재 파일과 재실행 가능한 검증 명령을 기준으로 유지한다.
 
 ## 2. Phase 1 - MVP 완성
 
@@ -30,8 +30,8 @@
 - 목표: 검색/비교 품질과 구매 판단 흐름을 개선
 - 해야 할 작업:
   - [완료] Compare Entry funnel Figma gate와 brand/category/search result hierarchy 구현
-  - 상품 grouping precision/recall 평가 기준 작성
-  - source별 fallback/quality diagnostics 지표 정리
+  - [완료] 상품 grouping pairwise precision/recall/F1 평가 기준과 curated regression artifact 작성
+  - [완료] source별 fallback/quality diagnostics 지표와 provenance/freshness release gate 정리
 - 완료 기준:
   - `npm run ntl:compare-entry-review-ready-check` 통과
   - brand/category/search 주요 화면의 visual baseline 확보
@@ -39,7 +39,7 @@
 - 산출물:
   - Compare Entry approved design packet
   - updated UI implementation
-  - search quality test report
+  - search quality test report와 `product-grouping-quality-benchmark.{json,md}`
 
 ## 4. Phase 3 - 서비스화 / 배포
 
@@ -79,8 +79,10 @@
 
 | 우선순위 | 작업 | 이유 | 예상 산출물 |
 |---|---|---|---|
-| 1 | runtime hardening 변경을 review 가능한 단위로 정리 | 현재 검증된 working-tree 변경의 범위와 의도를 명확히 해야 함 | 변경 요약과 검증 근거 |
+| 1 | NAVER 쇼핑 검색 종료 대응 [구현 완료, 배포 대기] | retired provider 반복 호출과 잘못된 failing health를 제거해야 함 | lifecycle contract, disabled health, regression evidence |
 | 2 | production/local release evidence 재갱신 [완료] | production UAT와 dirty working-tree fingerprint evidence를 분리해 오표기 방지 | provenance-aware release QA summary |
 | 3 | 핵심 demo flow 캡처 갱신 [완료] | Compare Entry와 검색 결과 hierarchy를 local QA fingerprint에 연결 | 검색/비교/상세/favorites screenshot 4개 |
-| 4 | 검색 품질 지표 관찰 [구현 완료, post-deploy 표본 수집 중] | badge cohort와 compare-ready/source health를 HOLD/CANDIDATE/WATCH 판단으로 통합 | privacy-trimmed local/Netlify observation report |
-| 5 | 포트폴리오 문서 최종 정합화 | 오래된 개발 중/commit 기준 문구를 제거해야 함 | source-backed portfolio packet |
+| 4 | 검색 품질 지표 관찰 [local release gate 완료, production 재수집 대기] | badge cohort와 compare-ready/source health를 HOLD/CANDIDATE/WATCH 판단으로 통합하고 stale evidence 재사용 차단 | provenance-linked privacy-trimmed local/Netlify observation report |
+| 5 | 포트폴리오 문서 최종 정합화 [완료] | current docs의 test count·latest commit drift를 자동 차단 | source-backed portfolio packet + current-state audit |
+
+다음 production 변경 전 non-production 품질 기준은 완료됐다. 남은 최우선 작업은 Phase 81~85 release candidate의 명시적 commit/push/deploy 승인과 배포 후 NAVER disabled/log 무호출 및 search-quality observation 재수집이다.

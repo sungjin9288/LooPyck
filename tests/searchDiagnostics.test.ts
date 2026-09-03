@@ -325,6 +325,39 @@ test('NAVER strategy=api 성공은 recentOutcomes에 1로 기록된다 (direct�
     assert.deepEqual(naver?.recentOutcomes, [1, 0]);
 });
 
+test('attempt하지 않은 retired source는 empty streak와 recent outcome을 증가시키지 않는다', () => {
+    resetSearchDiagnostics();
+
+    recordSearchDiagnostics({
+        query: '남자 후드',
+        page: 1,
+        sort: 'sim',
+        generatedAt: '2026-09-03T05:00:00.000Z',
+        totalProducts: 12,
+        directSourceCount: 2,
+        fallbackSourceCount: 0,
+        sources: [
+            {
+                source: 'NAVER',
+                attempted: false,
+                success: false,
+                durationMs: 0,
+                directCount: 0,
+                naverCount: 0,
+                finalCount: 0,
+                strategy: 'empty',
+                fallbackReason: 'naver_shopping_search_retired_2026_07_31',
+            },
+        ],
+    });
+
+    const naver = getSearchDiagnosticsSummary().sources.find((entry) => entry.source === 'NAVER');
+
+    assert.equal(naver?.emptyHits, 0);
+    assert.equal(naver?.consecutiveEmptyHits ?? 0, 0);
+    assert.equal(naver?.recentOutcomes, undefined);
+});
+
 test('interaction summary aggregates suggestion clicks and product opens', () => {
     resetSearchDiagnostics();
 

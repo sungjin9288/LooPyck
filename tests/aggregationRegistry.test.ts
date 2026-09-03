@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
     buildAggregationDiagnostics,
     mergeWithPreferredDirectProducts,
+    runNaverSearchLike,
 } from '../lib/api/aggregationCore.ts';
 import { ACTIVE_DIRECT_SOURCE_ORDER, DIRECT_SOURCE_ORDER, DISABLED_DIRECT_SOURCES, buildDirectRegistry } from '../lib/api/searchSourceRegistry.ts';
 import type { ProductSource, UnifiedProduct } from '../lib/api/types.ts';
@@ -34,6 +36,44 @@ function product(overrides: Partial<UnifiedProduct> & { id: string; source: Prod
         ...overrides,
     };
 }
+
+test('runNaverSearchLike skips a retired provider and preserves its explicit reason', async () => {
+    let fetchCalls = 0;
+
+    const result = await runNaverSearchLike(
+        ['남자 후드'],
+        1,
+        'sim',
+        async () => {
+            fetchCalls += 1;
+            return [product({ id: 'unexpected', source: 'NAVER' })];
+        },
+        () => false,
+        'naver_shopping_search_retired_2026_07_31'
+    );
+
+    assert.equal(fetchCalls, 0);
+    assert.deepEqual(result.products, []);
+    assert.equal(result.fallbackReason, 'naver_shopping_search_retired_2026_07_31');
+    assert.equal(({ ...result } as Record<string, unknown>).attempted, false);
+
+    const diagnostics = buildAggregationDiagnostics(
+        '남자 후드',
+        1,
+        'sim',
+        [],
+        result,
+        [],
+        ACTIVE_DIRECT_SOURCE_ORDER
+    );
+    assert.equal(diagnostics.sources[0].attempted, false);
+});
+
+test('public environment template omits retired NAVER Shopping credentials', () => {
+    const envTemplate = readFileSync(new URL('../.env.local.example', import.meta.url), 'utf8');
+
+    assert.doesNotMatch(envTemplate, /^NAVER_CLIENT_(?:ID|SECRET)=/m);
+});
 
 test('DIRECT_SOURCE_ORDER equals the exact 14-entry list (I5/I8 guard)', () => {
     assert.deepEqual(DIRECT_SOURCE_ORDER, EXPECTED_DIRECT_ORDER);

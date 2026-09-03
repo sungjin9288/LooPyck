@@ -244,8 +244,6 @@ npm run test:adapters
 ```
 NEXT_PUBLIC_FIREBASE_*      # Firebase 클라이언트 설정
 FIREBASE_ADMIN_*            # Firebase Admin SDK (서버 전용)
-NAVER_CLIENT_ID             # Naver Shopping API
-NAVER_CLIENT_SECRET
 GEMINI_API_KEY              # Google AI Studio
 UPSTASH_REDIS_REST_URL      # Rate limiting
 UPSTASH_REDIS_REST_TOKEN

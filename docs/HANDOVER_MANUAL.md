@@ -102,8 +102,6 @@ Detailed mobile guide:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NAVER_CLIENT_ID` | ✅ | 네이버 쇼핑 검색 API Client ID |
-| `NAVER_CLIENT_SECRET` | ✅ | 네이버 쇼핑 검색 API Client Secret |
 | `NEXT_PUBLIC_FIREBASE_*` | ✅ | Firebase Web SDK 설정값 일체 |
 | `FIREBASE_ADMIN_PROJECT_ID` | ✅(운영) | Firebase Admin SDK Project ID |
 | `FIREBASE_ADMIN_CLIENT_EMAIL` | ✅(운영) | Firebase Admin SDK Client Email |
@@ -137,7 +135,8 @@ Detailed mobile guide:
 | Endpoint | Purpose |
 |----------|---------|
 | `/api/health` | 서버 상태 |
-| `/api/search?test=1` | API 동작 확인 |
+| `/api/realtime-search?q=남자%20후드&debug=1` | direct-source 검색과 diagnostics 확인 |
+| `/api/search?query=남자%20후드` | retired NAVER legacy route의 `410 Gone` 확인 |
 
 ### Key Metrics to Monitor
 

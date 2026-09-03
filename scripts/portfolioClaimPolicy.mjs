@@ -39,6 +39,8 @@ const FORBIDDEN_CURRENT_CLAIMS = [
 
 const EXCLUDED_SECTION_PATTERN = /\uc704\ud5d8|risk|\ubbf8\uad6c\ud604|\uadfc\uac70 \ubd80\uc871|\uae08\uc9c0|\uc81c\uc678/i;
 const QUALIFIED_LINE_PATTERN = /\ubbf8\uac80\uc99d|\uac80\uc99d\ub418\uc9c0|\uadfc\uac70 \uc5c6|\ubcf4\ub958|\uae08\uc9c0|\uc81c\uc678|not measured|not a .*claim|assumption/i;
+const ADAPTER_TEST_CONTEXT_PATTERN = /adapter\/domain|test:adapters/i;
+const LATEST_COMMIT_PATTERN = /(?:\ucd5c\uc2e0\s*\ucee4\ubc0b|latest\s+commit)[^\n`]*`?([0-9a-f]{7,40})`?/i;
 
 function headingDepth(line) {
   const match = /^(#{1,6})\s+/.exec(line);
@@ -68,10 +70,50 @@ export function findForbiddenCurrentClaims(content) {
   return violations;
 }
 
+function findAdapterTestCountClaims(content, filePath) {
+  const claims = [];
+
+  content.split('\n').forEach((line, index) => {
+    if (!ADAPTER_TEST_CONTEXT_PATTERN.test(line)) return;
+
+    const ratio = /\b(\d+)\s*\/\s*(\d+)\b`?\s*pass/i.exec(line);
+    const countBeforeTests = /\b(\d+)\s+tests?\s+pass/i.exec(line);
+    const summary = /\btests?\s+(\d+)\s*,\s*pass\s+(\d+)/i.exec(line);
+    const count = ratio?.[1] ?? countBeforeTests?.[1] ?? summary?.[1];
+    if (!count) return;
+
+    claims.push({ filePath, line: index + 1, count: Number(count) });
+  });
+
+  return claims;
+}
+
+function findStaleLatestCommitClaims(content, filePath, expectedHead) {
+  if (!expectedHead) return [];
+  const violations = [];
+
+  content.split('\n').forEach((line, index) => {
+    const match = LATEST_COMMIT_PATTERN.exec(line);
+    const observed = match?.[1];
+    if (!observed || expectedHead.startsWith(observed)) return;
+
+    violations.push({
+      type: 'stale-latest-commit-claim',
+      filePath,
+      line: index + 1,
+      observed,
+      expected: expectedHead,
+    });
+  });
+
+  return violations;
+}
+
 export function auditPortfolioClaims(documents, options = {}) {
   const currentPaths = options.currentPaths || CURRENT_PORTFOLIO_DOCS;
   const legacyPaths = options.legacyPaths || LEGACY_PLANNING_DOCS;
   const violations = [];
+  const adapterTestCountClaims = [];
 
   currentPaths.forEach((filePath) => {
     const content = documents[filePath];
@@ -82,7 +124,20 @@ export function auditPortfolioClaims(documents, options = {}) {
     findForbiddenCurrentClaims(content).forEach((violation) => {
       violations.push({ ...violation, filePath });
     });
+    adapterTestCountClaims.push(...findAdapterTestCountClaims(content, filePath));
+    violations.push(...findStaleLatestCommitClaims(
+      content,
+      filePath,
+      options.expectedHead,
+    ));
   });
+
+  if (new Set(adapterTestCountClaims.map(({ count }) => count)).size > 1) {
+    violations.push({
+      type: 'inconsistent-adapter-test-count',
+      claims: adapterTestCountClaims,
+    });
+  }
 
   legacyPaths.forEach((filePath) => {
     const content = documents[filePath];

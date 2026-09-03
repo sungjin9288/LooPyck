@@ -203,7 +203,7 @@ export function DashboardHero({ data, isFetching, isOpsOnly }: DashboardHeroProp
                 <p className="mt-3 text-sm text-slate-400">
                     {isOpsOnly
                         ? 'approval queue, audit inbox, rollout tuning, webhook reminder 상태를 운영 기준으로 추적합니다.'
-                        : '소스별 직접 수집 성공률과 Naver fallback 상태를 추적합니다.'}
+                        : '소스별 직접 수집 성공률과 fallback 상태를 추적합니다.'}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2 text-xs">
                     <a

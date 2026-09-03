@@ -163,7 +163,7 @@ function updateSourceSummary(snapshot: SearchAggregationDiagnostics, sourceDiagn
         };
 
     const isDirectHit = isDirectStrategy(sourceDiagnostic.strategy);
-    const isEmptyHit = sourceDiagnostic.strategy === 'empty';
+    const isEmptyHit = sourceDiagnostic.attempted && sourceDiagnostic.strategy === 'empty';
     const isRecentWindowSuccess = isDirectHit || isApiStrategySuccess(sourceDiagnostic.strategy);
 
     nextState.searches += 1;
@@ -500,7 +500,7 @@ export async function persistSearchDiagnostics(snapshot: SearchAggregationDiagno
         const summaryRef = summaryRefs[index];
         const isDirectHit = isDirectStrategy(source.strategy);
         const isFallbackHit = source.strategy === 'naver_classified_fallback' || source.strategy === 'classified_naver';
-        const isEmpty = source.strategy === 'empty';
+        const isEmpty = source.attempted && source.strategy === 'empty';
         const isRecentWindowSuccess = isDirectHit || isApiStrategySuccess(source.strategy);
 
         const summaryPayload: Record<string, unknown> = {

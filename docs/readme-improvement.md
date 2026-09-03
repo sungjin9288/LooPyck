@@ -56,8 +56,8 @@ Demo: https://loo-pyck.netlify.app
 
 | 기능 | 설명 | 근거 파일 |
 |---|---|---|
-| Naver Shopping API 검색 | 검색어 검증, rate limit, timeout을 적용한 기본 검색 API | `app/api/search/route.ts` |
-| 다중 소스 실시간 검색 | 직접 소스 검색, Naver fallback, tracked catalog fallback, diagnostics 생성 | `app/api/realtime-search/route.ts`, `lib/api/realtimeAggregator.ts` |
+| Naver Shopping API 종료 격리 | retired provider no-call, legacy route `410`, disabled diagnostics | `app/api/search/route.ts`, `lib/api/naverShoppingSearchLifecycle.ts` |
+| 다중 소스 실시간 검색 | direct source 검색, tracked catalog fallback, diagnostics 생성 | `app/api/realtime-search/route.ts`, `lib/api/realtimeAggregator.ts` |
 | 패션 쿼리 분석 | 패션 도메인 query validation, semantic expansion, rerank | `lib/search/fashionQueryAssistant.ts` |
 | 상품 비교 그룹핑 | 브랜드/모델/카테고리/옵션 신호 기반 grouping | `lib/product/productMatching.ts` |
 | 실구매가 판단 | 배송비, 혜택가, 재고, 쿠폰 추정 기반 구매 후보 정리 | `lib/product/purchasePricing.ts`, `lib/product/purchaseDecision.ts` |
@@ -87,7 +87,7 @@ Demo: https://loo-pyck.netlify.app
 | Frontend | Next.js 16, React 18.3.1, TypeScript, Tailwind CSS, Framer Motion |
 | Backend | Next.js API Routes |
 | AI | Gemini 2.5 Flash |
-| Search/Data | Naver Shopping API, Cheerio scraping adapters |
+| Search/Data | source-specific API/HTML adapters, Cheerio scraping adapters |
 | Auth/DB | Firebase Auth, Firestore, Firebase Admin |
 | Validation/Safety | Zod, rate limit, AbortSignal timeout, URL sanitization |
 | Deploy | Netlify primary, Vercel cron fallback, Docker standalone |
@@ -102,7 +102,7 @@ User
 -> Search / Compare / Favorite / AI components
 -> Next.js API Routes
 -> Search aggregator / AI handlers / Firebase server modules
--> Naver API / marketplace sources / Gemini API / Firestore
+-> marketplace sources / Gemini API / Firestore
 -> Product results, comparison groups, recommendations, alerts
 ```
 
@@ -110,7 +110,7 @@ User
 
 ### Search Aggregation
 
-`/api/realtime-search`는 query validation과 rate limit을 거친 뒤 `aggregateRealtimeSearchDetailed()`를 호출합니다. 직접 소스 검색이 실패하거나 결과가 부족하면 Naver fallback 또는 tracked catalog fallback을 사용합니다.
+`/api/realtime-search`는 query validation과 rate limit을 거친 뒤 `aggregateRealtimeSearchDetailed()`를 호출합니다. 활성 direct source 검색이 모두 비면 tracked catalog fallback을 사용합니다. 종료된 NAVER 쇼핑 검색 API는 호출하지 않고 diagnostics에 `disabled`로 기록합니다.
 
 ### Purchase Decision
 
@@ -159,8 +159,6 @@ npm run ntl:uat
 필수 또는 운영 권장:
 
 ```text
-NAVER_CLIENT_ID
-NAVER_CLIENT_SECRET
 NEXT_PUBLIC_FIREBASE_*
 FIREBASE_ADMIN_PROJECT_ID
 FIREBASE_ADMIN_CLIENT_EMAIL
@@ -184,7 +182,7 @@ SITE_URL
 
 ## 10. 개발 과정에서 해결한 문제
 
-- 외부 쇼핑몰 응답 실패: direct source 실패 시 Naver fallback과 tracked catalog fallback 적용
+- 외부 쇼핑몰 응답 실패: source별 timeout과 tracked catalog fallback 적용, retired provider는 lifecycle contract로 no-call 처리
 - AI 응답 형식 불안정: Zod schema와 JSON parsing helper 적용
 - Firebase Admin 환경변수 누락: Admin 기능 graceful degradation 처리
 - Netlify runtime env 제한: `.netlify.env` allowlist와 sync script로 관리

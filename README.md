@@ -23,7 +23,7 @@
 
 > **"Look & Pick"** — AI로 주요 쇼핑몰 가격을 한눈에 비교하세요.
 
-LooPyck은 무료 티어 인프라(Netlify · Firebase) 위에서 네이버 쇼핑 API, 무신사, 29CM 상품 정보를 실시간 수집하고,  
+LooPyck은 무료 티어 인프라(Netlify · Firebase) 위에서 무신사, 29CM 등 지원 쇼핑몰의 상품 정보를 수집하고,
 **쇼핑몰 간 가격 비교 + AI 스타일 추천**을 제공하는 패션 가격 비교 웹앱(MVP)입니다.
 
 ---
@@ -35,7 +35,7 @@ LooPyck은 무료 티어 인프라(Netlify · Firebase) 위에서 네이버 쇼�
 |---------|-------------|
 | 🏷️ **멀티 쇼핑몰 가격 비교** | 동일 상품을 쇼핑몰별로 자동 묶어 최저가/최고가 한눈 비교 |
 | 📊 **가격 추이 차트** | 6개월 가격 변화 추이 그래프 |
-| 🔍 **통합 실시간 검색** | 네이버 쇼핑 API + 무신사 + 29CM 동시 검색 |
+| 🔍 **통합 실시간 검색** | source-aware direct adapter 병렬 검색 + tracked catalog fallback |
 | 🎯 **FilterPanel** | 가격대 / 쇼핑몰 / 브랜드 3단계 필터링 |
 
 ### UX & 개인화
@@ -71,7 +71,7 @@ LooPyck은 무료 티어 인프라(Netlify · Firebase) 위에서 네이버 쇼�
 
 | 쇼핑몰 | 연동 방식 | 상태 |
 |--------|-----------|------|
-| 네이버 쇼핑 API | Open API | ✅ |
+| 네이버 쇼핑 API | 종료된 Open API | 비활성화 (2026-07-31 종료) |
 | 무신사 | 실시간 스크래핑 | ✅ |
 | 29CM | 검색 API | ✅ |
 | SSF SHOP | 공식 검색 HTML adapter | ✅ |
@@ -79,7 +79,7 @@ LooPyck은 무료 티어 인프라(Netlify · Firebase) 위에서 네이버 쇼�
 | EQL | 공식 검색 HTML adapter | ✅ |
 | LF몰 | 공식 web search API adapter | ✅ |
 
-Direct adapter가 client-only rendering, bot protection, 도메인 이전으로 안정적으로 수집되지 않는 쇼핑몰은 실행 registry에서 제외하고, Naver Shopping 결과의 mall/domain 분류를 fallback으로 사용합니다. 따라서 모든 쇼핑몰의 direct 수집을 보장하지 않습니다.
+Direct adapter가 client-only rendering, bot protection, 도메인 이전으로 안정적으로 수집되지 않는 쇼핑몰은 실행 registry에서 제외합니다. NAVER 쇼핑 검색 API 종료 후에는 활성 direct adapter 결과를 우선 사용하고, 전체 수집이 비면 Firestore tracked catalog를 fallback으로 사용합니다. 따라서 모든 쇼핑몰의 direct 수집을 보장하지 않습니다.
 
 ---
 
@@ -186,8 +186,6 @@ npm run cf:preview
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NAVER_CLIENT_ID` | ✅ | 네이버 쇼핑 검색 API Client ID |
-| `NAVER_CLIENT_SECRET` | ✅ | 네이버 쇼핑 검색 API Client Secret |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | ✅ | Firebase Web API Key |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | ✅ | Firebase Auth Domain |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | ✅ | Firebase Project ID |
@@ -257,8 +255,7 @@ npm run ntl:search-quality-report
 npm run ntl:search-quality-report -- http://localhost:3100
 
 # dirty working tree의 pre-release 동작을 production UAT와 별도 검증
-RELEASE_QA_SCREENSHOTS=1 bash scripts/netlifyReleaseQaSmoke.sh http://localhost:3100 \
-  > output/playwright/local-release-qa-summary.json
+RELEASE_QA_SCREENSHOTS=1 npm run ntl:release-qa-smoke -- http://localhost:3100
 ```
 
 `ntl:uat` is the default Netlify release gate and writes `output/playwright/netlify-uat-summary.json`.
@@ -275,6 +272,11 @@ report generation, the last execution result is preserved separately as
 `output/playwright/playwright-mcp-runtime-cleanup-last-execution.json`. The report also evaluates
 the local direct-source integration artifact against the current workspace fingerprint, so a
 previously successful source probe is reported as stale after code or documentation changes.
+The report also requires a local search-quality observation captured within the last 24 hours,
+generated within five minutes of its privacy-trimmed diagnostics snapshot, and linked to the same
+served deployment manifest and working-tree fingerprint. An observation status such as `watch` or
+`insufficient-data` remains visible as an operational signal instead of being presented as a
+measured product outcome.
 
 Release evidence는 대상을 분리해 해석합니다. Netlify UAT는 현재 배포 환경의 동작을 증명하지만 deployed commit을 자동으로 증명하지 않습니다. dirty working tree는 local release QA artifact의 Git diff/untracked content fingerprint가 현재 workspace와 일치할 때만 pre-release 검증 완료로 표기합니다. `RELEASE_QA_SCREENSHOTS=1`이면 같은 세션에서 home/search/detail/favorites 캡처를 생성하며, closeout report는 네 파일의 존재와 fingerprint 일치를 별도로 확인합니다.
 
@@ -311,12 +313,14 @@ Detailed guides:
 
 ## Testing
 
-2026-09-03 현재 working tree 기준으로 adapter/domain test 527건을 실행해 모두 통과했습니다.
+2026-09-03 현재 working tree 기준으로 adapter/domain test 542건을 실행해 모두 통과했습니다.
 테스트 수와 pass 결과는 아래 명령의 Node.js test runner summary로 확인합니다.
 
 ```bash
 npm run typecheck
-npm run test:adapters  # tests 527, pass 527, fail 0
+npm run test:adapters  # tests 543, pass 543, fail 0
+npm run test:grouping-quality
+npm run verify:grouping-quality
 npm run test:deployment-provenance-contract
 npm run test:release-closeout-contract
 npm run build
@@ -327,6 +331,18 @@ npm run verify:portfolio-claims
 npm run verify:ci-workflow
 npm run verify:dependency-audit
 ```
+
+`ntl:release-qa-smoke`는 localhost target을
+`output/playwright/local-release-qa-summary.json`에, deployed target을
+`output/playwright/netlify-release-qa-summary.json`에 자동 저장하면서 같은 JSON을 stdout에도
+유지합니다. 격리된 실행 경로가 필요하면 `RELEASE_QA_OUTPUT_PATH`로 저장 위치를 override합니다.
+
+`ntl:search-quality-report`는 admin diagnostics를 읽기 전에 같은 target의 deployment
+provenance를 검증합니다. 생성된 JSON에는 privacy-trimmed snapshot, target kind, served
+manifest, runner workspace fingerprint가 함께 저장됩니다. Local evidence는 report 생성 시점
+기준 24시간 이내이고 snapshot과 report 생성 간격이 5분 이내일 때만 current로 판정합니다.
+Badge cohort 결과는 directional observation이며 statistical significance, causality 또는
+conversion improvement를 의미하지 않습니다.
 
 `npm run build` copies `public/` and `.next/static/` into the generated `.next/standalone/`
 runtime, and `npm start` launches that packaged server instead of the unsupported
@@ -339,6 +355,13 @@ validation contracts. It records the secret-free runner identity, linked build m
 rate, p95 latency, and the Next server process-tree RSS delta in
 `output/playwright/local-system-stress-smoke.json`. This is a local regression smoke, not a
 production concurrent-user capacity claim.
+
+`verify:grouping-quality` runs the production `groupProducts()` implementation against 12 curated
+cross-mall products and evaluates all 66 product pairs. The 2026-09-03 working-tree run recorded
+pairwise precision `100%`, recall `100%`, and F1 `100%` with zero false merges or false splits in
+`output/playwright/product-grouping-quality-benchmark.{json,md}`. The command and workspace
+fingerprint are stored with the result; this is a deterministic regression fixture, not a measured
+production accuracy or conversion claim.
 
 `verify:portfolio-claims` checks current portfolio-facing documents for unsupported outcome/status
 claims and requires a fixed evidence marker on retained legacy planning artifacts. The audit is
@@ -478,11 +501,14 @@ https://loo-pyck.netlify.app
 
 ---
 
-## 🔭 Scope & Limitations
+## Scope & Limitations
 
 - 실제 커머스 **결제 기능은 포함하지 않습니다.** 상품 검색 · 비교 · 추천까지가 범위입니다.
 - 운영 중인 상용 서비스가 아니라 **MVP / PoC 확장형** 프로젝트입니다.
 - 무신사 · 29CM는 공식 API가 아닌 **스크래핑 / 폴백 어댑터** 기반이라, 대상 사이트 구조 변경 시 깨질 수 있습니다.
+- NAVER 검색 쇼핑 API는 provider가 2026-07-31 종료했습니다. `/api/search`는 `410 Gone`을 반환하며, realtime 검색에서는 NAVER를 `disabled`로 기록하고 호출하지 않습니다.
+- 상품 grouping의 `100%` precision/recall/F1은 12개 curated product와 66개 pair로 구성된 deterministic regression benchmark 결과이며, production traffic의 정확도를 의미하지 않습니다.
+- Search-quality `hold`/`candidate`/`watch`는 최대 120개 recent sample의 directional observation이며, 통계적 유의성·인과 효과·전환 개선을 의미하지 않습니다.
 - 검증되지 않은 비용 절감률 · 추천 정확도 · 자동화율 수치는 사용하지 않습니다.
 - 가격 이력 누적과 알림 배치는 동작하지만, 대규모 트래픽 · 데이터 정합성은 추가 검증이 필요합니다.
 - dependency audit의 root build/dev graph에는 Apps in Toss upstream chain의 reviewed high/critical debt가 남아 있고, 별도 설치하는 Capacitor asset generator에도 자체 upstream debt가 남아 있습니다. `--omit=dev` production install graph는 2026-09-03 검사에서 high/critical 0건이었지만, 세 scope의 baseline은 신규 악화를 차단하고 최대 31일마다 재검토를 강제할 뿐 package safety나 exploitability를 보장하지 않습니다.

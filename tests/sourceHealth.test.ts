@@ -14,21 +14,14 @@ function row(overrides: Partial<SourceHealthInput>): SourceHealthInput {
     };
 }
 
-test('NAVER처럼 strategy=api라 directHits는 0이지만 successCount가 있으면 healthy', () => {
-    // 프로덕션 실측에서 발견된 오분류: API 소스의 성공은 direct로 안 잡힘
-    const [health] = assessSourceHealth([
+test('retired NAVER source is disabled regardless of historical success or empty streak', () => {
+    const healthRows = assessSourceHealth([
         row({ source: 'NAVER', directHits: 0, successCount: 120, consecutiveEmptyHits: 0 }),
-    ]);
-
-    assert.equal(health.status, 'healthy');
-});
-
-test('API 소스가 연속 무수확이면 failing으로 승격된다', () => {
-    const [health] = assessSourceHealth([
         row({ source: 'NAVER', directHits: 0, successCount: 120, consecutiveEmptyHits: 12 }),
     ]);
 
-    assert.equal(health.status, 'failing');
+    assert.deepEqual(healthRows.map((health) => health.status), ['disabled', 'disabled']);
+    assert.match(healthRows[0].reason, /2026-07-31|서비스 종료/);
 });
 
 test('최근 direct 성공이 있는 소스는 healthy', () => {
