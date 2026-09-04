@@ -6,7 +6,7 @@
 - 개발 중: search-learning/admin diagnostics와 alert tuning 운영 품질 고도화
 - 미구현: 검증된 사업 성과 수치와 production analytics 기반 개선 지표
 - 검증 필요: 실제 사용자 트래픽/전환율, live Gemini 응답과 장기 대화 품질, 외부 소스별 검색·옵션 정확도
-- repo 상태: 2026-09-03 기준 `main`/`origin/main`은 `6e32108`이며, working tree에는 NAVER 종료 격리, release QA artifact persistence, portfolio current-state audit, product grouping quality benchmark, search-quality observation release gate를 다루는 Phase 81~85 변경이 있다. 문서 claim은 현재 파일과 재실행 가능한 검증 명령을 기준으로 유지한다.
+- repo 상태: 2026-09-04 기준 Phase 81~85는 `main` push와 Netlify production 배포, provenance-linked UAT를 완료했다. 현재 commit과 deployed commit의 일치는 live Git 및 `deployment-provenance.json`으로 검증하며 문서에 self-referential latest hash를 고정하지 않는다.
 
 ## 2. Phase 1 - MVP 완성
 
@@ -79,10 +79,10 @@
 
 | 우선순위 | 작업 | 이유 | 예상 산출물 |
 |---|---|---|---|
-| 1 | NAVER 쇼핑 검색 종료 대응 [구현 완료, 배포 대기] | retired provider 반복 호출과 잘못된 failing health를 제거해야 함 | lifecycle contract, disabled health, regression evidence |
+| 1 | NAVER 쇼핑 검색 종료 대응 [production 검증 완료] | retired provider 반복 호출과 잘못된 failing health를 제거해야 함 | lifecycle contract, `410 Gone`, disabled health, no-call evidence |
 | 2 | production/local release evidence 재갱신 [완료] | production UAT와 dirty working-tree fingerprint evidence를 분리해 오표기 방지 | provenance-aware release QA summary |
 | 3 | 핵심 demo flow 캡처 갱신 [완료] | Compare Entry와 검색 결과 hierarchy를 local QA fingerprint에 연결 | 검색/비교/상세/favorites screenshot 4개 |
-| 4 | 검색 품질 지표 관찰 [local release gate 완료, production 재수집 대기] | badge cohort와 compare-ready/source health를 HOLD/CANDIDATE/WATCH 판단으로 통합하고 stale evidence 재사용 차단 | provenance-linked privacy-trimmed local/Netlify observation report |
-| 5 | 포트폴리오 문서 최종 정합화 [완료] | current docs의 test count·latest commit drift를 자동 차단 | source-backed portfolio packet + current-state audit |
+| 4 | 검색 품질 지표 관찰 [local·production gate 완료, 장기 표본 관찰 중] | badge cohort와 compare-ready/source health를 HOLD/CANDIDATE/WATCH 판단으로 통합하고 stale evidence 재사용 차단 | provenance-linked privacy-trimmed local/Netlify observation report |
+| 5 | 포트폴리오 문서 최종 정합화 [완료] | current docs의 test count drift와 self-referential commit claim을 자동 차단 | source-backed portfolio packet + current-state audit |
 
-다음 production 변경 전 non-production 품질 기준은 완료됐다. 남은 최우선 작업은 Phase 81~85 release candidate의 명시적 commit/push/deploy 승인과 배포 후 NAVER disabled/log 무호출 및 search-quality observation 재수집이다.
+Phase 81~85 production release gate는 완료됐다. 다음 우선순위는 `hold` 상태인 production search-quality observation의 장기 표본과 실제 사용자 analytics를 축적하되, directional signal을 전환 성과로 확대 해석하지 않는 것이다.

@@ -56,7 +56,7 @@
 ### Phase 83: Portfolio Current-State Consistency ✅ COMPLETED
 
 - [x] current portfolio docs의 adapter test count와 latest commit drift를 live audit로 재현
-- [x] portfolio policy에 current docs 간 adapter count 일관성과 실제 HEAD 기반 latest-commit contract 추가
+- [x] portfolio policy에 current docs 간 adapter count 일관성과 self-referential latest-commit hash 차단 contract 추가
 - [x] walkthrough, case study, project card, resume bullets, project index, roadmap을 2026-09-03 evidence와 production 배포 경계에 맞게 동기화
 - [x] portfolio contract/audit, adapter/domain suite, typecheck, build와 fingerprint-linked release evidence 재검증
 
@@ -68,14 +68,14 @@
 - [x] source regression contract를 RED -> GREEN으로 검증하고 운영 문서의 수동 redirect 제거
 - [x] adapter/domain 530건, typecheck, production build와 실제 local smoke의 자동 저장·fingerprint linkage 재검증
 
-### Phase 81: Retired NAVER Shopping Search Isolation ✅ IMPLEMENTED / DEPLOYMENT PENDING
+### Phase 81: Retired NAVER Shopping Search Isolation ✅ COMPLETED
 
 - [x] production/local probe와 NAVER 공식 공지로 쇼핑 검색 API의 2026-07-31 종료 및 `404 SE05` 재현
 - [x] realtime aggregation에서 retired NAVER 호출을 즉시 skip하고 direct-source 검색 결과 유지
 - [x] source health를 영구 `failing` 경보가 아닌 근거 포함 `disabled` 상태로 전환하고 unattempted empty streak 증가 차단
 - [x] legacy `/api/search`를 upstream 호출 없는 명시적 `410 Gone` contract로 전환하고 `brand-trends`의 잔여 호출 제거
 - [x] targeted 50건, adapter/domain 529건, typecheck, env/portfolio gate, production build와 standalone route smoke 검증
-- [ ] 다음 release에서 commit/push/deploy 후 production search-quality report의 NAVER `disabled` 전환과 function log 무호출 재확인
+- [x] commit/push/Netlify production deploy 후 legacy `410`, realtime `attempted:false`/`durationMs:0`, search-quality NAVER `disabled`, bounded function log의 upstream 호출 0건 재확인
 
 ### Phase 80: Production Release and Playwright CLI Contract ✅ COMPLETED
 

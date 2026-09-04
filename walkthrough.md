@@ -47,4 +47,4 @@ npm run ntl:system-stress
 - search-quality cohort status는 directional observation이며 statistical significance나 인과 성과가 아니다.
 - 운영 사용자 수, 전환율, 비용 절감률, SLA는 측정 자료가 없다.
 - live Gemini 품질과 외부 source 정확도는 지속적인 표본 검증이 필요하다.
-- 최신 working tree의 production promotion은 commit/push/deploy 지시 전까지 보류한다.
+- Phase 81~85는 2026-09-04 production promotion과 post-deploy UAT를 완료했으며, 이후 변경도 같은 provenance-linked gate를 통과해야 한다.

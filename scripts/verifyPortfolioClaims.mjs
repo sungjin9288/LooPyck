@@ -22,7 +22,7 @@ for (const filePath of documentPaths) {
 }
 
 const runnerWorkspace = buildGitWorkspaceProvenance(workspace);
-const audit = auditPortfolioClaims(documents, { expectedHead: runnerWorkspace.head });
+const audit = auditPortfolioClaims(documents);
 const artifact = {
   ok: audit.ok,
   generatedAt: new Date().toISOString(),

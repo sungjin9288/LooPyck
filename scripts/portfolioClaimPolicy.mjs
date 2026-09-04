@@ -88,21 +88,19 @@ function findAdapterTestCountClaims(content, filePath) {
   return claims;
 }
 
-function findStaleLatestCommitClaims(content, filePath, expectedHead) {
-  if (!expectedHead) return [];
+function findUnstableLatestCommitClaims(content, filePath) {
   const violations = [];
 
   content.split('\n').forEach((line, index) => {
     const match = LATEST_COMMIT_PATTERN.exec(line);
     const observed = match?.[1];
-    if (!observed || expectedHead.startsWith(observed)) return;
+    if (!observed) return;
 
     violations.push({
-      type: 'stale-latest-commit-claim',
+      type: 'unstable-latest-commit-claim',
       filePath,
       line: index + 1,
       observed,
-      expected: expectedHead,
     });
   });
 
@@ -125,11 +123,7 @@ export function auditPortfolioClaims(documents, options = {}) {
       violations.push({ ...violation, filePath });
     });
     adapterTestCountClaims.push(...findAdapterTestCountClaims(content, filePath));
-    violations.push(...findStaleLatestCommitClaims(
-      content,
-      filePath,
-      options.expectedHead,
-    ));
+    violations.push(...findUnstableLatestCommitClaims(content, filePath));
   });
 
   if (new Set(adapterTestCountClaims.map(({ count }) => count)).size > 1) {

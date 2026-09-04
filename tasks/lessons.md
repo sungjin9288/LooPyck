@@ -155,10 +155,10 @@ _This document is updated whenever we learn from mistakes._
 - smoke가 JSON을 stdout에만 출력하면 운영자가 redirect를 빠뜨렸을 때 검증은 통과해도 release report는 이전 fingerprint를 계속 읽는다.
 - target별 stable artifact path를 runner가 직접 선택하고 `tee`로 stdout 호환성을 유지하며, 특수 실행만 explicit output override를 사용한다.
 
-## 2026-09-03 - Portfolio current-state claim은 문서 간 일관성과 live Git 기준을 함께 검사한다
+## 2026-09-04 - Portfolio current-state claim은 정적 HEAD hash 대신 동적 provenance를 사용한다
 
-- forbidden marketing claim만 검사하면 current 문서끼리 test count가 다르거나 오래된 commit을 최신으로 부르는 drift를 놓친다.
-- 반복되는 adapter count는 current 문서 전체에서 단일 값이어야 하고, `latest commit` 표현은 verifier가 읽은 실제 HEAD와 일치해야 한다.
+- forbidden marketing claim만 검사하면 current 문서끼리 test count가 다른 drift를 놓친다.
+- 문서가 현재 HEAD를 latest hash로 기록하면 그 문서를 commit하는 순간 hash가 바뀌어 CI가 필연적으로 실패한다. Current portfolio 문서에서는 self-referential latest hash를 금지하고 deployed identity는 served `deployment-provenance.json`으로 검증한다.
 
 ## 2026-09-03 - Grouping 품질은 pairwise false merge와 false split을 함께 측정한다
 

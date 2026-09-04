@@ -75,4 +75,4 @@
 - 이유: 검색·비교·AI·favorites·alert 흐름에 코드와 local/release evidence가 연결돼 있다. 다만 실제 사용자 성과와 production capacity 수치는 검증되지 않았다.
 - 이력서에 넣기 전 확인할 것: README의 `Scope & Limitations`, current demo screenshot, `npm run test:adapters` summary와 배포 대상 provenance
 - 가장 먼저 개선해야 할 것: 실제 사용자 analytics 표본을 수집해 검색 성공률, 비교 진입률, 알림 반응을 구현 완료 claim과 분리해 검증
-- git 기준 주의사항: 2026-09-03 working tree의 Phase 81~83은 local fingerprint evidence까지 검증됐지만 아직 production 배포 전이다. 최신 배포 완료로 표현하려면 commit/push/deploy와 post-deploy UAT가 추가로 필요하다.
+- git 기준 주의사항: Phase 81~85는 2026-09-04 production 배포와 post-deploy UAT까지 완료했다. 배포 완료를 표현할 때는 정적 commit hash 대신 `deployment-provenance.json`과 release artifact를 근거로 제시한다.

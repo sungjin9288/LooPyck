@@ -12,7 +12,7 @@
 - 핵심 기술스택: Next.js App Router, React, TypeScript, Tailwind CSS, Firebase Auth/Firestore/Admin, Gemini 2.5 Flash, Cheerio source adapters, Netlify, Capacitor
 - 이력서 반영 가능 여부: 조건부 가능
 - 판단 이유: 검색, 비교, AI 스타일 추천, 즐겨찾기, 가격 이력, 알림, 관리자 진단, 배포/검증 스크립트의 코드 근거가 있다. 다만 README와 일부 문서의 성과 수치, 정확도, 비용 절감 수치는 현재 코드만으로 검증되지 않아 이력서에서는 제외해야 한다.
-- 분석 기준: 2026-09-03 현재 워킹트리와 최신 커밋 `6e32108`을 함께 참고했다. Phase 81~83 변경은 아직 커밋·배포되지 않았으므로 포트폴리오 표현은 현재 파일과 fingerprint-linked 검증 결과 기준으로 작성한다.
+- 분석 기준: 2026-09-04 현재 source와 production release artifact를 함께 참고했다. Phase 81~85는 commit/push/deploy와 post-deploy UAT를 완료했으며, 배포 identity는 정적 hash 문구가 아니라 served `deployment-provenance.json`으로 확인한다.
 
 ## 2. One-liner
 
@@ -138,7 +138,7 @@ User
 - 실행 파일: `scripts/netlifySmokeCheck.mjs`, `scripts/netlifyUat.mjs`, `scripts/netlifyCompareEntryReviewPrep.sh`
 - 테스트 파일: `tests/productMatching.test.ts`, `tests/purchasePricing.test.ts`, `tests/purchaseDecision.test.ts`, `tests/styleRecommend.test.ts`, `tests/compareShortlist.test.ts`, `tests/searchDiagnostics.test.ts`
 - README 또는 문서 근거: `README.md`, `docs/NETLIFY_DEPLOY.md`, `docs/HANDOVER_MANUAL.md`, `docs/COMPARE_ENTRY_FUNNEL_EXECUTION_PLAN.md`
-- 최근 git 근거: 최신 커밋은 `6e32108`이며, 현재 `git status` 기준 API, components, lib, scripts, tests, docs에 Phase 81~83 미커밋 변경과 신규 파일이 있다. 구현 완료 claim은 코드와 검증 artifact가 함께 있는 범위로 제한한다.
+- 최근 git 근거: `main`과 `origin/main`의 동기화 여부는 live Git으로 확인하고, production commit은 `deployment-provenance.json` 및 Netlify UAT artifact로 교차 검증한다. 구현 완료 claim은 코드와 검증 artifact가 함께 있는 범위로 제한한다.
 - 실행 방법이 명확한지: `npm run dev`, `npm run typecheck`, `npm run test:adapters`, Netlify deploy/smoke script가 명확함
 - 스크린샷/데모가 필요한 부분: 검색 결과, 상세 비교 decision block, 즐겨찾기/알림, 관리자 diagnostics, Compare Entry funnel
 

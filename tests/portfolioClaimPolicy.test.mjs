@@ -74,18 +74,16 @@ test('portfolio audit rejects inconsistent adapter test counts across current do
   }]);
 });
 
-test('portfolio audit rejects a latest commit claim that differs from HEAD', () => {
-  const expectedHead = 'a'.repeat(40);
+test('portfolio audit rejects a self-referential latest commit hash', () => {
   const result = auditPortfolioClaims(
-    { current: '현재 최신 커밋은 `0edd82a`이다.' },
-    { currentPaths: ['current'], legacyPaths: [], expectedHead },
+    { current: '현재 최신 커밋은 `aaaaaaa`이다.' },
+    { currentPaths: ['current'], legacyPaths: [] },
   );
 
   assert.deepEqual(result.violations, [{
-    type: 'stale-latest-commit-claim',
+    type: 'unstable-latest-commit-claim',
     filePath: 'current',
     line: 1,
-    observed: '0edd82a',
-    expected: expectedHead,
+    observed: 'aaaaaaa',
   }]);
 });

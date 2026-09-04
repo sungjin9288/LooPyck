@@ -5,7 +5,7 @@
 - 이 프로젝트를 시작한 배경: 패션 상품은 동일하거나 유사한 상품이 여러 쇼핑몰에 흩어져 있고, 표시 가격만으로 실제 구매 조건을 판단하기 어렵다.
 - 해결하려는 사용자 문제: 사용자가 쇼핑몰별 가격, 옵션, 배송비, 회원가, 재고 상태를 직접 비교해야 하는 번거로움
 - 이 문제가 중요한 이유: 최저가처럼 보이는 상품도 배송비, 쿠폰 조건, 품절, 옵션 불일치 때문에 실제 구매 판단이 달라질 수 있다.
-- 현재 개발 진행 상태: MVP 기능과 Compare Entry gate/landing/search hierarchy는 구현·검증 완료됐고, 검색/운영 진단과 runtime reliability를 고도화 중이다. 2026-09-03 기준 최신 커밋은 `6e32108`이며 Phase 81~83 working-tree 변경은 현재 파일과 fingerprint-linked 검증 결과 기준으로 판단한다.
+- 현재 개발 진행 상태: MVP 기능과 Compare Entry gate/landing/search hierarchy는 구현·검증 완료됐고, 검색/운영 진단과 runtime reliability를 고도화 중이다. Phase 81~85는 2026-09-04 production 배포와 provenance-linked UAT까지 완료했으며, served commit identity는 `deployment-provenance.json`과 release artifact를 기준으로 판단한다.
 
 ## 2. 문제 정의
 
